@@ -1,4 +1,4 @@
-package com.example.serverdrivenui
+package com.example.serverdrivenui.shared
 
 interface Platform {
     val name: String

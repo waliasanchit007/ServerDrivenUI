@@ -1,4 +1,4 @@
-package com.example.serverdrivenui
+package com.example.serverdrivenui.shared
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -16,8 +16,8 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import serverdrivenui.composeapp.generated.resources.Res
-import serverdrivenui.composeapp.generated.resources.compose_multiplatform
+import com.example.serverdrivenui.shared.generated.resources.Res
+import com.example.serverdrivenui.shared.generated.resources.compose_multiplatform
 
 @Composable
 @Preview
