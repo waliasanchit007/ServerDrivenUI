@@ -16,8 +16,8 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import com.example.serverdrivenui.shared.Res
-import com.example.serverdrivenui.shared.compose_multiplatform
+import serverdrivenui.composeapp.generated.resources.Res
+import serverdrivenui.composeapp.generated.resources.compose_multiplatform
 
 @Composable
 @Preview

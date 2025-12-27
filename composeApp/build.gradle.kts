@@ -51,6 +51,3 @@ kotlin {
     }
 }
 
-compose.resources {
-    packageOfResClass = "com.example.serverdrivenui.shared"
-}
