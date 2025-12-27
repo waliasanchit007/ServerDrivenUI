@@ -1,4 +1,4 @@
-package com.example.serverdrivenui
+package com.example.serverdrivenui.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
 
