@@ -45,5 +45,6 @@ dependencies {
     implementation(compose.foundation)
     implementation(compose.material3)
     implementation(compose.ui)
+    implementation(compose.components.resources)
     debugImplementation(compose.uiTooling)
 }
