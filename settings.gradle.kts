@@ -14,6 +14,19 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "app.cash.redwood") {
+                useModule("app.cash.redwood:redwood-gradle-plugin:${requested.version}")
+            }
+            if (requested.id.id == "app.cash.redwood.schema") {
+                useModule("app.cash.redwood:redwood-gradle-plugin:${requested.version}")
+            }
+            if (requested.id.id == "app.cash.zipline") {
+                useModule("app.cash.zipline:zipline-gradle-plugin:${requested.version}")
+            }
+        }
+    }
 }
 
 dependencyResolutionManagement {
@@ -32,3 +45,4 @@ dependencyResolutionManagement {
 
 include(":composeApp")
 include(":androidApp")
+include(":schema")

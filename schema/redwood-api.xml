@@ -1,0 +1,9 @@
+<schema version="1" type="com.example.serverdrivenui.schema.SduiSchema">
+  <widget tag="1" type="com.example.serverdrivenui.schema.MyText">
+    <property tag="1" name="text" type="kotlin.String"/>
+  </widget>
+  <widget tag="2" type="com.example.serverdrivenui.schema.MyButton">
+    <property tag="1" name="text" type="kotlin.String"/>
+    <event tag="2" name="onClick"/>
+  </widget>
+</schema>
