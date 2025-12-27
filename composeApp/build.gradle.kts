@@ -10,7 +10,7 @@ plugins {
 
 kotlin {
     androidLibrary {
-        namespace = "com.example.serverdrivenui"
+        namespace = "com.example.serverdrivenui.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -49,4 +49,8 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.example.serverdrivenui.shared"
 }
