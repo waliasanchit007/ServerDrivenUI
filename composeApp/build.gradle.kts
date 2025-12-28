@@ -33,6 +33,13 @@ kotlin {
             export(project(":shared"))
             export(project(":shared-widget"))
         }
+        iosTarget.compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    freeCompilerArgs.add("-opt-in=app.cash.redwood.RedwoodCodegenApi")
+                }
+            }
+        }
     }
     
     sourceSets {
@@ -57,6 +64,7 @@ kotlin {
             implementation(libs.redwood.treehouse.host.composeui)
             api(project(":shared")) // Use api() for iOS framework export
             api(project(":shared-widget")) // Use api() for iOS framework export
+            api(project(":shared-protocol-host")) // For SduiSchemaHostProtocol
             implementation(libs.zipline)
             implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
