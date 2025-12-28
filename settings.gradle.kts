@@ -19,9 +19,6 @@ pluginManagement {
             if (requested.id.id == "app.cash.redwood") {
                 useModule("app.cash.redwood:redwood-gradle-plugin:${requested.version}")
             }
-            if (requested.id.id == "app.cash.redwood.schema") {
-                useModule("app.cash.redwood:redwood-gradle-plugin:${requested.version}")
-            }
             if (requested.id.id == "app.cash.zipline") {
                 useModule("app.cash.zipline:zipline-gradle-plugin:${requested.version}")
             }
@@ -46,3 +43,8 @@ dependencyResolutionManagement {
 include(":composeApp")
 include(":androidApp")
 include(":schema")
+include(":presenter")
+include(":shared")
+include(":shared-protocol-host")
+include(":shared-protocol-guest")
+include(":shared-widget")

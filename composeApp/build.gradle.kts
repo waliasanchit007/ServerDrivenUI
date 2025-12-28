@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.zipline)
 }
 
 kotlin {
@@ -14,9 +15,6 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         
-        androidResources {
-            enable = true
-        }
 
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
@@ -31,6 +29,10 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
             binaryOption("bundleId", "com.example.serverdrivenui")
+            // Export all transitive dependencies
+            export(project(":shared"))
+            export(project(":shared-widget"))
+            export(compose.runtime)
         }
     }
     
@@ -39,17 +41,30 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
         }
-        commonMain.dependencies {
-            implementation(compose.runtime)
+
+        commonMain {
+            dependencies {
+            api(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.redwood.widget)
+            implementation(libs.redwood.treehouse.host)
+            implementation(libs.redwood.treehouse)
+            implementation(libs.redwood.compose)
+            implementation(libs.redwood.treehouse.host.composeui)
+            api(project(":shared")) // Use api() for iOS framework export
+            api(project(":shared-widget")) // Use api() for iOS framework export
+            implementation(libs.zipline)
+            implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
         }
-        commonTest.dependencies {
+    }
+        
+    commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
     }

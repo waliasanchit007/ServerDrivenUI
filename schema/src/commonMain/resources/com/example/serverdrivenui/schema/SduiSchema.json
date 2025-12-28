@@ -1,0 +1,61 @@
+{
+	"version": 1,
+	"type": {
+		"names": [
+			"com.example.serverdrivenui.schema",
+			"SduiSchema"
+		]
+	},
+	"widgets": [
+		{
+			"tag": 1,
+			"type": {
+				"names": [
+					"com.example.serverdrivenui.schema",
+					"MyText"
+				]
+			},
+			"traits": [
+				{
+					"kind": "property",
+					"tag": 1,
+					"name": "text",
+					"type": {
+						"names": [
+							"kotlin",
+							"String"
+						]
+					}
+				}
+			]
+		},
+		{
+			"tag": 2,
+			"type": {
+				"names": [
+					"com.example.serverdrivenui.schema",
+					"MyButton"
+				]
+			},
+			"traits": [
+				{
+					"kind": "property",
+					"tag": 1,
+					"name": "text",
+					"type": {
+						"names": [
+							"kotlin",
+							"String"
+						]
+					}
+				},
+				{
+					"kind": "event",
+					"tag": 2,
+					"name": "onClick",
+					"isNullable": false
+				}
+			]
+		}
+	]
+}

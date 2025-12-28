@@ -1,0 +1,59 @@
+Reusing configuration cache.
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :presenter:generateComposeResClass SKIPPED
+> Task :presenter:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :presenter:copyNonXmlValueResourcesForJsMain NO-SOURCE
+> Task :presenter:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :presenter:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:redwoodKotlinGenerate UP-TO-DATE
+> Task :presenter:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-protocol-guest:kmpPartiallyResolvedDependenciesChecker
+> Task :presenter:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:redwoodJsonGenerate UP-TO-DATE
+> Task :shared-protocol-guest:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :presenter:convertXmlValueResourcesForWebMain NO-SOURCE
+> Task :presenter:convertXmlValueResourcesForJsMain NO-SOURCE
+> Task :presenter:copyNonXmlValueResourcesForWebMain NO-SOURCE
+> Task :schema:processResources UP-TO-DATE
+> Task :presenter:prepareComposeResourcesTaskForJsMain NO-SOURCE
+> Task :presenter:generateResourceAccessorsForJsMain SKIPPED
+> Task :presenter:prepareComposeResourcesTaskForWebMain NO-SOURCE
+> Task :shared-widget:kmpPartiallyResolvedDependenciesChecker
+> Task :presenter:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :presenter:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-widget:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :presenter:generateResourceAccessorsForWebMain SKIPPED
+> Task :presenter:generateActualResourceCollectorsForJsMain SKIPPED
+> Task :schema:compileKotlin UP-TO-DATE
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes UP-TO-DATE
+> Task :shared:compileKotlinJs UP-TO-DATE
+> Task :schema:jar UP-TO-DATE
+> Task :shared-protocol-guest:redwoodKotlinGenerate UP-TO-DATE
+> Task :shared-widget:redwoodKotlinGenerate UP-TO-DATE
+> Task :presenter:redwoodKotlinGenerate UP-TO-DATE
+> Task :shared-widget:compileKotlinJs UP-TO-DATE
+> Task :shared-protocol-guest:compileKotlinJs UP-TO-DATE
+
+> Task :presenter:compileKotlinJs FAILED
+e: file:///Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/presenter/src/jsMain/kotlin/com/example/serverdrivenui/presenter/Main.kt:13:1 Class 'SduiAppServiceImpl' is not abstract and does not implement abstract member:
+val appLifecycle: AppLifecycle
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':presenter:compileKotlinJs'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 728ms
+16 actionable tasks: 5 executed, 11 up-to-date
+Configuration cache entry reused.

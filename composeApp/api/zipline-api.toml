@@ -1,0 +1,9 @@
+[com.example.serverdrivenui.shared.SduiAppService]
+
+functions = [
+  # fun close(): kotlin.Unit
+  "moYx+T3e",
+
+  # val appLifecycle: app.cash.redwood.treehouse.AppLifecycle
+  "odhmO/d6",
+]

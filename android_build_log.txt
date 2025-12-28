@@ -1,0 +1,197 @@
+Reusing configuration cache.
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-widget:jvmProcessResources NO-SOURCE
+> Task :shared:jvmProcessResources NO-SOURCE
+> Task :shared:processJvmMainResources SKIPPED
+> Task :androidApp:preBuild UP-TO-DATE
+> Task :shared-widget:processJvmMainResources SKIPPED
+> Task :androidApp:preDebugBuild UP-TO-DATE
+> Task :shared-protocol-host:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-protocol-host:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :androidApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-widget:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-protocol-host:redwoodKotlinGenerate UP-TO-DATE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:redwoodJsonGenerate UP-TO-DATE
+> Task :shared-widget:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :androidApp:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :composeApp:androidPreBuild UP-TO-DATE
+> Task :shared:redwoodKotlinGenerate UP-TO-DATE
+> Task :composeApp:preAndroidMainBuild UP-TO-DATE
+> Task :schema:processResources UP-TO-DATE
+> Task :shared-protocol-host:jvmProcessResources NO-SOURCE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :androidApp:generateDebugResValues UP-TO-DATE
+> Task :shared-protocol-host:processJvmMainResources SKIPPED
+> Task :androidApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :androidApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :composeApp:processAndroidMainManifest UP-TO-DATE
+> Task :androidApp:mergeDebugShaders UP-TO-DATE
+> Task :androidApp:checkDebugAarMetadata UP-TO-DATE
+> Task :androidApp:compileDebugShaders NO-SOURCE
+> Task :androidApp:processDebugNavigationResources UP-TO-DATE
+> Task :androidApp:generateDebugAssets UP-TO-DATE
+> Task :androidApp:javaPreCompileDebug UP-TO-DATE
+> Task :composeApp:generateAndroidMainAssets UP-TO-DATE
+> Task :composeApp:packageAndroidMainResources UP-TO-DATE
+> Task :androidApp:compileDebugNavigationResources UP-TO-DATE
+> Task :composeApp:mergeAndroidMainAssets UP-TO-DATE
+> Task :androidApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:parseAndroidMainLocalResources UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :androidApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:generateAndroidMainRFile UP-TO-DATE
+> Task :androidApp:desugarDebugFileDependencies UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:compileKotlinJvm UP-TO-DATE
+> Task :schema:compileKotlin UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :androidApp:mergeDebugJniLibFolders UP-TO-DATE
+> Task :composeApp:assembleAndroidMainResources UP-TO-DATE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:compileJvmMainJava NO-SOURCE
+> Task :androidApp:validateSigningDebug UP-TO-DATE
+> Task :androidApp:writeDebugAppMetadata UP-TO-DATE
+> Task :shared:jvmMainClasses UP-TO-DATE
+> Task :composeApp:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :composeApp:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :androidApp:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :composeApp:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes UP-TO-DATE
+> Task :schema:jar UP-TO-DATE
+> Task :shared:jvmJar UP-TO-DATE
+> Task :shared-widget:redwoodKotlinGenerate UP-TO-DATE
+> Task :androidApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :shared-widget:compileKotlinJvm UP-TO-DATE
+> Task :androidApp:mergeDebugResources UP-TO-DATE
+> Task :shared-widget:compileJvmMainJava NO-SOURCE
+> Task :androidApp:checkDebugDuplicateClasses UP-TO-DATE
+> Task :shared-widget:jvmMainClasses UP-TO-DATE
+> Task :androidApp:mergeDebugAssets UP-TO-DATE
+> Task :shared-widget:jvmJar UP-TO-DATE
+> Task :androidApp:compressDebugAssets UP-TO-DATE
+> Task :androidApp:processDebugMainManifest UP-TO-DATE
+> Task :androidApp:processDebugManifest UP-TO-DATE
+> Task :shared-protocol-host:compileKotlinJvm UP-TO-DATE
+> Task :androidApp:processDebugManifestForPackage UP-TO-DATE
+> Task :shared-protocol-host:compileJvmMainJava NO-SOURCE
+> Task :shared-protocol-host:jvmMainClasses UP-TO-DATE
+> Task :shared-protocol-host:jvmJar UP-TO-DATE
+> Task :composeApp:compileAndroidMain UP-TO-DATE
+> Task :composeApp:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :composeApp:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :composeApp:processAndroidMainJavaRes UP-TO-DATE
+> Task :androidApp:mergeExtDexDebug UP-TO-DATE
+> Task :androidApp:mergeDebugNativeLibs UP-TO-DATE
+> Task :androidApp:stripDebugDebugSymbols UP-TO-DATE
+> Task :androidApp:processDebugResources UP-TO-DATE
+> Task :androidApp:compileDebugKotlin UP-TO-DATE
+> Task :androidApp:processDebugJavaRes
+
+> Task :androidApp:mergeLibDexDebug FAILED
+ERROR: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex: D8: Type com.example.serverdrivenui.schema.widget.MyButton is defined multiple times: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex, /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared-widget/build/.transforms/5bee93274df9b00c67de74ee42b53947/transformed/shared-widget-jvm/classes.dex
+com.android.builder.dexing.DexArchiveMergerException: Error while merging dex archives: 
+Learn how to resolve the issue at https://developer.android.com/studio/build/dependencies#duplicate_classes.
+Type com.example.serverdrivenui.schema.widget.MyButton is defined multiple times: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex, /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared-widget/build/.transforms/5bee93274df9b00c67de74ee42b53947/transformed/shared-widget-jvm/classes.dex
+	at com.android.builder.dexing.D8DexArchiveMerger.getMergingExceptionToRethrow(D8DexArchiveMerger.java:230)
+	at com.android.builder.dexing.D8DexArchiveMerger.mergeDexArchives(D8DexArchiveMerger.java:218)
+	at com.android.build.gradle.internal.tasks.DexMergingWorkAction.merge(DexMergingTask.kt:935)
+	at com.android.build.gradle.internal.tasks.DexMergingWorkAction.run(DexMergingTask.kt:884)
+	at com.android.build.gradle.internal.profile.ProfileAwareWorkAction.execute(ProfileAwareWorkAction.kt:74)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+Caused by: com.android.tools.r8.CompilationFailedException: Compilation failed to complete, origin: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex
+	at Version.fakeStackEntry(Version_8.13.19.java:0)
+	at com.android.tools.r8.q0.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:1)
+	at com.android.tools.r8.internal.bs0.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:81)
+	at com.android.tools.r8.internal.bs0.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:32)
+	at com.android.tools.r8.internal.bs0.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:31)
+	at com.android.tools.r8.internal.bs0.b(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:2)
+	at com.android.tools.r8.D8.run(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:11)
+	at com.android.builder.dexing.D8DexArchiveMerger.mergeDexArchives(D8DexArchiveMerger.java:216)
+	... 37 more
+Caused by: com.android.tools.r8.internal.g: Type com.example.serverdrivenui.schema.widget.MyButton is defined multiple times: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex, /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared-widget/build/.transforms/5bee93274df9b00c67de74ee42b53947/transformed/shared-widget-jvm/classes.dex
+	at com.android.tools.r8.internal.df3.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:21)
+	at com.android.tools.r8.internal.gz2.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:54)
+	at com.android.tools.r8.internal.gz2.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:10)
+	at java.base/java.util.concurrent.ConcurrentHashMap.merge(ConcurrentHashMap.java:2056)
+	at com.android.tools.r8.internal.gz2.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:6)
+	at com.android.tools.r8.graph.u9$a.c(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:6)
+	at com.android.tools.r8.dex.c.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:56)
+	at com.android.tools.r8.dex.c.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:12)
+	at com.android.tools.r8.D8.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:33)
+	at com.android.tools.r8.D8.d(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:20)
+	at com.android.tools.r8.D8.b(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:1)
+	at com.android.tools.r8.internal.bs0.a(R8_8.13.19_e9726f7e236c4c45aca9deeada0d577f8cf0d304d735b8c0f7f49bca48f5e907:28)
+	... 40 more
+
+
+> Task :androidApp:mergeDebugJavaResource
+> Task :androidApp:compileDebugJavaWithJavac
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':androidApp:mergeLibDexDebug'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.DexMergingTaskDelegate
+   > There was a failure while executing work items
+      > A failure occurred while executing com.android.build.gradle.internal.tasks.DexMergingWorkAction
+         > com.android.builder.dexing.DexArchiveMergerException: Error while merging dex archives: 
+           Learn how to resolve the issue at https://developer.android.com/studio/build/dependencies#duplicate_classes.
+           Type com.example.serverdrivenui.schema.widget.MyButton is defined multiple times: /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared/build/.transforms/e4c581889f223525bf6e17be6808c326/transformed/shared-jvm/classes.dex, /Users/sanchitwalia/AndroidStudioProjects/ServerDrivenUI/shared-widget/build/.transforms/5bee93274df9b00c67de74ee42b53947/transformed/shared-widget-jvm/classes.dex
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s
+71 actionable tasks: 8 executed, 63 up-to-date
+Configuration cache entry reused.

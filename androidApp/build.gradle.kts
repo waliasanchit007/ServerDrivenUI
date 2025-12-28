@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.zipline)
 }
 
 android {
@@ -30,17 +31,33 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures {
+        compose = true
+    }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        compilerOptions {
+            freeCompilerArgs.addAll(
+                "-opt-in=app.cash.redwood.RedwoodCodegenApi",
+                "-opt-in=kotlin.RequiresOptIn"
+            )
+        }
+    }
 }
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(project(":shared-protocol-host"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.redwood.treehouse.host)
+    implementation(libs.zipline.loader)
+    implementation(libs.okhttp)
+    implementation(project(":shared"))
     implementation(compose.runtime)
     implementation(compose.foundation)
     implementation(compose.material3)

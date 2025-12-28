@@ -1,49 +1,37 @@
 package com.example.serverdrivenui.shared
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.Composable
+import app.cash.redwood.treehouse.TreehouseApp
+import app.cash.redwood.treehouse.composeui.TreehouseContent
+import app.cash.redwood.treehouse.TreehouseContentSource
+import app.cash.redwood.treehouse.ZiplineTreehouseUi
+import com.example.serverdrivenui.shared.SduiAppService
+import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import serverdrivenui.composeapp.generated.resources.Res
-import serverdrivenui.composeapp.generated.resources.compose_multiplatform
+class SduiContentSource : TreehouseContentSource<SduiAppService> {
+    override fun get(app: SduiAppService): ZiplineTreehouseUi {
+        println("SDUI: SduiContentSource.get() called")
+        val ui = app.launch()
+        println("SDUI: app.launch() returned $ui")
+        return ui
+    }
+}
 
 @Composable
-@Preview
-fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
-            }
-        }
+fun App(treehouseApp: TreehouseApp<SduiAppService>?) {
+    if (treehouseApp != null) {
+        println("SDUI: App composable called with treehouseApp")
+        val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
+        TreehouseContent(
+            treehouseApp = treehouseApp,
+            widgetSystem = widgetSystem,
+            contentSource = SduiContentSource(),
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        println("SDUI: App composable called but treehouseApp is NULL")
+        androidx.compose.material3.Text("Redwood not initialized on this platform")
     }
 }
