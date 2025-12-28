@@ -1,13 +1,11 @@
 package com.example.serverdrivenui.shared
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import app.cash.redwood.Modifier
 import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.redwood.treehouse.AppService
@@ -15,13 +13,12 @@ import app.cash.redwood.treehouse.AppLifecycle
 import app.cash.redwood.widget.Widget
 import app.cash.redwood.protocol.RedwoodVersion
 import app.cash.zipline.Zipline
-import com.example.serverdrivenui.schema.widget.MyButton
-import com.example.serverdrivenui.schema.widget.MyText
-import com.example.serverdrivenui.schema.widget.MyColumn
-import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetFactory
+import com.example.serverdrivenui.schema.widget.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import com.example.serverdrivenui.shared.SduiAppService
+import coil3.compose.AsyncImage
+
+// ============= Existing Widgets =============
 
 class CmpMyText : MyText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private var text by mutableStateOf("")
@@ -72,14 +69,14 @@ class CmpMyButton : MyButton<@Composable (androidx.compose.ui.Modifier) -> Unit>
 }
 
 class CmpMyColumn : MyColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
-    override val children: app.cash.redwood.widget.Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
         CmpChildren()
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = modifier.fillMaxSize(),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             (children as CmpChildren).render()
         }
@@ -88,7 +85,255 @@ class CmpMyColumn : MyColumn<@Composable (androidx.compose.ui.Modifier) -> Unit>
     override var modifier: Modifier = Modifier
 }
 
-class CmpChildren : app.cash.redwood.widget.Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+// ============= Layout Widgets =============
+
+class CmpFlexRow : FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var horizontalArrangement by mutableStateOf("Start")
+    private var verticalAlignment by mutableStateOf("Top")
+    
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Row(
+            modifier = modifier,
+            horizontalArrangement = parseHorizontalArrangement(horizontalArrangement),
+            verticalAlignment = parseVerticalAlignment(verticalAlignment)
+        ) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun horizontalArrangement(horizontalArrangement: String) {
+        this.horizontalArrangement = horizontalArrangement
+    }
+
+    override fun verticalAlignment(verticalAlignment: String) {
+        this.verticalAlignment = verticalAlignment
+    }
+}
+
+class CmpFlexColumn : FlexColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var verticalArrangement by mutableStateOf("Top")
+    private var horizontalAlignment by mutableStateOf("Start")
+    
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Column(
+            modifier = modifier,
+            verticalArrangement = parseVerticalArrangement2(verticalArrangement),
+            horizontalAlignment = parseHorizontalAlignment(horizontalAlignment)
+        ) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun verticalArrangement(verticalArrangement: String) {
+        this.verticalArrangement = verticalArrangement
+    }
+
+    override fun horizontalAlignment(horizontalAlignment: String) {
+        this.horizontalAlignment = horizontalAlignment
+    }
+}
+
+class CmpBox : Box<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.layout.Box(modifier = modifier) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+}
+
+class CmpSpacer : Spacer<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var width by mutableStateOf(0)
+    private var height by mutableStateOf(0)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.layout.Spacer(
+            modifier = modifier
+                .width(width.dp)
+                .height(height.dp)
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun width(width: Int) {
+        this.width = width
+    }
+
+    override fun height(height: Int) {
+        this.height = height
+    }
+}
+
+// ============= Input Widgets =============
+
+class CmpSduiTextField : SduiTextField<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var textValue by mutableStateOf("")
+    private var labelText by mutableStateOf("")
+    private var placeholderText by mutableStateOf("")
+    private var onValueChangeCallback: (String) -> Unit = {}
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        OutlinedTextField(
+            value = textValue,
+            onValueChange = { newValue ->
+                textValue = newValue
+                onValueChangeCallback(newValue)
+            },
+            label = if (labelText.isNotEmpty()) {{ Text(labelText) }} else null,
+            placeholder = if (placeholderText.isNotEmpty()) {{ Text(placeholderText) }} else null,
+            modifier = modifier.fillMaxWidth()
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun value(value: String) {
+        this.textValue = value
+    }
+
+    override fun label(label: String) {
+        this.labelText = label
+    }
+
+    override fun placeholder(placeholder: String) {
+        this.placeholderText = placeholder
+    }
+
+    override fun onValueChange(onValueChange: (String) -> Unit) {
+        this.onValueChangeCallback = onValueChange
+    }
+}
+
+class CmpSduiSwitch : SduiSwitch<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var checked by mutableStateOf(false)
+    private var onCheckedChange: (Boolean) -> Unit = {}
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Switch(
+            checked = checked,
+            onCheckedChange = { newValue ->
+                checked = newValue
+                onCheckedChange(newValue)
+            },
+            modifier = modifier
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun checked(checked: Boolean) {
+        this.checked = checked
+    }
+
+    override fun onCheckedChange(onCheckedChange: (Boolean) -> Unit) {
+        this.onCheckedChange = onCheckedChange
+    }
+}
+
+// ============= Display Widgets =============
+
+class CmpSduiImage : SduiImage<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var url by mutableStateOf("")
+    private var contentDescription by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        if (url.isNotEmpty()) {
+            AsyncImage(
+                model = url,
+                contentDescription = contentDescription,
+                modifier = modifier
+            )
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun url(url: String) {
+        this.url = url
+    }
+
+    override fun contentDescription(contentDescription: String) {
+        this.contentDescription = contentDescription
+    }
+}
+
+class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var onClick: (() -> Unit)? = null
+    
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val cardModifier = onClick?.let { 
+            modifier.clickable { it() } 
+        } ?: modifier
+        
+        Card(modifier = cardModifier) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun onClick(onClick: (() -> Unit)?) {
+        this.onClick = onClick
+    }
+}
+
+// ============= Helper Functions =============
+
+private fun parseHorizontalArrangement(value: String): Arrangement.Horizontal = when (value) {
+    "Start" -> Arrangement.Start
+    "Center" -> Arrangement.Center
+    "End" -> Arrangement.End
+    "SpaceBetween" -> Arrangement.SpaceBetween
+    "SpaceAround" -> Arrangement.SpaceAround
+    "SpaceEvenly" -> Arrangement.SpaceEvenly
+    else -> Arrangement.Start
+}
+
+private fun parseVerticalAlignment(value: String): Alignment.Vertical = when (value) {
+    "Top" -> Alignment.Top
+    "CenterVertically" -> Alignment.CenterVertically
+    "Bottom" -> Alignment.Bottom
+    else -> Alignment.Top
+}
+
+private fun parseVerticalArrangement2(value: String): Arrangement.Vertical = when (value) {
+    "Top" -> Arrangement.Top
+    "Center" -> Arrangement.Center
+    "Bottom" -> Arrangement.Bottom
+    "SpaceBetween" -> Arrangement.SpaceBetween
+    "SpaceAround" -> Arrangement.SpaceAround
+    "SpaceEvenly" -> Arrangement.SpaceEvenly
+    else -> Arrangement.Top
+}
+
+private fun parseHorizontalAlignment(value: String): Alignment.Horizontal = when (value) {
+    "Start" -> Alignment.Start
+    "CenterHorizontally" -> Alignment.CenterHorizontally
+    "End" -> Alignment.End
+    else -> Alignment.Start
+}
+
+// ============= Children Container =============
+
+class CmpChildren : Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private val _widgets = mutableStateListOf<Widget<@Composable (androidx.compose.ui.Modifier) -> Unit>>()
 
     override val widgets: List<Widget<@Composable (androidx.compose.ui.Modifier) -> Unit>>
@@ -114,7 +359,6 @@ class CmpChildren : app.cash.redwood.widget.Widget.Children<@Composable (android
     }
 
     override fun detach() {
-        // No-op for Compose children typically, as they are removed from composition when removed from list
     }
 
     @Composable
@@ -124,6 +368,8 @@ class CmpChildren : app.cash.redwood.widget.Widget.Children<@Composable (android
         }
     }
 }
+
+// ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     override fun MyText(): MyText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -138,7 +384,41 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
         println("CmpWidgetFactory: Creating MyColumn widget")
         return CmpMyColumn()
     }
+    override fun FlexRow(): FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating FlexRow widget")
+        return CmpFlexRow()
+    }
+    override fun FlexColumn(): FlexColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating FlexColumn widget")
+        return CmpFlexColumn()
+    }
+    override fun Box(): Box<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating Box widget")
+        return CmpBox()
+    }
+    override fun Spacer(): Spacer<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating Spacer widget")
+        return CmpSpacer()
+    }
+    override fun SduiTextField(): SduiTextField<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating SduiTextField widget")
+        return CmpSduiTextField()
+    }
+    override fun SduiSwitch(): SduiSwitch<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating SduiSwitch widget")
+        return CmpSduiSwitch()
+    }
+    override fun SduiImage(): SduiImage<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating SduiImage widget")
+        return CmpSduiImage()
+    }
+    override fun SduiCard(): SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating SduiCard widget")
+        return CmpSduiCard()
+    }
 }
+
+// ============= Services =============
 
 class RealHostConsole : HostConsole {
     init {
@@ -163,3 +443,4 @@ class SduiAppSpec(
         return zipline.take<SduiAppService>("app")
     }
 }
+

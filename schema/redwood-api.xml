@@ -1,9 +1,47 @@
 <schema version="1" type="com.example.serverdrivenui.schema.SduiSchema">
   <widget tag="1" type="com.example.serverdrivenui.schema.MyText">
-    <property tag="1" name="text" type="kotlin.String"/>
+    <property tag="1" name="text" type="kotlin.String" />
   </widget>
   <widget tag="2" type="com.example.serverdrivenui.schema.MyButton">
-    <property tag="1" name="text" type="kotlin.String"/>
-    <event tag="2" name="onClick"/>
+    <property tag="1" name="text" type="kotlin.String" />
+    <event tag="2" name="onClick" />
+  </widget>
+  <widget tag="3" type="com.example.serverdrivenui.schema.MyColumn">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="4" type="com.example.serverdrivenui.schema.FlexRow">
+    <property tag="1" name="horizontalArrangement" type="kotlin.String" />
+    <property tag="2" name="verticalAlignment" type="kotlin.String" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="5" type="com.example.serverdrivenui.schema.FlexColumn">
+    <property tag="1" name="verticalArrangement" type="kotlin.String" />
+    <property tag="2" name="horizontalAlignment" type="kotlin.String" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="6" type="com.example.serverdrivenui.schema.Box">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="7" type="com.example.serverdrivenui.schema.Spacer">
+    <property tag="1" name="width" type="kotlin.Int" />
+    <property tag="2" name="height" type="kotlin.Int" />
+  </widget>
+  <widget tag="8" type="com.example.serverdrivenui.schema.SduiTextField">
+    <property tag="1" name="value" type="kotlin.String" />
+    <property tag="2" name="label" type="kotlin.String" />
+    <property tag="3" name="placeholder" type="kotlin.String" />
+    <event tag="4" name="onValueChange" params="kotlin.String" />
+  </widget>
+  <widget tag="9" type="com.example.serverdrivenui.schema.SduiSwitch">
+    <property tag="1" name="checked" type="kotlin.Boolean" />
+    <event tag="2" name="onCheckedChange" params="kotlin.Boolean" />
+  </widget>
+  <widget tag="10" type="com.example.serverdrivenui.schema.SduiImage">
+    <property tag="1" name="url" type="kotlin.String" />
+    <property tag="2" name="contentDescription" type="kotlin.String" />
+  </widget>
+  <widget tag="11" type="com.example.serverdrivenui.schema.SduiCard">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="children" />
   </widget>
 </schema>

@@ -70,6 +70,7 @@ kotlin {
             implementation(libs.zipline)
             implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.coil.compose)
         }
     }
         
