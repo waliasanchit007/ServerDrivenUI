@@ -4,7 +4,7 @@ plugins {
 }
 
 redwoodSchema {
-    source = files("../schema/src/commonMain/resources")
+    source = project(":schema")
     type = "com.example.serverdrivenui.schema.SduiSchema"
 }
 

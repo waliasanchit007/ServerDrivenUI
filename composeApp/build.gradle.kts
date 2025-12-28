@@ -32,7 +32,6 @@ kotlin {
             // Export all transitive dependencies
             export(project(":shared"))
             export(project(":shared-widget"))
-            export(compose.runtime)
         }
     }
     

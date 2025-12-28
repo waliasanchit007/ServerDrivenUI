@@ -1,5 +1,6 @@
 package com.example.serverdrivenui.schema
 
+import app.cash.redwood.schema.Children
 import app.cash.redwood.schema.Property
 import app.cash.redwood.schema.Schema
 import app.cash.redwood.schema.Widget
@@ -9,6 +10,7 @@ import kotlin.Unit
     members = [
         MyText::class,
         MyButton::class,
+        MyColumn::class,
     ],
 )
 interface SduiSchema
@@ -22,4 +24,9 @@ data class MyText(
 data class MyButton(
     @Property(1) val text: String,
     @Property(2) val onClick: () -> Unit,
+)
+
+@Widget(3)
+data class MyColumn(
+    @Children(1) val children: () -> Unit,
 )

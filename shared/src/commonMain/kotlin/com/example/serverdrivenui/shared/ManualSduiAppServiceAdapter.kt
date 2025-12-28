@@ -15,7 +15,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
 
-open class ManualSduiAppServiceAdapter(
+internal open class ManualSduiAppServiceAdapter(
     override val serializers: List<KSerializer<*>>,
     override val serialName: String = "com.example.serverdrivenui.shared.SduiAppService"
 ) : ZiplineServiceAdapter<SduiAppService>() {

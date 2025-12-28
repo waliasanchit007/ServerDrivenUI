@@ -13,9 +13,11 @@ import com.example.serverdrivenui.schema.compose.MyText
 fun SduiPresenter() {
     var count by remember { mutableStateOf(0) }
 
-    MyText(text = "Count: $count")
-    MyButton(
-        text = "Increment",
-        onClick = { count++ }
-    )
+    com.example.serverdrivenui.schema.compose.MyColumn {
+        MyText(text = "Count: $count")
+        MyButton(
+            text = "Increment",
+            onClick = { count++ }
+        )
+    }
 }

@@ -17,7 +17,7 @@ kotlin {
             implementation(libs.redwood.treehouse)
             implementation(libs.redwoodProtocol)
             implementation(libs.redwood.protocol.host)
-            implementation(libs.zipline)
+            api(libs.zipline)
         }
     }
 }

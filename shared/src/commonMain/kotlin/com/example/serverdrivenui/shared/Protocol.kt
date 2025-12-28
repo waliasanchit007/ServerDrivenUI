@@ -10,7 +10,7 @@ interface SduiAppService : AppService {
     fun launch(): ZiplineTreehouseUi
 
     companion object {
-        class Adapter(
+        internal class Adapter(
             serializers: List<KSerializer<*>>,
             serialName: String
         ) : ManualSduiAppServiceAdapter(serializers, serialName)
