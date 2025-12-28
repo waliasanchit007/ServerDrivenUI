@@ -13,19 +13,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.serverdrivenui.shared.App
 import com.example.serverdrivenui.shared.CmpWidgetFactory
-// import com.example.serverdrivenui.shared.SduiAppSpec
 import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.DevConfig
+import com.example.serverdrivenui.shared.HotReloadManager
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
 import okhttp3.OkHttpClient
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import app.cash.zipline.loader.LoaderEventListener
 import app.cash.zipline.Zipline
 import app.cash.redwood.treehouse.EventListener
 import app.cash.zipline.ZiplineService
 import app.cash.zipline.ZiplineManifest
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
@@ -34,6 +40,9 @@ import androidx.lifecycle.lifecycleScope
 import app.cash.redwood.RedwoodCodegenApi
 
 class MainActivity : ComponentActivity() {
+    private val hotReloadManager = HotReloadManager()
+    private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -62,15 +71,14 @@ class MainActivity : ComponentActivity() {
             SduiSchemaHostProtocol.Factory
         )
 
-        // For emulator use 10.0.2.2, for physical device use your machine's IP
-        val manifestUrl = "http://192.168.1.3:8080/manifest.zipline.json"
-        Log.d("SDUI", "Manifest URL: $manifestUrl")
+        Log.d("SDUI", "Manifest URL: ${DevConfig.manifestUrl}")
+        Log.d("SDUI", "Hot Reload URL: ${DevConfig.hotReloadUrl}")
 
         Log.d("SDUI", "TreehouseApp created, setting content (loading triggered by TreehouseContent)...")
 
         val spec = object : app.cash.redwood.treehouse.TreehouseApp.Spec<SduiAppService>() {
             override val name = "sdui"
-            override val manifestUrl = flowOf(manifestUrl)
+            override val manifestUrl = manifestUrlFlow.asStateFlow()
 
             override suspend fun bindServices(
                 treehouseApp: app.cash.redwood.treehouse.TreehouseApp<SduiAppService>,
@@ -91,10 +99,28 @@ class MainActivity : ComponentActivity() {
             spec = spec,
             eventListenerFactory = SDUIZiplineEventListenerFactory
         )
+        
+        // Connect to hot reload WebSocket
+        hotReloadManager.connect(DevConfig.hotReloadUrl)
 
         setContent {
+            // Observe hot reload triggers
+            val refreshTrigger by hotReloadManager.refreshTrigger.collectAsState()
+            
+            LaunchedEffect(refreshTrigger) {
+                if (refreshTrigger > 0) {
+                    Log.d("SDUI", "Hot reload triggered at $refreshTrigger")
+                    manifestUrlFlow.value = "${DevConfig.manifestUrl}?t=$refreshTrigger"
+                }
+            }
+            
             App(app)
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        hotReloadManager.disconnect()
     }
 }
 

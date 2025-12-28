@@ -19,8 +19,12 @@ import app.cash.zipline.loader.ZiplineHttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import platform.Foundation.NSURLSession
 import platform.Foundation.NSURL
 import platform.Foundation.NSMutableURLRequest
@@ -109,6 +113,8 @@ class IosRealHostConsole : HostConsole {
 private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
 private var treehouseApp: TreehouseApp<SduiAppService>? = null
+private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
+private val hotReloadManager = HotReloadManager()
 
 fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     val existing = treehouseApp
@@ -130,13 +136,12 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         hostProtocolFactory = SduiSchemaHostProtocol.Factory
     )
     
-    // Use your development machine's IP address
-    val manifestUrl = "http://192.168.1.3:8080/manifest.zipline.json"
-    println("SDUI-iOS: Manifest URL: $manifestUrl")
+    println("SDUI-iOS: Manifest URL: ${DevConfig.manifestUrl}")
+    println("SDUI-iOS: Hot Reload URL: ${DevConfig.hotReloadUrl}")
     
     val spec = object : TreehouseApp.Spec<SduiAppService>() {
         override val name = "sdui"
-        override val manifestUrl = flowOf(manifestUrl)
+        override val manifestUrl = manifestUrlFlow.asStateFlow()
         
         override suspend fun bindServices(
             treehouseApp: TreehouseApp<SduiAppService>,
@@ -157,6 +162,9 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         spec = spec
     )
     
+    // Connect to hot reload WebSocket
+    hotReloadManager.connect(DevConfig.hotReloadUrl)
+    
     treehouseApp = app
     println("SDUI-iOS: TreehouseApp created")
     return app
@@ -164,5 +172,16 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
 
 fun MainViewController() = ComposeUIViewController {
     val app = initializeTreehouseApp()
+    
+    // Observe hot reload triggers
+    val refreshTrigger by hotReloadManager.refreshTrigger.collectAsState()
+    
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > 0) {
+            println("SDUI-iOS: Hot reload triggered at $refreshTrigger")
+            manifestUrlFlow.value = "${DevConfig.manifestUrl}?t=$refreshTrigger"
+        }
+    }
+    
     App(app)
 }
