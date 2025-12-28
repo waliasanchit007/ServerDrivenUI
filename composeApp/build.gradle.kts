@@ -32,6 +32,8 @@ kotlin {
             // Export all transitive dependencies
             export(project(":shared"))
             export(project(":shared-widget"))
+            // Link against SQLite (required by Zipline caching)
+            linkerOpts("-lsqlite3")
         }
         iosTarget.compilations.all {
             compileTaskProvider.configure {
