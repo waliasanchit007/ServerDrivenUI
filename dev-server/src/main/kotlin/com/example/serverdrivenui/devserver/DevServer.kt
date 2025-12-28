@@ -88,6 +88,26 @@ fun main() {
             get("/health") {
                 call.respondText("OK", ContentType.Text.Plain)
             }
+            
+            // Navigation test endpoint
+            // Usage: GET /test-nav?route=settings
+            get("/test-nav") {
+                val route = call.request.queryParameters["route"] ?: "home"
+                val message = "NAVIGATE:$route"
+                
+                println("🧭 Test navigation requested: $route")
+                
+                // Broadcast navigation command to all connected clients
+                connections.forEach { session ->
+                    try {
+                        session.send(Frame.Text(message))
+                    } catch (e: Exception) {
+                        println("❌ Failed to send nav to client: ${e.message}")
+                    }
+                }
+                
+                call.respondText("Navigation broadcast: $route to ${connections.size} client(s)", ContentType.Text.Plain)
+            }
         }
     }.start(wait = true)
 }

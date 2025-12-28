@@ -1,0 +1,38 @@
+[com.example.serverdrivenui.shared.HostConsole]
+
+functions = [
+  # fun close(): kotlin.Unit
+  "moYx+T3e",
+
+  # fun log(kotlin.String): kotlin.Unit
+  "IOx2oxRF",
+]
+
+[com.example.serverdrivenui.shared.NavigationService]
+
+functions = [
+  # fun canGoBack(): kotlin.Boolean
+  "NK0bMocq",
+
+  # fun close(): kotlin.Unit
+  "moYx+T3e",
+
+  # fun goBack(): kotlin.Unit
+  "RBsQG07K",
+
+  # fun navigateTo(kotlin.String, kotlin.collections.Map<kotlin.String,kotlin.String>): kotlin.Unit
+  "1xMx2HcU",
+]
+
+[com.example.serverdrivenui.shared.SduiAppService]
+
+functions = [
+  # fun close(): kotlin.Unit
+  "moYx+T3e",
+
+  # fun launch(): app.cash.redwood.treehouse.ZiplineTreehouseUi
+  "sqKEI1vX",
+
+  # val appLifecycle: app.cash.redwood.treehouse.AppLifecycle
+  "odhmO/d6",
+]

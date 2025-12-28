@@ -11,6 +11,7 @@ import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidget
 import kotlinx.serialization.json.Json
 
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.NavigationService
 
 class SduiAppServiceImpl : SduiAppService {
     override val appLifecycle = StandardAppLifecycle(
@@ -35,11 +36,20 @@ class SduiAppServiceImpl : SduiAppService {
 fun main() {
     val zipline = Zipline.get()
     
+    // Bind host console for logging
     var hostConsole: HostConsole? = null
     try {
         hostConsole = zipline.take<HostConsole>("console")
     } catch (e: Throwable) {
         println("Zipline JS: Failed to take host console: ${e.message}")
+    }
+    
+    // Bind NavigationService for native navigation
+    try {
+        navigationService = zipline.take<NavigationService>("navigation")
+        println("Zipline JS: NavigationService bound successfully")
+    } catch (e: Throwable) {
+        println("Zipline JS: Failed to take navigation service: ${e.message}")
     }
 
     val consolePolyfill: dynamic = js("{}")
@@ -69,9 +79,7 @@ fun main() {
     js("globalThis.console = consolePolyfill")
 
     println("Zipline JS: Service binding started")
-    // zipline.bind<SduiAppService>("app", SduiAppServiceImpl(), com.example.serverdrivenui.shared.ManualSduiAppServiceAdapter(emptyList())) 
-    // Commented out because adapter doesn't exist yet, but checking syntax via IDE/Compiler would require existence.
-    // I will try to compile it assuming it exists. I will create a dummy class first.
     zipline.bind<SduiAppService>("app", SduiAppServiceImpl())
     println("Zipline JS: Service binding completed")
 }
+
