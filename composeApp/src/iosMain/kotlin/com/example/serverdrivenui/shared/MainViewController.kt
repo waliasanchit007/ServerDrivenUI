@@ -35,6 +35,8 @@ import platform.Foundation.NSURLResponse
 import platform.Foundation.NSURLRequestUseProtocolCachePolicy
 import platform.Foundation.addValue
 import platform.Foundation.dataTaskWithRequest
+import platform.UIKit.UINavigationController
+import platform.UIKit.UIViewController
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -116,11 +118,44 @@ private var treehouseApp: TreehouseApp<SduiAppService>? = null
 private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
 private val hotReloadManager = HotReloadManager()
 
+// Navigation state
+private var iosNavigator: IosNativeNavigator? = null
+private var navigationController: UINavigationController? = null
+
+/**
+ * Set the navigation controller for iOS navigation.
+ * Call this from Swift before using navigation.
+ */
+fun setNavigationController(navController: UINavigationController?) {
+    navigationController = navController
+    println("SDUI-iOS: Navigation controller set: ${navController != null}")
+}
+
+/**
+ * Create a new view controller for the given route.
+ * Used by IosNativeNavigator when navigating.
+ */
+fun createViewControllerForRoute(route: String): UIViewController {
+    println("SDUI-iOS: Creating view controller for route: $route")
+    return ComposeUIViewController {
+        val app = treehouseApp
+        if (app != null) {
+            App(app, route)
+        }
+    }
+}
+
 fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     val existing = treehouseApp
     if (existing != null) return existing
     
     println("SDUI-iOS: Creating TreehouseAppFactory...")
+    
+    // Initialize iOS navigator
+    iosNavigator = IosNativeNavigator(
+        getNavigationController = { navigationController },
+        createViewController = { route -> createViewControllerForRoute(route) }
+    )
     
     @Suppress("UnstableRedwoodApi")
     val treehouseAppFactory = TreehouseAppFactory(
@@ -139,6 +174,9 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     println("SDUI-iOS: Manifest URL: ${DevConfig.manifestUrl}")
     println("SDUI-iOS: Hot Reload URL: ${DevConfig.hotReloadUrl}")
     
+    // Create NavigationService for binding
+    val navigationService = RealNavigationService(iosNavigator!!)
+    
     val spec = object : TreehouseApp.Spec<SduiAppService>() {
         override val name = "sdui"
         override val manifestUrl = manifestUrlFlow.asStateFlow()
@@ -150,6 +188,10 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             println("SDUI-iOS: bindServices called")
             zipline.bind<HostConsole>("console", IosRealHostConsole())
             println("SDUI-iOS: console bound")
+            
+            // Bind NavigationService for guest access
+            zipline.bind<NavigationService>("navigation", navigationService)
+            println("SDUI-iOS: navigation service bound")
         }
         
         override fun create(zipline: Zipline): SduiAppService {
@@ -183,5 +225,5 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     
-    App(app)
+    App(app, "dashboard")
 }
