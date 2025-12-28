@@ -1,5 +1,6 @@
 package com.example.serverdrivenui.shared
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
@@ -76,7 +77,7 @@ class CmpMyColumn : MyColumn<@Composable (androidx.compose.ui.Modifier) -> Unit>
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         androidx.compose.foundation.layout.Column(
-            modifier = modifier,
+            modifier = modifier.fillMaxSize(),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
         ) {
