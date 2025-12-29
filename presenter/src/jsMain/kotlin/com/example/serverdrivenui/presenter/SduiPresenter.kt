@@ -42,10 +42,30 @@ var navigationService: NavigationService? = null
 var routeService: RouteService? = null
 var initialRoute: String = "dashboard"
 
+/**
+ * Get the current route, reading lazily from RouteService if available.
+ * This ensures we get the correct route even if main() ran before bindServices().
+ */
+fun getCurrentInitialRoute(): String {
+    // Try to get route from service (available after bindServices)
+    val routeFromService = try {
+        routeService?.getCurrentRoute()
+    } catch (e: Throwable) {
+        println("SduiPresenter: Failed to get route from service: ${e.message}")
+        null
+    }
+    
+    return routeFromService ?: initialRoute
+}
+
 @Composable
 fun SduiPresenter() {
+    // Read route lazily - by the time Show() runs, bindServices() has completed
+    val currentRoute = remember { getCurrentInitialRoute() }
+    println("SduiPresenter: Starting with route=$currentRoute")
+    
     // Internal sub-route state, initialized based on host-provided route
-    var subRoute by remember { mutableStateOf(SubRoute.fromString(initialRoute)) }
+    var subRoute by remember { mutableStateOf(SubRoute.fromString(currentRoute)) }
     
     // State for the dashboard
     var userName by remember { mutableStateOf("John Doe") }
