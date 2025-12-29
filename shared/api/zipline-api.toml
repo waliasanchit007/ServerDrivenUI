@@ -24,6 +24,16 @@ functions = [
   "1xMx2HcU",
 ]
 
+[com.example.serverdrivenui.shared.RouteService]
+
+functions = [
+  # fun close(): kotlin.Unit
+  "moYx+T3e",
+
+  # fun getCurrentRoute(): kotlin.String
+  "Q+pHZ/qG",
+]
+
 [com.example.serverdrivenui.shared.SduiAppService]
 
 functions = [

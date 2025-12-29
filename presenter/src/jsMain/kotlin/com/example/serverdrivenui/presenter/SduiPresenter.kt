@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import app.cash.redwood.Modifier
 import com.example.serverdrivenui.schema.compose.*
 import com.example.serverdrivenui.shared.NavigationService
+import com.example.serverdrivenui.shared.RouteService
 
 /**
  * Internal sub-routes for the Presenter.
@@ -18,6 +19,15 @@ sealed class SubRoute {
     object ProfileEdit : SubRoute()
     object Settings : SubRoute()
     data class FormStep(val step: Int) : SubRoute()
+    
+    companion object {
+        fun fromString(route: String): SubRoute = when (route) {
+            "dashboard", "home" -> Dashboard
+            "profile", "profileEdit" -> ProfileEdit
+            "settings" -> Settings
+            else -> Dashboard
+        }
+    }
 }
 
 /**
@@ -26,10 +36,16 @@ sealed class SubRoute {
  */
 var navigationService: NavigationService? = null
 
+/**
+ * Global reference to RouteService and initial route.
+ */
+var routeService: RouteService? = null
+var initialRoute: String = "dashboard"
+
 @Composable
 fun SduiPresenter() {
-    // Internal sub-route state for fast transitions
-    var subRoute by remember { mutableStateOf<SubRoute>(SubRoute.Dashboard) }
+    // Internal sub-route state, initialized based on host-provided route
+    var subRoute by remember { mutableStateOf(SubRoute.fromString(initialRoute)) }
     
     // State for the dashboard
     var userName by remember { mutableStateOf("John Doe") }

@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.NavigationService
+import com.example.serverdrivenui.shared.RouteService
 
 class SduiAppServiceImpl : SduiAppService {
     override val appLifecycle = StandardAppLifecycle(
@@ -50,6 +51,16 @@ fun main() {
         println("Zipline JS: NavigationService bound successfully")
     } catch (e: Throwable) {
         println("Zipline JS: Failed to take navigation service: ${e.message}")
+    }
+    
+    // Bind RouteService to get initial route
+    try {
+        routeService = zipline.take<RouteService>("route")
+        initialRoute = routeService?.getCurrentRoute() ?: "dashboard"
+        println("Zipline JS: RouteService bound, initialRoute=$initialRoute")
+    } catch (e: Throwable) {
+        println("Zipline JS: Failed to take route service: ${e.message}")
+        initialRoute = "dashboard"
     }
 
     val consolePolyfill: dynamic = js("{}")

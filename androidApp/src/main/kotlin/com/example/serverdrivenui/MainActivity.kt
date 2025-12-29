@@ -20,6 +20,8 @@ import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
 import com.example.serverdrivenui.shared.NavigationService
 import com.example.serverdrivenui.shared.RealNavigationService
+import com.example.serverdrivenui.shared.RouteService
+import com.example.serverdrivenui.shared.RealRouteService
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
@@ -92,6 +94,9 @@ class MainActivity : ComponentActivity() {
 
         // Create NavigationService for binding to Zipline
         val navigationService = RealNavigationService(nativeNavigator)
+        
+        // Create RouteService to provide current route to presenter
+        val routeService = RealRouteService { currentRoute }
 
         val spec = object : app.cash.redwood.treehouse.TreehouseApp.Spec<SduiAppService>() {
             override val name = "sdui"
@@ -108,6 +113,10 @@ class MainActivity : ComponentActivity() {
                 // Bind NavigationService for guest access
                 zipline.bind<NavigationService>("navigation", navigationService)
                 Log.d("SDUI-Host", "navigation service bound")
+                
+                // Bind RouteService so presenter knows initial route
+                zipline.bind<RouteService>("route", routeService)
+                Log.d("SDUI-Host", "route service bound, currentRoute=$currentRoute")
             }
 
             override fun create(zipline: Zipline): SduiAppService {
