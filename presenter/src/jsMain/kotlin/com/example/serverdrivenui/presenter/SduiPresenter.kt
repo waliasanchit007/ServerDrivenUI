@@ -64,8 +64,18 @@ fun SduiPresenter() {
     val currentRoute = remember { getCurrentInitialRoute() }
     println("SduiPresenter: Starting with route=$currentRoute")
     
-    // Internal sub-route state, initialized based on host-provided route
-    var subRoute by remember { mutableStateOf(SubRoute.fromString(currentRoute)) }
+    // Use centralized NavigationController with BackHandler integration
+    val navController = rememberNavigationController(
+        initialScreen = SubRoute.fromString(currentRoute),
+        onNativeNavigate = { route ->
+            navigationService?.navigateTo(route)
+        },
+        onNativeBack = {
+            val canGo = navigationService?.canGoBack() == true
+            if (canGo) navigationService?.goBack()
+            canGo
+        }
+    )
     
     // State for the dashboard
     var userName by remember { mutableStateOf("John Doe") }
@@ -74,17 +84,17 @@ fun SduiPresenter() {
     var darkModeEnabled by remember { mutableStateOf(false) }
     var counter by remember { mutableStateOf(0) }
 
-    // Render based on current sub-route
-    when (subRoute) {
+    // Render based on current screen from NavController
+    when (val screen = navController.currentScreen) {
         is SubRoute.Dashboard -> DashboardScreen(
             userName = userName,
             counter = counter,
             notificationsEnabled = notificationsEnabled,
             darkModeEnabled = darkModeEnabled,
-            onEditProfile = { subRoute = SubRoute.ProfileEdit },
+            onEditProfile = { navController.navigateTo(SubRoute.ProfileEdit) },
             onOpenSettings = { 
                 // Major navigation - use native shell
-                navigationService?.navigateTo("settings") 
+                navController.navigateNative("settings")
             },
             onCounterTap = { counter++ },
             onNotificationsToggle = { notificationsEnabled = it },
@@ -96,28 +106,27 @@ fun SduiPresenter() {
             email = email,
             onUserNameChange = { userName = it },
             onEmailChange = { email = it },
-            onBack = { subRoute = SubRoute.Dashboard },
+            onBack = { navController.goBack() },
             onSave = { 
                 // Save and go back
-                subRoute = SubRoute.Dashboard 
+                navController.goBack()
             }
         )
         
         is SubRoute.Settings -> SettingsScreen(
-            onBack = { subRoute = SubRoute.Dashboard }
+            onBack = { navController.goBack() }
         )
         
         is SubRoute.FormStep -> FormStepScreen(
-            step = (subRoute as SubRoute.FormStep).step,
+            step = (screen as SubRoute.FormStep).step,
             onNext = { 
-                subRoute = SubRoute.FormStep((subRoute as SubRoute.FormStep).step + 1)
+                navController.navigateTo(SubRoute.FormStep(screen.step + 1))
             },
             onBack = {
-                val currentStep = (subRoute as SubRoute.FormStep).step
-                if (currentStep > 1) {
-                    subRoute = SubRoute.FormStep(currentStep - 1)
+                if (screen.step > 1) {
+                    navController.navigateTo(SubRoute.FormStep(screen.step - 1))
                 } else {
-                    subRoute = SubRoute.Dashboard
+                    navController.goBack()
                 }
             }
         )
