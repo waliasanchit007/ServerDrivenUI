@@ -13,6 +13,7 @@ import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.NavigationService
 import com.example.serverdrivenui.shared.RouteService
+import com.example.serverdrivenui.shared.BackPressHandler
 
 class SduiAppServiceImpl : SduiAppService {
     override val appLifecycle = StandardAppLifecycle(
@@ -31,6 +32,27 @@ class SduiAppServiceImpl : SduiAppService {
         return treehouseUi.asZiplineTreehouseUi(appLifecycle)
     }
 
+    override fun close() {}
+}
+
+/**
+ * BackPressHandler implementation that forwards back press from host to guest.
+ * This is called by the host when iOS swipe-back gesture is detected.
+ */
+class RealBackPressHandler : BackPressHandler {
+    override fun handleBackPress(): Boolean {
+        println("RealBackPressHandler: handleBackPress called")
+        val callback = onGlobalBackPress
+        return if (callback != null) {
+            val result = callback()
+            println("RealBackPressHandler: goBack returned $result")
+            result
+        } else {
+            println("RealBackPressHandler: No global back press callback registered")
+            false
+        }
+    }
+    
     override fun close() {}
 }
 
@@ -91,6 +113,13 @@ fun main() {
 
     println("Zipline JS: Service binding started")
     zipline.bind<SduiAppService>("app", SduiAppServiceImpl())
+    println("Zipline JS: app service bound")
+    
+    // Bind BackPressHandler for host to trigger back navigation
+    zipline.bind<BackPressHandler>("backPressHandler", RealBackPressHandler())
+    println("Zipline JS: backPressHandler service bound")
+    
     println("Zipline JS: Service binding completed")
 }
+
 

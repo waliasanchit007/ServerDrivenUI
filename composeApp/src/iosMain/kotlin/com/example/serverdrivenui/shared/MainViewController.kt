@@ -121,6 +121,7 @@ private val hotReloadManager = HotReloadManager()
 // Navigation state
 private var iosNavigator: IosNativeNavigator? = null
 private var navigationController: UINavigationController? = null
+private var backPressHandler: BackPressHandler? = null
 
 /**
  * Set the navigation controller for iOS navigation.
@@ -208,6 +209,14 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             // Bind RouteService so presenter knows initial route
             zipline.bind<RouteService>("route", routeService)
             println("SDUI-iOS: route service bound")
+            
+            // Take BackPressHandler from guest for iOS swipe support
+            try {
+                backPressHandler = zipline.take<BackPressHandler>("backPressHandler")
+                println("SDUI-iOS: backPressHandler taken from guest")
+            } catch (e: Throwable) {
+                println("SDUI-iOS: Failed to take backPressHandler: ${e.message}")
+            }
         }
         
         override fun create(zipline: Zipline): SduiAppService {
@@ -245,10 +254,18 @@ fun MainViewController() = ComposeUIViewController {
         treehouseApp = app,
         route = "dashboard",
         onBackGesture = {
-            println("SDUI-iOS: Back gesture in MainViewController - calling NavigationService")
-            // This callback is invoked by CMP's BackHandler when iOS swipe-back is detected
-            // Forward to NavigationService which bridges to the guest
-            iosNavigator?.goBack()
+            println("SDUI-iOS: Back gesture in MainViewController via CMP BackHandler")
+            
+            // Try to handle in guest first (via BackPressHandler service)
+            val handled = backPressHandler?.handleBackPress() ?: false
+            
+            if (handled) {
+                println("SDUI-iOS: Guest handled back press")
+            } else {
+                println("SDUI-iOS: Guest did not handle back press, trying native navigator")
+                // Fallback to native navigator if guest didn't handle it
+                iosNavigator?.goBack()
+            }
         }
     )
 }

@@ -180,6 +180,10 @@ inline fun <reified T : Any> rememberNavigationController(
         )
     }
     
+    // Register global callback for BackPressHandler service (iOS swipe gesture)
+    // This allows the host to trigger back navigation in the guest
+    onGlobalBackPress = { controller.goBack() }
+    
     // Register BackHandler for hardware back button
     // This works on Android; on iOS it depends on host providing the dispatcher
     BackHandler(enabled = true) {

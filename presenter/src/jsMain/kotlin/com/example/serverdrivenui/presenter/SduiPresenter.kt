@@ -43,6 +43,13 @@ var routeService: RouteService? = null
 var initialRoute: String = "dashboard"
 
 /**
+ * Global back press callback.
+ * This is set by the NavigationController when it's created.
+ * The BackPressHandler service calls this when the host triggers back.
+ */
+var onGlobalBackPress: (() -> Boolean)? = null
+
+/**
  * Get the current route, reading lazily from RouteService if available.
  * This ensures we get the correct route even if main() ran before bindServices().
  */
@@ -57,6 +64,7 @@ fun getCurrentInitialRoute(): String {
     
     return routeFromService ?: initialRoute
 }
+
 
 @Composable
 fun SduiPresenter() {
