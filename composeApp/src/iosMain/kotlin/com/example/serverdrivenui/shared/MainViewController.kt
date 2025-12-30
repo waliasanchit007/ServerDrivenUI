@@ -256,15 +256,17 @@ fun MainViewController() = ComposeUIViewController {
         onBackGesture = {
             println("SDUI-iOS: Back gesture in MainViewController via CMP BackHandler")
             
-            // Try to handle in guest first (via BackPressHandler service)
-            val handled = backPressHandler?.handleBackPress() ?: false
-            
-            if (handled) {
-                println("SDUI-iOS: Guest handled back press")
-            } else {
-                println("SDUI-iOS: Guest did not handle back press, trying native navigator")
-                // Fallback to native navigator if guest didn't handle it
-                iosNavigator?.goBack()
+            // Trigger guest back press in a coroutine (fire and forget)
+            // This prevents blocking the main thread and stack overflow issues in JS
+            appScope.launch {
+                try {
+                    backPressHandler?.handleBackPress()
+                    println("SDUI-iOS: Guest handled back press (async)")
+                } catch (e: Throwable) {
+                    println("SDUI-iOS: Error handling back press: ${e.message}")
+                    // Fallback to native navigator if guest logic fails
+                    iosNavigator?.goBack()
+                }
             }
         }
     )

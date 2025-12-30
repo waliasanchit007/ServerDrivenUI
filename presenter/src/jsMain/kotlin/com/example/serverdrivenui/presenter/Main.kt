@@ -40,16 +40,14 @@ class SduiAppServiceImpl : SduiAppService {
  * This is called by the host when iOS swipe-back gesture is detected.
  */
 class RealBackPressHandler : BackPressHandler {
-    override fun handleBackPress(): Boolean {
+    override suspend fun handleBackPress() {
         println("RealBackPressHandler: handleBackPress called")
         val callback = onGlobalBackPress
-        return if (callback != null) {
-            val result = callback()
-            println("RealBackPressHandler: goBack returned $result")
-            result
+        if (callback != null) {
+            callback()
+            println("RealBackPressHandler: callback invoked")
         } else {
             println("RealBackPressHandler: No global back press callback registered")
-            false
         }
     }
     

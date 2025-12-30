@@ -15,7 +15,6 @@ interface BackPressHandler : ZiplineService {
     /**
      * Handle a back press event from the host.
      * This is called when iOS detects a swipe-back gesture.
-     * @return true if the back press was handled, false otherwise
      */
-    fun handleBackPress(): Boolean
+    suspend fun handleBackPress()
 }
