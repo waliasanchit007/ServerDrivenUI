@@ -39,6 +39,7 @@ kotlin {
             compileTaskProvider.configure {
                 compilerOptions {
                     freeCompilerArgs.add("-opt-in=app.cash.redwood.RedwoodCodegenApi")
+                    freeCompilerArgs.add("-opt-in=androidx.compose.ui.ExperimentalComposeUiApi")
                 }
             }
         }
@@ -58,6 +59,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
+            implementation("org.jetbrains.compose.ui:ui-backhandler:1.8.0")  // Cross-platform BackHandler
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.redwood.widget)
             implementation(libs.redwood.treehouse.host)

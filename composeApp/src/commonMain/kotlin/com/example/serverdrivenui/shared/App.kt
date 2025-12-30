@@ -1,3 +1,5 @@
+@file:Suppress("OPT_IN_USAGE")
+
 package com.example.serverdrivenui.shared
 
 import androidx.compose.foundation.background
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.backhandler.BackHandler
 
 /**
  * Content source that creates the ZiplineTreehouseUi.
@@ -32,9 +35,21 @@ class SduiContentSource : TreehouseContentSource<SduiAppService> {
  * Main App composable for the SDUI system.
  * @param treehouseApp The Treehouse app instance
  * @param route The current route for navigation (default: "dashboard")
+ * @param onBackGesture Callback for iOS back gesture (called when user swipes back)
  */
 @Composable
-fun App(treehouseApp: TreehouseApp<SduiAppService>?, route: String = "dashboard") {
+fun App(
+    treehouseApp: TreehouseApp<SduiAppService>?,
+    route: String = "dashboard",
+    onBackGesture: (() -> Unit)? = null
+) {
+    // Handle back gestures from the platform (iOS swipe, Android back button)
+    // This uses CMP's BackHandler which works across platforms
+    BackHandler(enabled = onBackGesture != null) {
+        println("SDUI: Host BackHandler triggered - forwarding to guest")
+        onBackGesture?.invoke()
+    }
+    
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),

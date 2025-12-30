@@ -241,5 +241,14 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     
-    App(app, "dashboard")
+    App(
+        treehouseApp = app,
+        route = "dashboard",
+        onBackGesture = {
+            println("SDUI-iOS: Back gesture in MainViewController - calling NavigationService")
+            // This callback is invoked by CMP's BackHandler when iOS swipe-back is detected
+            // Forward to NavigationService which bridges to the guest
+            iosNavigator?.goBack()
+        }
+    )
 }
