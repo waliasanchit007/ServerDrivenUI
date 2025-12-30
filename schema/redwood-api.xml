@@ -44,4 +44,11 @@
     <event tag="1" name="onClick" nullable="true" />
     <children tag="1" name="children" />
   </widget>
+  <widget tag="12" type="com.example.serverdrivenui.schema.ScreenStack">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="13" type="com.example.serverdrivenui.schema.BackHandler">
+    <property tag="1" name="enabled" type="kotlin.Boolean" />
+    <event tag="2" name="onBack" />
+  </widget>
 </schema>

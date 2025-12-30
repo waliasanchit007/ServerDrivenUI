@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package com.example.serverdrivenui.shared
 
 import androidx.compose.foundation.clickable
@@ -369,6 +371,58 @@ class CmpChildren : Widget.Children<@Composable (androidx.compose.ui.Modifier) -
     }
 }
 
+// ============= Navigation Widgets =============
+
+/**
+ * ScreenStack widget - renders screen content.
+ * In a more advanced implementation, this could use AnimatedContent for transitions.
+ */
+class CmpScreenStack : ScreenStack<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.layout.Box(
+            modifier = modifier.fillMaxSize()
+        ) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+}
+
+/**
+ * BackHandler widget - intercepts back press events.
+ * Uses Compose Multiplatform's BackHandler which works on both Android and iOS.
+ */
+class CmpBackHandler : BackHandler<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var enabled by mutableStateOf(false)
+    private var onBack by mutableStateOf<(() -> Unit)?>(null)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { _ ->
+        // Use CMP's BackHandler - works on both Android and iOS
+        if (enabled && onBack != null) {
+            androidx.compose.ui.backhandler.BackHandler(enabled = true) {
+                println("CmpBackHandler: Back event received, invoking callback")
+                onBack?.invoke()
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun enabled(enabled: Boolean) {
+        println("CmpBackHandler: enabled set to $enabled")
+        this.enabled = enabled
+    }
+
+    override fun onBack(onBack: () -> Unit) {
+        println("CmpBackHandler: onBack handler registered")
+        this.onBack = onBack
+    }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -415,6 +469,14 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     override fun SduiCard(): SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         println("CmpWidgetFactory: Creating SduiCard widget")
         return CmpSduiCard()
+    }
+    override fun ScreenStack(): ScreenStack<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating ScreenStack widget")
+        return CmpScreenStack()
+    }
+    override fun BackHandler(): BackHandler<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        println("CmpWidgetFactory: Creating BackHandler widget")
+        return CmpBackHandler()
     }
 }
 

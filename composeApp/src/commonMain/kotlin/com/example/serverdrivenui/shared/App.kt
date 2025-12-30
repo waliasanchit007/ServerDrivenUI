@@ -2,25 +2,20 @@
 
 package com.example.serverdrivenui.shared
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.redwood.treehouse.composeui.TreehouseContent
 import app.cash.redwood.treehouse.TreehouseContentSource
 import app.cash.redwood.treehouse.ZiplineTreehouseUi
-import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.ui.backhandler.BackHandler
 
 /**
  * Content source that creates the ZiplineTreehouseUi.
- * Note: Route is passed via host-bound service, not directly here.
+ * The Guest handles all navigation internally.
  */
 class SduiContentSource : TreehouseContentSource<SduiAppService> {
     override fun get(app: SduiAppService): ZiplineTreehouseUi {
@@ -33,30 +28,21 @@ class SduiContentSource : TreehouseContentSource<SduiAppService> {
 
 /**
  * Main App composable for the SDUI system.
+ * 
+ * SIMPLIFIED: All navigation and back handling is now managed by the Guest
+ * via the BackHandler and ScreenStack widgets. The Host just renders.
+ * 
  * @param treehouseApp The Treehouse app instance
- * @param route The current route for navigation (default: "dashboard")
- * @param onBackGesture Callback for iOS back gesture (called when user swipes back)
  */
 @Composable
-fun App(
-    treehouseApp: TreehouseApp<SduiAppService>?,
-    route: String = "dashboard",
-    onBackGesture: (() -> Unit)? = null
-) {
-    // Handle back gestures from the platform (iOS swipe, Android back button)
-    // This uses CMP's BackHandler which works across platforms
-    BackHandler(enabled = onBackGesture != null) {
-        println("SDUI: Host BackHandler triggered - forwarding to guest")
-        onBackGesture?.invoke()
-    }
-    
+fun App(treehouseApp: TreehouseApp<SduiAppService>?) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             if (treehouseApp != null) {
-                println("SDUI: App composable called with treehouseApp, route=$route")
+                println("SDUI: App composable - rendering TreehouseContent")
                 val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
                 TreehouseContent(
                     treehouseApp = treehouseApp,
@@ -65,7 +51,7 @@ fun App(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                println("SDUI: App composable called but treehouseApp is NULL")
+                println("SDUI: App composable - treehouseApp is NULL")
                 androidx.compose.material3.Text("Redwood not initialized on this platform")
             }
         }

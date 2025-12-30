@@ -1,10 +1,7 @@
 @file:Suppress("DEPRECATION", "OPT_IN_USAGE")
-// @file:OptIn(app.cash.redwood.RedwoodCodegenApi::class) removed to rely on compiler args
-// @file:OptIn(app.cash.redwood.InternalRedwoodApi::class)
 
 package com.example.serverdrivenui
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -13,15 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.serverdrivenui.shared.App
-import com.example.serverdrivenui.shared.CmpWidgetFactory
 import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
-import com.example.serverdrivenui.shared.NavigationService
-import com.example.serverdrivenui.shared.RealNavigationService
-import com.example.serverdrivenui.shared.RouteService
-import com.example.serverdrivenui.shared.RealRouteService
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
@@ -36,32 +28,24 @@ import app.cash.zipline.ZiplineManifest
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
-import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 
 import androidx.lifecycle.lifecycleScope
-import app.cash.redwood.RedwoodCodegenApi
 
+/**
+ * Main Activity for Android.
+ * SIMPLIFIED: All navigation is handled by Guest via BackHandler widget.
+ */
 class MainActivity : ComponentActivity() {
     private val hotReloadManager = HotReloadManager()
     private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
-    private lateinit var nativeNavigator: AndroidNativeNavigator
-    
-    // Current route from Intent
-    private val currentRoute: String
-        get() = intent.getStringExtra(AndroidNativeNavigator.EXTRA_ROUTE) 
-            ?: AndroidNativeNavigator.DEFAULT_ROUTE
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Initialize native navigator
-        nativeNavigator = AndroidNativeNavigator(this)
-        
-        Log.d("SDUI", "MainActivity onCreate with route: $currentRoute")
+        Log.d("SDUI", "MainActivity onCreate - Guest-Driven Navigation")
 
         val httpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -90,14 +74,6 @@ class MainActivity : ComponentActivity() {
         Log.d("SDUI", "Manifest URL: ${DevConfig.manifestUrl}")
         Log.d("SDUI", "Hot Reload URL: ${DevConfig.hotReloadUrl}")
 
-        Log.d("SDUI", "TreehouseApp created, setting content (loading triggered by TreehouseContent)...")
-
-        // Create NavigationService for binding to Zipline
-        val navigationService = RealNavigationService(nativeNavigator)
-        
-        // Create RouteService to provide current route to presenter
-        val routeService = RealRouteService { currentRoute }
-
         val spec = object : app.cash.redwood.treehouse.TreehouseApp.Spec<SduiAppService>() {
             override val name = "sdui"
             override val manifestUrl = manifestUrlFlow.asStateFlow()
@@ -106,17 +82,14 @@ class MainActivity : ComponentActivity() {
                 treehouseApp: app.cash.redwood.treehouse.TreehouseApp<SduiAppService>,
                 zipline: Zipline
             ) {
-                Log.d("SDUI-Host", "Inline Spec bindServices called")
+                Log.d("SDUI-Host", "bindServices called")
+                
+                // Only bind console for logging
                 zipline.bind<HostConsole>("console", AndroidRealHostConsole())
                 Log.d("SDUI-Host", "console service bound")
                 
-                // Bind NavigationService for guest access
-                zipline.bind<NavigationService>("navigation", navigationService)
-                Log.d("SDUI-Host", "navigation service bound")
-                
-                // Bind RouteService so presenter knows initial route
-                zipline.bind<RouteService>("route", routeService)
-                Log.d("SDUI-Host", "route service bound, currentRoute=$currentRoute")
+                // No NavigationService or RouteService needed!
+                // Guest handles all navigation internally via BackHandler widget
             }
 
             override fun create(zipline: Zipline): SduiAppService {
@@ -144,19 +117,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             
-            // Pass route to App for presenter to use
-            App(app, currentRoute)
+            // Just render the app - Guest handles everything!
+            App(treehouseApp = app)
         }
-    }
-    
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        // Handle singleTop re-launches
-        setIntent(intent)
-        val newRoute = intent.getStringExtra(AndroidNativeNavigator.EXTRA_ROUTE)
-        Log.d("SDUI", "onNewIntent with route: $newRoute")
-        // Trigger recomposition with new route by updating manifest URL
-        manifestUrlFlow.value = "${DevConfig.manifestUrl}?t=${System.currentTimeMillis()}"
     }
     
     override fun onDestroy() {
@@ -164,6 +127,7 @@ class MainActivity : ComponentActivity() {
         hotReloadManager.disconnect()
     }
 }
+
 
 @Preview
 @Composable

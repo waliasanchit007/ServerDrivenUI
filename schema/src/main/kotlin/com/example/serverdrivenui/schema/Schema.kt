@@ -19,6 +19,9 @@ import kotlin.Unit
         SduiSwitch::class,
         SduiImage::class,
         SduiCard::class,
+        // Navigation widgets
+        ScreenStack::class,
+        BackHandler::class,
     ],
 )
 interface SduiSchema
@@ -93,3 +96,26 @@ data class SduiCard(
     @Property(1) val onClick: (() -> Unit)?,
     @Children(1) val children: () -> Unit,
 )
+
+// ============= Navigation Widgets =============
+
+/**
+ * Container for screen content with transition support.
+ * The Guest renders the current screen inside this widget.
+ */
+@Widget(12)
+data class ScreenStack(
+    @Children(1) val children: () -> Unit,
+)
+
+/**
+ * Back press interceptor widget.
+ * When enabled, intercepts system back button (Android) and swipe gesture (iOS).
+ * Calls onBack callback when triggered.
+ */
+@Widget(13)
+data class BackHandler(
+    @Property(1) val enabled: Boolean,
+    @Property(2) val onBack: () -> Unit,
+)
+

@@ -21,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -36,8 +35,6 @@ import platform.Foundation.NSURLResponse
 import platform.Foundation.NSURLRequestUseProtocolCachePolicy
 import platform.Foundation.addValue
 import platform.Foundation.dataTaskWithRequest
-import platform.UIKit.UINavigationController
-import platform.UIKit.UIViewController
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -46,7 +43,9 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import okio.IOException
 
-// iOS-specific HTTP client using NSURLSession (copied from Zipline's URLSessionZiplineHttpClient)
+/**
+ * iOS-specific HTTP client using NSURLSession.
+ */
 class IosZiplineHttpClient(
     private val urlSession: NSURLSession = NSURLSession.sharedSession
 ) : ZiplineHttpClient() {
@@ -106,7 +105,9 @@ private class CompletionHandler(
     }
 }
 
-// Simple event listener for iOS  
+/**
+ * Host console for Guest logging.
+ */
 class IosRealHostConsole : HostConsole {
     override fun log(message: String) {
         println("JS: $message")
@@ -114,60 +115,21 @@ class IosRealHostConsole : HostConsole {
 }
 
 private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
 private var treehouseApp: TreehouseApp<SduiAppService>? = null
 private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
 private val hotReloadManager = HotReloadManager()
 
-// Navigation state
-// Navigation state
-private var iosNavigator: IosNativeNavigator? = null
-private var navigationController: UINavigationController? = null
-private var navigationService: RealNavigationService? = null
-
 /**
- * Set the navigation controller for iOS navigation.
- * Call this from Swift before using navigation.
+ * Initialize the TreehouseApp instance.
+ * SIMPLIFIED: No navigation services - Guest handles all navigation via BackHandler widget.
  */
-fun setNavigationController(navController: UINavigationController?) {
-    navigationController = navController
-    println("SDUI-iOS: Navigation controller set: ${navController != null}")
-    
-    // Set up navigation delegate for swipe-back detection
-    if (navController != null) {
-        iosNavigator?.setupNavigationDelegate()
-    }
-}
-
-/**
- * Create a new view controller for the given route.
- * Used by IosNativeNavigator when navigating.
- */
-fun createViewControllerForRoute(route: String): UIViewController {
-    println("SDUI-iOS: Creating view controller for route: $route")
-    return ComposeUIViewController {
-        val app = treehouseApp
-        if (app != null) {
-            App(app, route)
-        }
-    }
-}
-
 fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     val existing = treehouseApp
     if (existing != null) return existing
     
     println("SDUI-iOS: Creating TreehouseAppFactory...")
-    
-    // Initialize iOS navigator with route change callback
-    iosNavigator = IosNativeNavigator(
-        getNavigationController = { navigationController },
-        createViewController = { route -> createViewControllerForRoute(route) },
-        onRouteChanged = { route ->
-            println("SDUI-iOS: Route changed to $route")
-            // Could trigger UI update or analytics here
-        }
-    )
+    println("SDUI-iOS: Manifest URL: ${DevConfig.manifestUrl}")
+    println("SDUI-iOS: Hot Reload URL: ${DevConfig.hotReloadUrl}")
     
     @Suppress("UnstableRedwoodApi")
     val treehouseAppFactory = TreehouseAppFactory(
@@ -183,16 +145,6 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         hostProtocolFactory = SduiSchemaHostProtocol.Factory
     )
     
-    println("SDUI-iOS: Manifest URL: ${DevConfig.manifestUrl}")
-    println("SDUI-iOS: Hot Reload URL: ${DevConfig.hotReloadUrl}")
-    
-    // Create NavigationService for binding
-    navigationService = RealNavigationService(iosNavigator!!)
-    val navigationService = navigationService!! // Local val for capturing in object
-    
-    // Create RouteService to provide current route to presenter
-    val routeService = RealRouteService { iosNavigator?.currentRoute ?: "dashboard" }
-    
     val spec = object : TreehouseApp.Spec<SduiAppService>() {
         override val name = "sdui"
         override val manifestUrl = manifestUrlFlow.asStateFlow()
@@ -202,20 +154,13 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             zipline: Zipline
         ) {
             println("SDUI-iOS: bindServices called")
+            
+            // Only bind console for logging
             zipline.bind<HostConsole>("console", IosRealHostConsole())
             println("SDUI-iOS: console bound")
             
-            // Bind NavigationService for guest access
-            zipline.bind<NavigationService>("navigation", navigationService)
-            println("SDUI-iOS: navigation service bound")
-            
-            // Bind RouteService so presenter knows initial route
-            // Bind RouteService so presenter knows initial route
-            zipline.bind<RouteService>("route", routeService)
-            println("SDUI-iOS: route service bound")
-            
-            // Note: BackPressHandler is now registered by Guest via NavigationService.setGuestBackHandler()
-            // We don't need to take it here anymore.
+            // No NavigationService or RouteService needed!
+            // Guest handles all navigation internally via BackHandler widget
         }
         
         override fun create(zipline: Zipline): SduiAppService {
@@ -236,6 +181,10 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     return app
 }
 
+/**
+ * Main View Controller - Entry point for iOS app.
+ * SIMPLIFIED: Just renders TreehouseContent. No navigation handling.
+ */
 fun MainViewController() = ComposeUIViewController {
     val app = initializeTreehouseApp()
     
@@ -249,30 +198,6 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     
-    App(
-        treehouseApp = app,
-        route = "dashboard",
-        onBackGesture = {
-            println("SDUI-iOS: Back gesture in MainViewController via CMP BackHandler")
-            
-            // Get the handler registered by the guest
-            val handler = navigationService?.guestBackHandler
-            
-            if (handler != null) {
-                // Trigger guest back press in a coroutine (fire and forget)
-                appScope.launch {
-                    try {
-                        handler.handleBackPress()
-                        println("SDUI-iOS: Guest handled back press (async)")
-                    } catch (e: Throwable) {
-                        println("SDUI-iOS: Error handling back press: ${e.message}")
-                        iosNavigator?.goBack()
-                    }
-                }
-            } else {
-                println("SDUI-iOS: No guest handler registered, fallback to native")
-                iosNavigator?.goBack()
-            }
-        }
-    )
+    // Just render the app - Guest handles everything!
+    App(treehouseApp = app)
 }
