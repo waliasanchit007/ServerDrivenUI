@@ -177,6 +177,9 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     // Create NavigationService for binding
     val navigationService = RealNavigationService(iosNavigator!!)
     
+    // Create RouteService to provide current route to presenter
+    val routeService = RealRouteService { iosNavigator?.currentRoute ?: "dashboard" }
+    
     val spec = object : TreehouseApp.Spec<SduiAppService>() {
         override val name = "sdui"
         override val manifestUrl = manifestUrlFlow.asStateFlow()
@@ -192,6 +195,10 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             // Bind NavigationService for guest access
             zipline.bind<NavigationService>("navigation", navigationService)
             println("SDUI-iOS: navigation service bound")
+            
+            // Bind RouteService so presenter knows initial route
+            zipline.bind<RouteService>("route", routeService)
+            println("SDUI-iOS: route service bound")
         }
         
         override fun create(zipline: Zipline): SduiAppService {
