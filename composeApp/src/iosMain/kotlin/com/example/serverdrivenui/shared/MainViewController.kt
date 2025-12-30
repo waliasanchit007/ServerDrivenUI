@@ -129,6 +129,11 @@ private var navigationController: UINavigationController? = null
 fun setNavigationController(navController: UINavigationController?) {
     navigationController = navController
     println("SDUI-iOS: Navigation controller set: ${navController != null}")
+    
+    // Set up navigation delegate for swipe-back detection
+    if (navController != null) {
+        iosNavigator?.setupNavigationDelegate()
+    }
 }
 
 /**
@@ -151,10 +156,14 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     
     println("SDUI-iOS: Creating TreehouseAppFactory...")
     
-    // Initialize iOS navigator
+    // Initialize iOS navigator with route change callback
     iosNavigator = IosNativeNavigator(
         getNavigationController = { navigationController },
-        createViewController = { route -> createViewControllerForRoute(route) }
+        createViewController = { route -> createViewControllerForRoute(route) },
+        onRouteChanged = { route ->
+            println("SDUI-iOS: Route changed to $route")
+            // Could trigger UI update or analytics here
+        }
     )
     
     @Suppress("UnstableRedwoodApi")
