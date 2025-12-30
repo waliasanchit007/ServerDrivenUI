@@ -28,4 +28,10 @@ interface NavigationService : ZiplineService {
      * @return true if there's a screen to go back to
      */
     fun canGoBack(): Boolean
+    
+    /**
+     * Set the guest back handler.
+     * This allows the guest to register a listener for back events (e.g. iOS swipe).
+     */
+    fun setGuestBackHandler(handler: BackPressHandler)
 }

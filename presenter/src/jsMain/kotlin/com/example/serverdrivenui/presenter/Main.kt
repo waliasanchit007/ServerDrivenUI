@@ -14,6 +14,9 @@ import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.NavigationService
 import com.example.serverdrivenui.shared.RouteService
 import com.example.serverdrivenui.shared.BackPressHandler
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class SduiAppServiceImpl : SduiAppService {
     override val appLifecycle = StandardAppLifecycle(
@@ -41,13 +44,16 @@ class SduiAppServiceImpl : SduiAppService {
  */
 class RealBackPressHandler : BackPressHandler {
     override suspend fun handleBackPress() {
-        println("RealBackPressHandler: handleBackPress called")
-        val callback = onGlobalBackPress
-        if (callback != null) {
-            callback()
-            println("RealBackPressHandler: callback invoked")
-        } else {
-            println("RealBackPressHandler: No global back press callback registered")
+        // Use GlobalScope to break the stack trace completely and avoid re-entrancy issues
+        // from Zipline's suspend call handling.
+        @Suppress("OPT_IN_USAGE")
+        GlobalScope.launch {
+            // Delay slightly to ensure we are out of any Zipline frame
+            delay(10)
+            val callback = onGlobalBackPress
+            if (callback != null) {
+                callback()
+            }
         }
     }
     
@@ -113,9 +119,15 @@ fun main() {
     zipline.bind<SduiAppService>("app", SduiAppServiceImpl())
     println("Zipline JS: app service bound")
     
-    // Bind BackPressHandler for host to trigger back navigation
-    zipline.bind<BackPressHandler>("backPressHandler", RealBackPressHandler())
-    println("Zipline JS: backPressHandler service bound")
+    // Register BackPressHandler via NavigationService
+    // This allows the host to call us back for iOS swipe gestures
+    val backPressHandler = RealBackPressHandler()
+    try {
+        navigationService?.setGuestBackHandler(backPressHandler)
+        println("Zipline JS: Registered guest back handler with NavigationService")
+    } catch (e: Throwable) {
+        println("Zipline JS: Failed to register back handler: ${e.message}")
+    }
     
     println("Zipline JS: Service binding completed")
 }

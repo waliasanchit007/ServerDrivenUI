@@ -21,4 +21,13 @@ class RealNavigationService(
     override fun canGoBack(): Boolean {
         return navigator.canGoBack()
     }
+    
+    // Guest handler for back press (e.g. iOS swipe)
+    var guestBackHandler: BackPressHandler? = null
+        private set
+        
+    override fun setGuestBackHandler(handler: BackPressHandler) {
+        println("NavigationService: Guest registered back handler")
+        this.guestBackHandler = handler
+    }
 }

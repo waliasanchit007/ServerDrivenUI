@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -119,9 +120,10 @@ private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
 private val hotReloadManager = HotReloadManager()
 
 // Navigation state
+// Navigation state
 private var iosNavigator: IosNativeNavigator? = null
 private var navigationController: UINavigationController? = null
-private var backPressHandler: BackPressHandler? = null
+private var navigationService: RealNavigationService? = null
 
 /**
  * Set the navigation controller for iOS navigation.
@@ -185,7 +187,8 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     println("SDUI-iOS: Hot Reload URL: ${DevConfig.hotReloadUrl}")
     
     // Create NavigationService for binding
-    val navigationService = RealNavigationService(iosNavigator!!)
+    navigationService = RealNavigationService(iosNavigator!!)
+    val navigationService = navigationService!! // Local val for capturing in object
     
     // Create RouteService to provide current route to presenter
     val routeService = RealRouteService { iosNavigator?.currentRoute ?: "dashboard" }
@@ -207,16 +210,12 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             println("SDUI-iOS: navigation service bound")
             
             // Bind RouteService so presenter knows initial route
+            // Bind RouteService so presenter knows initial route
             zipline.bind<RouteService>("route", routeService)
             println("SDUI-iOS: route service bound")
             
-            // Take BackPressHandler from guest for iOS swipe support
-            try {
-                backPressHandler = zipline.take<BackPressHandler>("backPressHandler")
-                println("SDUI-iOS: backPressHandler taken from guest")
-            } catch (e: Throwable) {
-                println("SDUI-iOS: Failed to take backPressHandler: ${e.message}")
-            }
+            // Note: BackPressHandler is now registered by Guest via NavigationService.setGuestBackHandler()
+            // We don't need to take it here anymore.
         }
         
         override fun create(zipline: Zipline): SduiAppService {
@@ -256,17 +255,23 @@ fun MainViewController() = ComposeUIViewController {
         onBackGesture = {
             println("SDUI-iOS: Back gesture in MainViewController via CMP BackHandler")
             
-            // Trigger guest back press in a coroutine (fire and forget)
-            // This prevents blocking the main thread and stack overflow issues in JS
-            appScope.launch {
-                try {
-                    backPressHandler?.handleBackPress()
-                    println("SDUI-iOS: Guest handled back press (async)")
-                } catch (e: Throwable) {
-                    println("SDUI-iOS: Error handling back press: ${e.message}")
-                    // Fallback to native navigator if guest logic fails
-                    iosNavigator?.goBack()
+            // Get the handler registered by the guest
+            val handler = navigationService?.guestBackHandler
+            
+            if (handler != null) {
+                // Trigger guest back press in a coroutine (fire and forget)
+                appScope.launch {
+                    try {
+                        handler.handleBackPress()
+                        println("SDUI-iOS: Guest handled back press (async)")
+                    } catch (e: Throwable) {
+                        println("SDUI-iOS: Error handling back press: ${e.message}")
+                        iosNavigator?.goBack()
+                    }
                 }
+            } else {
+                println("SDUI-iOS: No guest handler registered, fallback to native")
+                iosNavigator?.goBack()
             }
         }
     )
