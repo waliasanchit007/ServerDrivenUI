@@ -293,13 +293,11 @@ private fun SettingsScreen(onBack: () -> Unit) {
         horizontalAlignment = "CenterHorizontally"
     ) {
         MyText(text = "Settings Screen")
-        MyText(text = "(Navigated via Native Shell)")
+        MyText(text = "(Internal route in COMPOSE_ONLY mode)")
         
         Spacer(width = 0, height = 16)
         
-        MyButton(text = "Go Back", onClick = { 
-            navigationService?.goBack()
-        })
+        MyButton(text = "Go Back", onClick = onBack)  // Use callback, not navigationService!
     }
 }
 
