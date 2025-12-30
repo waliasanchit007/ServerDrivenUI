@@ -8,21 +8,44 @@ import androidx.compose.runtime.setValue
 import app.cash.redwood.compose.BackHandler
 
 /**
+ * Navigation strategy for choosing between approaches.
+ */
+enum class NavigationStrategy {
+    /**
+     * Option A: All navigation via internal stack + BackHandler.
+     * - Simpler code, no native Activity/ViewController stacking
+     * - All screens are SubRoutes in the internal stack
+     * - BackHandler works uniformly across platforms
+     */
+    COMPOSE_ONLY,
+    
+    /**
+     * Option B: Major transitions use native shell navigation.
+     * - Platform-native animations (Activity/ViewController transitions)
+     * - Requires NavigationService bridge and platform navigators
+     * - Good for deep linking and complex native integrations
+     */
+    HYBRID_NATIVE
+}
+
+/**
  * Centralized Navigation Controller for handling navigation state and back-press.
  * 
- * This is a scalable, maintainable navigation solution that:
- * - Maintains internal route stack for sub-routes
- * - Delegates major navigation to native shell via NavigationService
- * - Handles back-press using Redwood's BackHandler
+ * Supports two navigation strategies:
+ * - COMPOSE_ONLY: All navigation via internal stack (Option A)
+ * - HYBRID_NATIVE: Major transitions via native shell (Option B)
  * 
  * Usage:
  * ```
- * val navController = rememberNavigationController()
+ * val navController = rememberNavigationController(
+ *     initialScreen = SubRoute.Dashboard,
+ *     strategy = NavigationStrategy.COMPOSE_ONLY
+ * )
  * 
- * // Navigate internally
- * navController.navigateTo(Screen.Profile)
+ * // Navigate (always uses internal stack in COMPOSE_ONLY)
+ * navController.navigateTo(SubRoute.Settings)
  * 
- * // Navigate via native shell
+ * // Or navigate via native (only works in HYBRID_NATIVE)
  * navController.navigateNative("settings")
  * 
  * // Go back
@@ -31,8 +54,9 @@ import app.cash.redwood.compose.BackHandler
  */
 class NavigationController<T : Any>(
     private val initialScreen: T,
-    private val onNativeNavigate: (String) -> Unit,
-    private val onNativeBack: () -> Boolean
+    private val strategy: NavigationStrategy,
+    private val onNativeNavigate: ((String) -> Unit)?,
+    private val onNativeBack: (() -> Boolean)?
 ) {
     // Internal route stack
     private val _backStack = mutableListOf<T>()
@@ -43,11 +67,12 @@ class NavigationController<T : Any>(
     
     init {
         _backStack.add(initialScreen)
+        println("NavigationController: Initialized with strategy=$strategy, screen=$initialScreen")
     }
     
     /**
      * Navigate to a screen within the internal stack.
-     * This is for sub-flow navigation that doesn't require native transitions.
+     * Works in both COMPOSE_ONLY and HYBRID_NATIVE modes.
      */
     fun navigateTo(screen: T) {
         if (screen != _currentScreen.value) {
@@ -59,20 +84,30 @@ class NavigationController<T : Any>(
     
     /**
      * Navigate using native shell (for major transitions).
-     * This triggers platform-specific navigation (Activities/ViewControllers).
+     * Only works in HYBRID_NATIVE mode. In COMPOSE_ONLY mode, logs a warning.
      */
     fun navigateNative(route: String) {
-        println("NavigationController: navigateNative($route)")
-        onNativeNavigate(route)
+        when (strategy) {
+            NavigationStrategy.HYBRID_NATIVE -> {
+                println("NavigationController: navigateNative($route)")
+                onNativeNavigate?.invoke(route)
+            }
+            NavigationStrategy.COMPOSE_ONLY -> {
+                println("NavigationController: WARNING - navigateNative($route) called in COMPOSE_ONLY mode, ignored")
+                // In COMPOSE_ONLY mode, native navigation is not available
+                // Caller should use navigateTo() with a SubRoute instead
+            }
+        }
     }
     
     /**
      * Go back in the navigation stack.
-     * First pops internal stack, then delegates to native if at root.
+     * - In COMPOSE_ONLY: Always pops internal stack
+     * - In HYBRID_NATIVE: Pops internal stack first, then delegates to native if at root
      * @return true if navigation was handled, false if there's nowhere to go
      */
     fun goBack(): Boolean {
-        println("NavigationController: goBack(), stack size: ${_backStack.size}")
+        println("NavigationController: goBack(), strategy=$strategy, stack size: ${_backStack.size}")
         
         if (_backStack.size > 1) {
             // Pop internal stack
@@ -82,8 +117,18 @@ class NavigationController<T : Any>(
             return true
         }
         
-        // At root of internal stack, delegate to native
-        return onNativeBack()
+        // At root of internal stack
+        return when (strategy) {
+            NavigationStrategy.HYBRID_NATIVE -> {
+                // Delegate to native shell
+                onNativeBack?.invoke() ?: false
+            }
+            NavigationStrategy.COMPOSE_ONLY -> {
+                // No native fallback, we're at root
+                println("NavigationController: At root, cannot go back")
+                false
+            }
+        }
     }
     
     /**
@@ -95,37 +140,53 @@ class NavigationController<T : Any>(
      * Get the current internal stack size.
      */
     val stackSize: Int get() = _backStack.size
+    
+    /**
+     * Get the current strategy.
+     */
+    val currentStrategy: NavigationStrategy get() = strategy
 }
 
 /**
  * Remember and create a NavigationController.
  * Automatically handles back-press registration with Redwood's BackHandler.
+ * 
+ * @param initialScreen The initial screen to display
+ * @param strategy The navigation strategy (COMPOSE_ONLY or HYBRID_NATIVE)
+ * @param onNativeNavigate Callback for native navigation (only used in HYBRID_NATIVE)
+ * @param onNativeBack Callback for native back (only used in HYBRID_NATIVE)
  */
 @Composable
 inline fun <reified T : Any> rememberNavigationController(
     initialScreen: T,
-    noinline onNativeNavigate: (String) -> Unit = { route ->
-        navigationService?.navigateTo(route)
-    },
-    noinline onNativeBack: () -> Boolean = {
-        navigationService?.goBack() ?: false
-        true
-    }
+    strategy: NavigationStrategy = NavigationStrategy.COMPOSE_ONLY,
+    noinline onNativeNavigate: ((String) -> Unit)? = if (strategy == NavigationStrategy.HYBRID_NATIVE) {
+        { route -> navigationService?.navigateTo(route) }
+    } else null,
+    noinline onNativeBack: (() -> Boolean)? = if (strategy == NavigationStrategy.HYBRID_NATIVE) {
+        {
+            val canGo = navigationService?.canGoBack() == true
+            if (canGo) navigationService?.goBack()
+            canGo
+        }
+    } else null
 ): NavigationController<T> {
     val controller = remember {
         NavigationController(
             initialScreen = initialScreen,
+            strategy = strategy,
             onNativeNavigate = onNativeNavigate,
             onNativeBack = onNativeBack
         )
     }
     
     // Register BackHandler for hardware back button
-    // Enabled when we have internal screens to pop OR when native can handle it
+    // This works on Android; on iOS it depends on host providing the dispatcher
     BackHandler(enabled = true) {
-        println("NavigationController: BackHandler triggered")
+        println("NavigationController: BackHandler triggered (strategy=$strategy)")
         controller.goBack()
     }
     
     return controller
 }
+

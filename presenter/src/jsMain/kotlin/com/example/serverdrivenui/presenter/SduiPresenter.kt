@@ -64,17 +64,20 @@ fun SduiPresenter() {
     val currentRoute = remember { getCurrentInitialRoute() }
     println("SduiPresenter: Starting with route=$currentRoute")
     
-    // Use centralized NavigationController with BackHandler integration
+    // =========================================================================
+    // NAVIGATION STRATEGY TOGGLE - Change this to compare approaches!
+    // =========================================================================
+    // Option A: COMPOSE_ONLY - All navigation via internal stack + BackHandler
+    // Option B: HYBRID_NATIVE - Major transitions via native shell
+    val strategy = NavigationStrategy.COMPOSE_ONLY  // <-- CHANGE THIS TO COMPARE
+    // =========================================================================
+    
+    println("SduiPresenter: Using navigation strategy: $strategy")
+    
+    // Use centralized NavigationController with chosen strategy
     val navController = rememberNavigationController(
         initialScreen = SubRoute.fromString(currentRoute),
-        onNativeNavigate = { route ->
-            navigationService?.navigateTo(route)
-        },
-        onNativeBack = {
-            val canGo = navigationService?.canGoBack() == true
-            if (canGo) navigationService?.goBack()
-            canGo
-        }
+        strategy = strategy
     )
     
     // State for the dashboard
@@ -93,8 +96,12 @@ fun SduiPresenter() {
             darkModeEnabled = darkModeEnabled,
             onEditProfile = { navController.navigateTo(SubRoute.ProfileEdit) },
             onOpenSettings = { 
-                // Major navigation - use native shell
-                navController.navigateNative("settings")
+                // In COMPOSE_ONLY: use internal navigation
+                // In HYBRID_NATIVE: use native shell
+                when (strategy) {
+                    NavigationStrategy.COMPOSE_ONLY -> navController.navigateTo(SubRoute.Settings)
+                    NavigationStrategy.HYBRID_NATIVE -> navController.navigateNative("settings")
+                }
             },
             onCounterTap = { counter++ },
             onNotificationsToggle = { notificationsEnabled = it },
