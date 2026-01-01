@@ -33,7 +33,12 @@ class CmpMyText : MyText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         println("CmpMyText: Rendering with text='$text'")
-        Text(text = text, modifier = modifier)
+        Text(
+            text = text, 
+            modifier = modifier,
+            color = CaliclanTheme.TextPrimary,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 
     override var modifier: Modifier = Modifier
@@ -54,8 +59,19 @@ class CmpMyButton : MyButton<@Composable (androidx.compose.ui.Modifier) -> Unit>
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         println("CmpMyButton: Rendering with text='$text'")
-        Button(onClick = onClick, modifier = modifier) {
-            Text(text = text)
+        Button(
+            onClick = onClick, 
+            modifier = modifier,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = CaliclanTheme.Accent,
+                contentColor = androidx.compose.ui.graphics.Color.Black
+            ),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge
+            )
         }
     }
 
@@ -128,7 +144,9 @@ class CmpFlexColumn : FlexColumn<@Composable (androidx.compose.ui.Modifier) -> U
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         Column(
-            modifier = modifier,
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = parseVerticalArrangement2(verticalArrangement),
             horizontalAlignment = parseHorizontalAlignment(horizontalAlignment)
         ) {
@@ -284,11 +302,19 @@ class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit>
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         val cardModifier = onClick?.let { 
-            modifier.clickable { it() } 
-        } ?: modifier
+            modifier.fillMaxWidth().clickable { it() } 
+        } ?: modifier.fillMaxWidth()
         
-        Card(modifier = cardModifier) {
-            (children as CmpChildren).render()
+        Card(
+            modifier = cardModifier,
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = androidx.compose.ui.Modifier.padding(16.dp)
+            ) {
+                (children as CmpChildren).render()
+            }
         }
     }
 
