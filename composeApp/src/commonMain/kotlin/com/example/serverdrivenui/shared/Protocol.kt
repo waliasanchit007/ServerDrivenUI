@@ -532,7 +532,7 @@ class CmpAsyncImage : AsyncImage<@Composable (androidx.compose.ui.Modifier) -> U
 }
 
 /**
- * StatusCard - Membership status with colored border
+ * StatusCard - Membership status with subtle left accent strip
  */
 class CmpStatusCard : StatusCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private var status by mutableStateOf("active")
@@ -542,41 +542,46 @@ class CmpStatusCard : StatusCard<@Composable (androidx.compose.ui.Modifier) -> U
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
-        val borderColor = when (status) {
-            "active" -> CaliclanTheme.Success
-            "expiring" -> CaliclanTheme.Accent
-            "expired" -> CaliclanTheme.Error
+        // Subtle accent color (reduced intensity)
+        val accentColor = when (status) {
+            "active" -> CaliclanTheme.Success.copy(alpha = 0.7f)
+            "expiring" -> CaliclanTheme.Accent.copy(alpha = 0.7f)
+            "expired" -> CaliclanTheme.Error.copy(alpha = 0.7f)
             else -> CaliclanTheme.Border
         }
         
+        // Card with left accent strip instead of full border
         Card(
             modifier = modifier
                 .fillMaxWidth()
                 .then(if (onClick != null) androidx.compose.ui.Modifier.clickable { onClick?.invoke() } else androidx.compose.ui.Modifier),
             colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
-            border = androidx.compose.foundation.BorderStroke(2.dp, borderColor)
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         ) {
-            Column(
-                modifier = androidx.compose.ui.Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CaliclanTheme.TextPrimary
+            Row {
+                // Left accent strip (subtle)
+                Box(
+                    modifier = androidx.compose.ui.Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(accentColor)
                 )
-                if (subtitle.isNotEmpty()) {
+                Column(
+                    modifier = androidx.compose.ui.Modifier.padding(16.dp)
+                ) {
                     Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CaliclanTheme.TextSecondary
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CaliclanTheme.TextPrimary
                     )
-                }
-                if (daysLeft > 0 && status == "expiring") {
-                    Text(
-                        text = "Expires in $daysLeft days",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CaliclanTheme.Accent
-                    )
+                    if (subtitle.isNotEmpty()) {
+                        Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CaliclanTheme.TextSecondary
+                        )
+                    }
                 }
             }
         }

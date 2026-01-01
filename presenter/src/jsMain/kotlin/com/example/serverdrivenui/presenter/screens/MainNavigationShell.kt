@@ -82,15 +82,15 @@ private fun CaliclanHomeScreenContent(
         StatusCard(
             status = "active",
             title = "Active Member",
-            subtitle = "Monthly Plan • Auto-renews Mar 1",
+            subtitle = "Monthly Plan · Auto-renews Mar 1",
             daysLeft = 45,
             onClick = null
         )
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
-        // Today's Training Section
-        HeaderText(text = "Today's Training", size = "medium")
+        // TODAY'S TRAINING - PRIMARY HERO CARD
+        HeaderText(text = "TODAY'S TRAINING", size = "small")
         Spacer(width = 0, height = 12)
         
         SduiCard(onClick = null) {
@@ -98,10 +98,11 @@ private fun CaliclanHomeScreenContent(
                 verticalArrangement = "Top",
                 horizontalAlignment = "Start"
             ) {
-                HeaderText(text = "Skills Training", size = "small")
-                Spacer(width = 0, height = 4)
+                // Large dominant title
+                HeaderText(text = "Skills Training", size = "large")
+                Spacer(width = 0, height = 8)
                 SecondaryText(text = "Handstand practice and skill-specific drills")
-                Spacer(width = 0, height = 12)
+                Spacer(width = 0, height = 16)
                 FlexRow(
                     horizontalArrangement = "Start",
                     verticalAlignment = "CenterVertically"
@@ -113,9 +114,9 @@ private fun CaliclanHomeScreenContent(
             }
         }
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
-        // Consistency Section
+        // CONSISTENCY - Quiet Accountability
         HeaderText(text = "Consistency", size = "medium")
         Spacer(width = 0, height = 12)
         
@@ -136,13 +137,14 @@ private fun CaliclanHomeScreenContent(
                     sunday = "rest"
                 )
                 Spacer(width = 0, height = 12)
-                SecondaryText(text = "You trained yesterday. Keep it up!")
+                // NEUTRAL COPY - no motivational coaching tone
+                SecondaryText(text = "You trained yesterday")
             }
         }
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
-        // Meet Your Coaches Section
+        // MEET YOUR COACHES - Bottom section, visually present
         HeaderText(text = "Meet Your Coaches", size = "medium")
         Spacer(width = 0, height = 12)
         
