@@ -4,16 +4,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.example.serverdrivenui.schema.compose.BackHandler
 import com.example.serverdrivenui.schema.compose.ScreenStack
+import com.example.serverdrivenui.presenter.screens.MainNavigationShell
 import com.example.serverdrivenui.presenter.screens.CaliclanHomeScreen
+import com.example.serverdrivenui.presenter.screens.CaliclanLoginScreen
 
 /**
  * Root UI composable for the Caliclan app.
  * Entry point that sets up the navigation structure.
  * 
+ * Uses MainNavigationShell for the main app experience with bottom navigation.
+ * 
  * @param initialRoute The route to start on (for deep linking support)
  */
 @Composable
-fun RootUi(initialRoute: String = "home") {
+fun RootUi(initialRoute: String = "main") {
     // Create and remember the Navigator
     val navigator = remember { 
         Navigator().apply {
@@ -47,17 +51,20 @@ fun RootUi(initialRoute: String = "home") {
 
 /**
  * Convert a route string to a Screen instance.
- * Caliclan screens for the gym app.
+ * 
+ * Routes:
+ * - "main" → MainNavigationShell (default, with bottom nav)
+ * - "login" → CaliclanLoginScreen
+ * - "home" → Direct CaliclanHomeScreen (legacy)
  */
 fun routeToScreen(route: String): Screen {
     println("RootUi: routeToScreen($route)")
     return when (route) {
-        "home", "dashboard" -> CaliclanHomeScreen()
-        "training" -> com.example.serverdrivenui.presenter.screens.CaliclanTrainingScreen()
-        "membership" -> com.example.serverdrivenui.presenter.screens.CaliclanMembershipScreen()
+        "main", "home", "dashboard" -> MainNavigationShell()
+        "login" -> CaliclanLoginScreen()
         else -> {
-            println("RootUi: Unknown route '$route', defaulting to CaliclanHomeScreen")
-            CaliclanHomeScreen()
+            println("RootUi: Unknown route '$route', defaulting to MainNavigationShell")
+            MainNavigationShell()
         }
     }
 }

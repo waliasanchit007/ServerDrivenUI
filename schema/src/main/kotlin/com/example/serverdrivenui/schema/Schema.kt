@@ -29,6 +29,14 @@ import kotlin.Unit
         ConsistencyStrip::class,
         CoachCard::class,
         ScheduleItem::class,
+        // Premium UI widgets
+        BottomNavigationBar::class,
+        BottomSheet::class,
+        ScrollableColumn::class,
+        HeaderText::class,
+        SecondaryText::class,
+        IconButton::class,
+        Chip::class,
     ],
 )
 interface SduiSchema
@@ -196,3 +204,72 @@ data class ScheduleItem(
     @Property(6) val isRestDay: Boolean,
     @Property(7) val onClick: () -> Unit,
 )
+
+// ============= Premium UI Widgets =============
+
+/**
+ * Bottom navigation bar with 3 tabs.
+ * selectedTab: "home", "training", "membership"
+ */
+@Widget(20)
+data class BottomNavigationBar(
+    @Property(1) val selectedTab: String,
+    @Property(2) val onTabSelected: (String) -> Unit,
+)
+
+/**
+ * Modal bottom sheet overlay.
+ */
+@Widget(21)
+data class BottomSheet(
+    @Property(1) val isVisible: Boolean,
+    @Property(2) val onDismiss: () -> Unit,
+    @Children(1) val content: () -> Unit,
+)
+
+/**
+ * Scrollable vertical column with padding.
+ */
+@Widget(22)
+data class ScrollableColumn(
+    @Property(1) val padding: Int,
+    @Children(1) val children: () -> Unit,
+)
+
+/**
+ * Large header text with size variants.
+ * size: "large" (28sp), "medium" (20sp), "small" (16sp)
+ */
+@Widget(23)
+data class HeaderText(
+    @Property(1) val text: String,
+    @Property(2) val size: String,
+)
+
+/**
+ * Secondary/caption text in grey.
+ */
+@Widget(24)
+data class SecondaryText(
+    @Property(1) val text: String,
+)
+
+/**
+ * Icon button with optional badge.
+ * icon: "home", "calendar", "card", "arrow_back", "close"
+ */
+@Widget(25)
+data class IconButton(
+    @Property(1) val icon: String,
+    @Property(2) val onClick: () -> Unit,
+    @Property(3) val isSelected: Boolean,
+)
+
+/**
+ * Compact chip/tag for categories.
+ */
+@Widget(26)
+data class Chip(
+    @Property(1) val label: String,
+)
+

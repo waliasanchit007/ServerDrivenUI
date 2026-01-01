@@ -3,6 +3,7 @@
 package com.example.serverdrivenui.shared
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -457,6 +458,7 @@ class CmpBackHandler : BackHandler<@Composable (androidx.compose.ui.Modifier) ->
 private object CaliclanTheme {
     val Background = androidx.compose.ui.graphics.Color(0xFF121212)
     val Surface = androidx.compose.ui.graphics.Color(0xFF1E1E1E)
+    val SurfaceVariant = androidx.compose.ui.graphics.Color(0xFF2C2C2C)
     val Accent = androidx.compose.ui.graphics.Color(0xFFFFC107)
     val Success = androidx.compose.ui.graphics.Color(0xFF4CAF50)
     val Error = androidx.compose.ui.graphics.Color(0xFFE57373)
@@ -774,6 +776,258 @@ class CmpScheduleItem : ScheduleItem<@Composable (androidx.compose.ui.Modifier) 
     override fun onClick(onClick: () -> Unit) { this.onClick = onClick }
 }
 
+/**
+ * BottomNavigationBar - Tab bar with Home, Training, Membership
+ */
+class CmpBottomNavigationBar : BottomNavigationBar<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var selectedTab by mutableStateOf("home")
+    private var onTabSelected by mutableStateOf<(String) -> Unit>({})
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.material3.NavigationBar(
+            modifier = modifier,
+            containerColor = CaliclanTheme.Surface,
+            contentColor = CaliclanTheme.TextPrimary
+        ) {
+            // Home tab
+            NavigationBarItem(
+                icon = { Text("🏠", style = MaterialTheme.typography.titleMedium) },
+                label = { Text("Home", color = if (selectedTab == "home") CaliclanTheme.Accent else CaliclanTheme.TextSecondary) },
+                selected = selectedTab == "home",
+                onClick = { onTabSelected("home") },
+                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                    selectedIconColor = CaliclanTheme.Accent,
+                    indicatorColor = CaliclanTheme.SurfaceVariant
+                )
+            )
+            // Training tab
+            NavigationBarItem(
+                icon = { Text("📅", style = MaterialTheme.typography.titleMedium) },
+                label = { Text("Training", color = if (selectedTab == "training") CaliclanTheme.Accent else CaliclanTheme.TextSecondary) },
+                selected = selectedTab == "training",
+                onClick = { onTabSelected("training") },
+                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                    selectedIconColor = CaliclanTheme.Accent,
+                    indicatorColor = CaliclanTheme.SurfaceVariant
+                )
+            )
+            // Membership tab
+            NavigationBarItem(
+                icon = { Text("💳", style = MaterialTheme.typography.titleMedium) },
+                label = { Text("Membership", color = if (selectedTab == "membership") CaliclanTheme.Accent else CaliclanTheme.TextSecondary) },
+                selected = selectedTab == "membership",
+                onClick = { onTabSelected("membership") },
+                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                    selectedIconColor = CaliclanTheme.Accent,
+                    indicatorColor = CaliclanTheme.SurfaceVariant
+                )
+            )
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun selectedTab(selectedTab: String) { this.selectedTab = selectedTab }
+    override fun onTabSelected(onTabSelected: (String) -> Unit) { this.onTabSelected = onTabSelected }
+}
+
+/**
+ * BottomSheet - Modal overlay from bottom
+ */
+class CmpBottomSheet : BottomSheet<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var isVisible by mutableStateOf(false)
+    private var onDismiss by mutableStateOf({})
+    
+    override val content: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        if (isVisible) {
+            val sheetState = androidx.compose.material3.rememberModalBottomSheetState()
+            
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { onDismiss() },
+                sheetState = sheetState,
+                containerColor = CaliclanTheme.Surface,
+                contentColor = CaliclanTheme.TextPrimary,
+                dragHandle = {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier
+                            .padding(vertical = 12.dp)
+                            .width(40.dp)
+                            .height(4.dp)
+                            .background(CaliclanTheme.TextSecondary, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
+                    )
+                }
+            ) {
+                Column(
+                    modifier = androidx.compose.ui.Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    (content as CmpChildren).render()
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun isVisible(isVisible: Boolean) { this.isVisible = isVisible }
+    override fun onDismiss(onDismiss: () -> Unit) { this.onDismiss = onDismiss }
+}
+
+/**
+ * ScrollableColumn - Scrollable vertical content with padding
+ */
+class CmpScrollableColumn : ScrollableColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var padding by mutableStateOf(16)
+    
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = padding.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp)
+        ) {
+            val widgets = (children as CmpChildren).widgets
+            items(widgets.size) { index ->
+                widgets[index].value(androidx.compose.ui.Modifier.fillMaxWidth())
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun padding(padding: Int) { this.padding = padding }
+}
+
+/**
+ * HeaderText - Large title text with size variants
+ */
+class CmpHeaderText : HeaderText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var text by mutableStateOf("")
+    private var size by mutableStateOf("large")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val style = when (size) {
+            "large" -> MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            "medium" -> MaterialTheme.typography.titleLarge.copy(
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+            )
+            "small" -> MaterialTheme.typography.titleMedium.copy(
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            )
+            else -> MaterialTheme.typography.titleLarge
+        }
+        
+        Text(
+            text = text,
+            modifier = modifier,
+            style = style,
+            color = CaliclanTheme.TextPrimary
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun text(text: String) { this.text = text }
+    override fun size(size: String) { this.size = size }
+}
+
+/**
+ * SecondaryText - Grey caption/secondary text
+ */
+class CmpSecondaryText : SecondaryText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var text by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Text(
+            text = text,
+            modifier = modifier,
+            style = MaterialTheme.typography.bodyMedium,
+            color = CaliclanTheme.TextSecondary
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun text(text: String) { this.text = text }
+}
+
+/**
+ * IconButton - Circular button with icon
+ */
+class CmpIconButton : IconButton<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var icon by mutableStateOf("home")
+    private var onClick by mutableStateOf({})
+    private var isSelected by mutableStateOf(false)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val iconText = when (icon) {
+            "home" -> "🏠"
+            "calendar" -> "📅"
+            "card" -> "💳"
+            "arrow_back" -> "←"
+            "close" -> "✕"
+            "instagram" -> "📸"
+            else -> "•"
+        }
+        
+        androidx.compose.material3.IconButton(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Text(
+                text = iconText,
+                style = MaterialTheme.typography.titleLarge,
+                color = if (isSelected) CaliclanTheme.Accent else CaliclanTheme.TextPrimary
+            )
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun icon(icon: String) { this.icon = icon }
+    override fun onClick(onClick: () -> Unit) { this.onClick = onClick }
+    override fun isSelected(isSelected: Boolean) { this.isSelected = isSelected }
+}
+
+/**
+ * Chip - Compact category tag
+ */
+class CmpChip : Chip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var label by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.layout.Box(
+            modifier = modifier
+                .background(
+                    CaliclanTheme.SurfaceVariant,
+                    androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = CaliclanTheme.TextSecondary
+            )
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun label(label: String) { this.label = label }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -847,6 +1101,28 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     }
     override fun ScheduleItem(): ScheduleItem<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         return CmpScheduleItem()
+    }
+    // Premium UI widgets
+    override fun BottomNavigationBar(): BottomNavigationBar<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpBottomNavigationBar()
+    }
+    override fun BottomSheet(): BottomSheet<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpBottomSheet()
+    }
+    override fun ScrollableColumn(): ScrollableColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpScrollableColumn()
+    }
+    override fun HeaderText(): HeaderText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpHeaderText()
+    }
+    override fun SecondaryText(): SecondaryText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpSecondaryText()
+    }
+    override fun IconButton(): IconButton<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpIconButton()
+    }
+    override fun Chip(): Chip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpChip()
     }
 }
 
