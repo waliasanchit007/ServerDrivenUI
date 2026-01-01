@@ -1028,6 +1028,100 @@ class CmpChip : Chip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     override fun label(label: String) { this.label = label }
 }
 
+/**
+ * AppScaffold - Layout with fixed bottom navigation bar.
+ * Uses Compose Scaffold for proper layout with bottom slot.
+ */
+class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var showBottomBar by mutableStateOf(true)
+    private var selectedTab by mutableStateOf("home")
+    private var onTabSelected by mutableStateOf<(String) -> Unit>({})
+    
+    override val content: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = CaliclanTheme.Background,
+            bottomBar = {
+                if (showBottomBar) {
+                    NavigationBar(
+                        containerColor = CaliclanTheme.Surface,
+                        contentColor = CaliclanTheme.TextPrimary
+                    ) {
+                        // Home tab
+                        NavigationBarItem(
+                            icon = { Text("🏠", style = MaterialTheme.typography.titleMedium) },
+                            label = { 
+                                Text(
+                                    "Home", 
+                                    color = if (selectedTab == "home") CaliclanTheme.Accent else CaliclanTheme.TextSecondary,
+                                    style = MaterialTheme.typography.labelMedium
+                                ) 
+                            },
+                            selected = selectedTab == "home",
+                            onClick = { onTabSelected("home") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = CaliclanTheme.Accent,
+                                indicatorColor = CaliclanTheme.SurfaceVariant
+                            )
+                        )
+                        // Training tab
+                        NavigationBarItem(
+                            icon = { Text("📅", style = MaterialTheme.typography.titleMedium) },
+                            label = { 
+                                Text(
+                                    "Training", 
+                                    color = if (selectedTab == "training") CaliclanTheme.Accent else CaliclanTheme.TextSecondary,
+                                    style = MaterialTheme.typography.labelMedium
+                                ) 
+                            },
+                            selected = selectedTab == "training",
+                            onClick = { onTabSelected("training") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = CaliclanTheme.Accent,
+                                indicatorColor = CaliclanTheme.SurfaceVariant
+                            )
+                        )
+                        // Membership tab
+                        NavigationBarItem(
+                            icon = { Text("💳", style = MaterialTheme.typography.titleMedium) },
+                            label = { 
+                                Text(
+                                    "Membership", 
+                                    color = if (selectedTab == "membership") CaliclanTheme.Accent else CaliclanTheme.TextSecondary,
+                                    style = MaterialTheme.typography.labelMedium
+                                ) 
+                            },
+                            selected = selectedTab == "membership",
+                            onClick = { onTabSelected("membership") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = CaliclanTheme.Accent,
+                                indicatorColor = CaliclanTheme.SurfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                (content as CmpChildren).render()
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun showBottomBar(showBottomBar: Boolean) { this.showBottomBar = showBottomBar }
+    override fun selectedTab(selectedTab: String) { this.selectedTab = selectedTab }
+    override fun onTabSelected(onTabSelected: (String) -> Unit) { this.onTabSelected = onTabSelected }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -1123,6 +1217,9 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     }
     override fun Chip(): Chip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         return CmpChip()
+    }
+    override fun AppScaffold(): AppScaffold<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpAppScaffold()
     }
 }
 

@@ -10,16 +10,11 @@ import com.example.serverdrivenui.schema.compose.*
 
 /**
  * MainNavigationShell - Root container with bottom navigation.
- * 
- * Features:
- * - Bottom navigation bar with 3 tabs (Home, Training, Membership)
- * - Screens switch based on selected tab
- * - Bottom sheet for coach profiles
+ * Uses AppScaffold for proper fixed bottom nav layout.
  */
 class MainNavigationShell : Screen {
     private var currentTab by mutableStateOf("home")
     private var showingCoachSheet by mutableStateOf(false)
-    private var selectedCoachId by mutableStateOf<String?>(null)
     private var selectedCoachName by mutableStateOf("")
     private var selectedCoachRole by mutableStateOf("")
     private var selectedCoachBio by mutableStateOf("")
@@ -28,68 +23,60 @@ class MainNavigationShell : Screen {
     
     @Composable
     override fun Content(navigator: Navigator) {
-        // Main layout: Content + Bottom Nav
-        FlexColumn(
-            verticalArrangement = "SpaceBetween",
-            horizontalAlignment = "Start"
+        // AppScaffold handles bottom nav layout properly with Compose Scaffold
+        AppScaffold(
+            showBottomBar = true,
+            selectedTab = currentTab,
+            onTabSelected = { tab ->
+                currentTab = tab
+            }
         ) {
-            // Screen content area (takes remaining space)
-            Box {
-                when (currentTab) {
-                    "home" -> CaliclanHomeScreenContent(
-                        onCoachClick = { id, name, role, bio, photoUrl, instagram ->
-                            selectedCoachId = id
-                            selectedCoachName = name
-                            selectedCoachRole = role
-                            selectedCoachBio = bio
-                            selectedCoachPhotoUrl = photoUrl
-                            selectedCoachInstagram = instagram
-                            showingCoachSheet = true
-                        }
-                    )
-                    "training" -> CaliclanTrainingScreenContent()
-                    "membership" -> CaliclanMembershipScreenContent()
-                }
-            }
-            
-            // Bottom Navigation Bar
-            BottomNavigationBar(
-                selectedTab = currentTab,
-                onTabSelected = { tab ->
-                    currentTab = tab
-                }
-            )
-            
-            // Coach Profile Bottom Sheet
-            BottomSheet(
-                isVisible = showingCoachSheet,
-                onDismiss = { showingCoachSheet = false }
-            ) {
-                CoachProfileSheetContent(
-                    name = selectedCoachName,
-                    role = selectedCoachRole,
-                    bio = selectedCoachBio,
-                    photoUrl = selectedCoachPhotoUrl,
-                    instagram = selectedCoachInstagram,
-                    onClose = { showingCoachSheet = false }
+            // Content based on selected tab
+            when (currentTab) {
+                "home" -> CaliclanHomeScreenContent(
+                    onCoachClick = { name, role, bio, photoUrl, instagram ->
+                        selectedCoachName = name
+                        selectedCoachRole = role
+                        selectedCoachBio = bio
+                        selectedCoachPhotoUrl = photoUrl
+                        selectedCoachInstagram = instagram
+                        showingCoachSheet = true
+                    }
                 )
+                "training" -> CaliclanTrainingScreenContent()
+                "membership" -> CaliclanMembershipScreenContent()
             }
+        }
+        
+        // Coach Profile Bottom Sheet (overlays on top)
+        BottomSheet(
+            isVisible = showingCoachSheet,
+            onDismiss = { showingCoachSheet = false }
+        ) {
+            CoachProfileSheetContent(
+                name = selectedCoachName,
+                role = selectedCoachRole,
+                bio = selectedCoachBio,
+                photoUrl = selectedCoachPhotoUrl,
+                instagram = selectedCoachInstagram,
+                onClose = { showingCoachSheet = false }
+            )
         }
     }
 }
 
 /**
- * Home Screen Content (used within MainNavigationShell)
+ * Home Screen Content
  */
 @Composable
 private fun CaliclanHomeScreenContent(
-    onCoachClick: (String, String, String, String, String, String) -> Unit
+    onCoachClick: (String, String, String, String, String) -> Unit
 ) {
     ScrollableColumn(padding = 16) {
         // Greeting
         HeaderText(text = "Good Morning, Rahul", size = "large")
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
         // Membership Card
         StatusCard(
@@ -100,20 +87,21 @@ private fun CaliclanHomeScreenContent(
             onClick = null
         )
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 24)
         
-        // Today's Training
+        // Today's Training Section
         HeaderText(text = "Today's Training", size = "medium")
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 12)
         
         SduiCard(onClick = null) {
             FlexColumn(
                 verticalArrangement = "Top",
                 horizontalAlignment = "Start"
             ) {
-                MyText(text = "Skills Training")
+                HeaderText(text = "Skills Training", size = "small")
+                Spacer(width = 0, height = 4)
                 SecondaryText(text = "Handstand practice and skill-specific drills")
-                Spacer(width = 0, height = 8)
+                Spacer(width = 0, height = 12)
                 FlexRow(
                     horizontalArrangement = "Start",
                     verticalAlignment = "CenterVertically"
@@ -125,19 +113,19 @@ private fun CaliclanHomeScreenContent(
             }
         }
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 24)
         
         // Consistency Section
         HeaderText(text = "Consistency", size = "medium")
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 12)
         
         SduiCard(onClick = null) {
             FlexColumn(
                 verticalArrangement = "Top",
                 horizontalAlignment = "Start"
             ) {
-                MyText(text = "🔥 4-day streak")
-                Spacer(width = 0, height = 8)
+                HeaderText(text = "🔥 4-day streak", size = "small")
+                Spacer(width = 0, height = 12)
                 ConsistencyStrip(
                     monday = "attended",
                     tuesday = "attended",
@@ -147,16 +135,16 @@ private fun CaliclanHomeScreenContent(
                     saturday = "future",
                     sunday = "rest"
                 )
-                Spacer(width = 0, height = 8)
+                Spacer(width = 0, height = 12)
                 SecondaryText(text = "You trained yesterday. Keep it up!")
             }
         }
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 24)
         
-        // Meet Your Coaches
+        // Meet Your Coaches Section
         HeaderText(text = "Meet Your Coaches", size = "medium")
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 12)
         
         FlexRow(
             horizontalArrangement = "Start",
@@ -168,10 +156,9 @@ private fun CaliclanHomeScreenContent(
                 photoUrl = "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400",
                 onClick = {
                     onCoachClick(
-                        "1",
                         "Hemant Singh",
                         "Head Coach",
-                        "Founder of Caliclan. Specializing in statics and front lever mechanics.",
+                        "Founder of Caliclan. Specializing in statics and front lever mechanics. 8+ years of calisthenics experience.",
                         "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400",
                         "hemant_caliclan"
                     )
@@ -184,16 +171,18 @@ private fun CaliclanHomeScreenContent(
                 photoUrl = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400",
                 onClick = {
                     onCoachClick(
-                        "2",
                         "Arjun Verma",
                         "Strength Coach",
-                        "Expert in progressive overload and weighted calisthenics.",
+                        "Expert in progressive overload and weighted calisthenics. Certified fitness trainer.",
                         "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400",
                         "arjun_strength"
                     )
                 }
             )
         }
+        
+        // Bottom padding for scrolling room
+        Spacer(width = 0, height = 24)
     }
 }
 
@@ -207,7 +196,7 @@ private fun CaliclanTrainingScreenContent() {
         Spacer(width = 0, height = 8)
         SecondaryText(text = "January 2026")
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 24)
         
         // Weekly Schedule
         ScheduleItem(
@@ -220,6 +209,8 @@ private fun CaliclanTrainingScreenContent() {
             onClick = {}
         )
         
+        Spacer(width = 0, height = 8)
+        
         ScheduleItem(
             dayName = "Tuesday",
             date = "Jan 28",
@@ -229,6 +220,8 @@ private fun CaliclanTrainingScreenContent() {
             isRestDay = false,
             onClick = {}
         )
+        
+        Spacer(width = 0, height = 8)
         
         ScheduleItem(
             dayName = "Wednesday",
@@ -240,6 +233,8 @@ private fun CaliclanTrainingScreenContent() {
             onClick = {}
         )
         
+        Spacer(width = 0, height = 8)
+        
         ScheduleItem(
             dayName = "Thursday",
             date = "Jan 30",
@@ -249,6 +244,8 @@ private fun CaliclanTrainingScreenContent() {
             isRestDay = false,
             onClick = {}
         )
+        
+        Spacer(width = 0, height = 8)
         
         ScheduleItem(
             dayName = "Friday",
@@ -260,6 +257,8 @@ private fun CaliclanTrainingScreenContent() {
             onClick = {}
         )
         
+        Spacer(width = 0, height = 8)
+        
         ScheduleItem(
             dayName = "Saturday",
             date = "Feb 1",
@@ -270,6 +269,8 @@ private fun CaliclanTrainingScreenContent() {
             onClick = {}
         )
         
+        Spacer(width = 0, height = 8)
+        
         ScheduleItem(
             dayName = "Sunday",
             date = "Feb 2",
@@ -279,6 +280,8 @@ private fun CaliclanTrainingScreenContent() {
             isRestDay = true,
             onClick = {}
         )
+        
+        Spacer(width = 0, height = 24)
     }
 }
 
@@ -290,7 +293,7 @@ private fun CaliclanMembershipScreenContent() {
     ScrollableColumn(padding = 16) {
         HeaderText(text = "Membership", size = "large")
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 24)
         
         // Current Plan Card
         StatusCard(
@@ -301,10 +304,22 @@ private fun CaliclanMembershipScreenContent() {
             onClick = null
         )
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
         // Renewal Options
         HeaderText(text = "Renewal Options", size = "medium")
+        Spacer(width = 0, height = 16)
+        
+        SduiCard(onClick = null) {
+            FlexColumn(
+                verticalArrangement = "Top",
+                horizontalAlignment = "Start"
+            ) {
+                HeaderText(text = "1 Month", size = "small")
+                SecondaryText(text = "Continue your journey • ₹4,000")
+            }
+        }
+        
         Spacer(width = 0, height = 12)
         
         SduiCard(onClick = null) {
@@ -312,46 +327,36 @@ private fun CaliclanMembershipScreenContent() {
                 verticalArrangement = "Top",
                 horizontalAlignment = "Start"
             ) {
-                MyText(text = "1 Month")
-                SecondaryText(text = "Continue your journey • ₹4,000")
-            }
-        }
-        
-        Spacer(width = 0, height = 8)
-        
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                MyText(text = "3 Months")
+                HeaderText(text = "3 Months", size = "small")
                 SecondaryText(text = "Commit to consistency • ₹10,500")
-                Spacer(width = 0, height = 4)
+                Spacer(width = 0, height = 8)
                 Chip(label = "Save 12%")
             }
         }
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 12)
         
         SduiCard(onClick = null) {
             FlexColumn(
                 verticalArrangement = "Top",
                 horizontalAlignment = "Start"
             ) {
-                MyText(text = "6 Months")
+                HeaderText(text = "6 Months", size = "small")
                 SecondaryText(text = "Best value • ₹18,000")
-                Spacer(width = 0, height = 4)
+                Spacer(width = 0, height = 8)
                 Chip(label = "Save 25%")
             }
         }
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
         // Renew CTA
         MyButton(
             text = "Renew via WhatsApp",
             onClick = { /* Open WhatsApp */ }
         )
+        
+        Spacer(width = 0, height = 24)
     }
 }
 
@@ -379,18 +384,19 @@ private fun CoachProfileSheetContent(
             circular = true
         )
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 20)
         
         // Name & Role
         HeaderText(text = name, size = "large")
+        Spacer(width = 0, height = 4)
         SecondaryText(text = role)
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 20)
         
         // Bio
-        MyText(text = bio)
+        SecondaryText(text = bio)
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 20)
         
         // Instagram
         FlexRow(
@@ -405,7 +411,7 @@ private fun CoachProfileSheetContent(
             MyText(text = "@$instagram")
         }
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
         // Close Button
         MyButton(

@@ -37,6 +37,8 @@ import kotlin.Unit
         SecondaryText::class,
         IconButton::class,
         Chip::class,
+        // Layout widgets
+        AppScaffold::class,
     ],
 )
 interface SduiSchema
@@ -272,4 +274,17 @@ data class IconButton(
 data class Chip(
     @Property(1) val label: String,
 )
+
+/**
+ * AppScaffold - Layout with fixed bottom bar and scrollable content area.
+ * Uses Compose Scaffold internally for proper layout.
+ */
+@Widget(27)
+data class AppScaffold(
+    @Property(1) val showBottomBar: Boolean,
+    @Property(2) val selectedTab: String,
+    @Property(3) val onTabSelected: (String) -> Unit,
+    @Children(1) val content: () -> Unit,
+)
+
 
