@@ -155,12 +155,15 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         ) {
             println("SDUI-iOS: bindServices called")
             
-            // Only bind console for logging
+            // Bind console for logging
             zipline.bind<HostConsole>("console", IosRealHostConsole())
             println("SDUI-iOS: console bound")
             
-            // No NavigationService or RouteService needed!
-            // Guest handles all navigation internally via BackHandler widget
+            // Bind GymService for Supabase data access
+            // Note: RealGymService requires Ktor client which needs platform-specific setup
+            // For now, we'll bind a mock that returns sample data
+            zipline.bind<GymService>("gym", MockGymService())
+            println("SDUI-iOS: gym service bound")
         }
         
         override fun create(zipline: Zipline): SduiAppService {
