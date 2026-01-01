@@ -51,8 +51,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
 
-        commonMain {
-            dependencies {
+        commonMain.dependencies {
             api(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -73,12 +72,17 @@ kotlin {
             implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.coil.compose)
+            // Ktor HTTP Client core
+            implementation(libs.ktor.client.core)
         }
-    }
         
-    commonTest.dependencies {
+        iosMain.dependencies {
+            // Ktor Darwin engine for iOS HTTP client
+            implementation(libs.ktor.client.darwin)
+        }
+            
+        commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
     }
 }
-

@@ -1,0 +1,267 @@
+package com.example.serverdrivenui.shared
+
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+
+/**
+ * RealGymService - Shared implementation connecting to Supabase via Ktor.
+ * This same code runs on both Android (OkHttp engine) and iOS (Darwin engine).
+ */
+class RealGymService(
+    private val httpClient: HttpClient,
+    private val supabaseUrl: String,
+    private val supabaseKey: String
+) : GymService {
+    
+    private val restUrl = "$supabaseUrl/rest/v1"
+    private val authUrl = "$supabaseUrl/auth/v1"
+    
+    private var currentUserId: String? = null
+    private var currentAccessToken: String? = null
+    
+    // ============= Profile & Membership =============
+    
+    override suspend fun getProfile(): String {
+        val userId = currentUserId ?: return """{"error": "Not logged in"}"""
+        
+        return try {
+            val response = httpClient.get("$restUrl/profiles") {
+                parameter("id", "eq.$userId")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """{"error": "${e.message}"}"""
+        }
+    }
+    
+    // ============= Training =============
+    
+    override suspend fun getWeeklySchedule(weekStart: String): String {
+        return try {
+            val response = httpClient.get("$restUrl/training_schedule") {
+                parameter("date", "gte.$weekStart")
+                parameter("order", "date.asc")
+                parameter("limit", "7")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
+    override suspend fun getTodaySchedule(): String {
+        val today = "2026-01-01" // TODO: Use actual date
+        return try {
+            val response = httpClient.get("$restUrl/training_schedule") {
+                parameter("date", "eq.$today")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            val result = response.bodyAsText()
+            // Return first item or default
+            if (result.startsWith("[") && result.length > 2) {
+                val items = result.trimStart('[').trimEnd(']')
+                if (items.contains("},")) {
+                    items.split("},")[0] + "}"
+                } else {
+                    items
+                }
+            } else {
+                """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
+            }
+        } catch (e: Exception) {
+            """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
+        }
+    }
+    
+    // ============= Attendance & Consistency =============
+    
+    override suspend fun getAttendanceForWeek(weekStart: String): String {
+        val userId = currentUserId ?: return """[]"""
+        
+        return try {
+            val response = httpClient.get("$restUrl/attendance") {
+                parameter("user_id", "eq.$userId")
+                parameter("date", "gte.$weekStart")
+                parameter("select", "date,status")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
+    override suspend fun markAttendance(date: String): Boolean {
+        val userId = currentUserId ?: return false
+        
+        return try {
+            val response = httpClient.post("$restUrl/attendance") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                    append("Prefer", "return=minimal")
+                }
+                setBody("""{"user_id": "$userId", "date": "$date", "status": "present"}""")
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error marking attendance: ${e.message}")
+            false
+        }
+    }
+    
+    override suspend fun getStreak(): Int {
+        val userId = currentUserId ?: return 0
+        
+        return try {
+            val response = httpClient.get("$restUrl/attendance") {
+                parameter("user_id", "eq.$userId")
+                parameter("order", "date.desc")
+                parameter("limit", "30")
+                parameter("select", "date")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            
+            val attendanceJson = response.bodyAsText()
+            val entriesCount = attendanceJson.split("\"date\"").size - 1
+            minOf(entriesCount, 7) // Cap at 7 for demo
+        } catch (e: Exception) {
+            0
+        }
+    }
+    
+    // ============= Community =============
+    
+    override suspend fun getCoaches(): String {
+        return try {
+            val response = httpClient.get("$restUrl/coaches") {
+                parameter("order", "sort_order.asc")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
+    override suspend fun getCoach(coachId: String): String {
+        return try {
+            val response = httpClient.get("$restUrl/coaches") {
+                parameter("id", "eq.$coachId")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """{}"""
+        }
+    }
+    
+    // ============= Auth =============
+    
+    override suspend fun isLoggedIn(): Boolean {
+        return currentUserId != null
+    }
+    
+    override suspend fun requestOtp(phone: String): Boolean {
+        return try {
+            val response = httpClient.post("$authUrl/otp") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                }
+                setBody("""{"phone": "$phone"}""")
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("OTP request failed: ${e.message}")
+            false
+        }
+    }
+    
+    override suspend fun verifyOtp(phone: String, otp: String): Boolean {
+        return try {
+            val response = httpClient.post("$authUrl/verify") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                }
+                setBody("""{"phone": "$phone", "token": "$otp", "type": "sms"}""")
+            }
+            
+            if (response.status.isSuccess()) {
+                val result = response.bodyAsText()
+                // Parse access_token and user.id from response
+                // For now, just mark as logged in
+                currentUserId = "demo-user"
+                currentAccessToken = supabaseKey
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            println("OTP verify failed: ${e.message}")
+            false
+        }
+    }
+    
+    override suspend fun logout() {
+        currentUserId = null
+        currentAccessToken = null
+    }
+    
+    // ============= Native Actions =============
+    
+    private var urlOpener: ((String) -> Unit)? = null
+    private var toastShower: ((String) -> Unit)? = null
+    
+    fun setUrlOpener(opener: (String) -> Unit) {
+        urlOpener = opener
+    }
+    
+    fun setToastShower(shower: (String) -> Unit) {
+        toastShower = shower
+    }
+    
+    override suspend fun openUrl(url: String) {
+        urlOpener?.invoke(url) ?: println("Would open URL: $url")
+    }
+    
+    override suspend fun showToast(message: String) {
+        toastShower?.invoke(message) ?: println("Toast: $message")
+    }
+    
+    override fun close() {
+        // HTTP client lifecycle managed externally
+    }
+}

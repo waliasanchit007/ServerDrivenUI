@@ -13,7 +13,6 @@ import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.redwood.treehouse.MemoryStateStore
 import app.cash.redwood.leaks.LeakDetector
-import app.cash.zipline.Zipline
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.ZiplineHttpClient
 import kotlinx.coroutines.CoroutineScope
@@ -42,9 +41,20 @@ import kotlin.coroutines.resumeWithException
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import okio.IOException
+import io.ktor.client.*
+import io.ktor.client.engine.darwin.*
+
+// ============= Supabase Config =============
+
+private object SupabaseConfig {
+    const val PROJECT_URL = "https://tumdkgcpikspixovmzrw.supabase.co"
+    const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bWRrZ2NwaWtzcGl4b3ZtenJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNDkxNTEsImV4cCI6MjA4MjgyNTE1MX0.Qewg6JqydPboYKSkQ1wxuoHeD2fWMBez9XiO1CTcyA4"
+}
+
+// ============= Zipline HTTP Client (for code loading) =============
 
 /**
- * iOS-specific HTTP client using NSURLSession.
+ * iOS-specific HTTP client using NSURLSession for Zipline code loading.
  */
 class IosZiplineHttpClient(
     private val urlSession: NSURLSession = NSURLSession.sharedSession
@@ -105,6 +115,8 @@ private class CompletionHandler(
     }
 }
 
+// ============= Host Console =============
+
 /**
  * Host console for Guest logging.
  */
@@ -114,14 +126,25 @@ class IosRealHostConsole : HostConsole {
     }
 }
 
+// ============= App Initialization =============
+
 private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 private var treehouseApp: TreehouseApp<SduiAppService>? = null
 private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
 private val hotReloadManager = HotReloadManager()
 
+// Ktor HTTP Client with Darwin engine (iOS native networking)
+private val ktorHttpClient = HttpClient(Darwin) {
+    engine {
+        configureRequest {
+            setAllowsCellularAccess(true)
+        }
+    }
+}
+
 /**
  * Initialize the TreehouseApp instance.
- * SIMPLIFIED: No navigation services - Guest handles all navigation via BackHandler widget.
+ * Uses SharedAppSpec with RealGymService for Supabase connectivity.
  */
 fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     val existing = treehouseApp
@@ -145,31 +168,18 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         hostProtocolFactory = SduiSchemaHostProtocol.Factory
     )
     
-    val spec = object : TreehouseApp.Spec<SduiAppService>() {
-        override val name = "sdui"
-        override val manifestUrl = manifestUrlFlow.asStateFlow()
-        
-        override suspend fun bindServices(
-            treehouseApp: TreehouseApp<SduiAppService>,
-            zipline: Zipline
-        ) {
-            println("SDUI-iOS: bindServices called")
-            
-            // Bind console for logging
-            zipline.bind<HostConsole>("console", IosRealHostConsole())
-            println("SDUI-iOS: console bound")
-            
-            // Bind GymService for Supabase data access
-            // Note: RealGymService requires Ktor client which needs platform-specific setup
-            // For now, we'll bind a mock that returns sample data
-            zipline.bind<GymService>("gym", MockGymService())
-            println("SDUI-iOS: gym service bound")
-        }
-        
-        override fun create(zipline: Zipline): SduiAppService {
-            return zipline.take<SduiAppService>("app")
-        }
-    }
+    // Use SharedAppSpec with Ktor HttpClient for RealGymService
+    val hostApiConfig = HostApiConfig(
+        supabaseUrl = SupabaseConfig.PROJECT_URL,
+        supabaseKey = SupabaseConfig.ANON_KEY
+    )
+    
+    val spec = SharedAppSpec(
+        manifestUrl = manifestUrlFlow.asStateFlow(),
+        httpClient = ktorHttpClient,
+        hostApi = hostApiConfig,
+        hostConsole = IosRealHostConsole()
+    )
     
     val app = treehouseAppFactory.create(
         appScope = appScope,
@@ -180,13 +190,13 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     hotReloadManager.connect(DevConfig.hotReloadUrl)
     
     treehouseApp = app
-    println("SDUI-iOS: TreehouseApp created")
+    println("SDUI-iOS: TreehouseApp created with RealGymService")
     return app
 }
 
 /**
  * Main View Controller - Entry point for iOS app.
- * SIMPLIFIED: Just renders TreehouseContent. No navigation handling.
+ * Uses SharedAppSpec for platform-agnostic service binding.
  */
 fun MainViewController() = ComposeUIViewController {
     val app = initializeTreehouseApp()
@@ -201,6 +211,6 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     
-    // Just render the app - Guest handles everything!
+    // Render the app
     App(treehouseApp = app)
 }

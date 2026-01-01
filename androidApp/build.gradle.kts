@@ -63,5 +63,8 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.ui)
     implementation(compose.components.resources)
+    // Ktor HTTP Client (OkHttp engine for Android)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
     debugImplementation(compose.uiTooling)
 }
