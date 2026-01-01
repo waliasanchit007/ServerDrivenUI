@@ -51,4 +51,44 @@
     <property tag="1" name="enabled" type="kotlin.Boolean" />
     <event tag="2" name="onBack" />
   </widget>
+  <widget tag="14" type="com.example.serverdrivenui.schema.LazyList">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="15" type="com.example.serverdrivenui.schema.AsyncImage">
+    <property tag="1" name="url" type="kotlin.String" />
+    <property tag="2" name="contentDescription" type="kotlin.String" />
+    <property tag="3" name="size" type="kotlin.Int" />
+    <property tag="4" name="circular" type="kotlin.Boolean" />
+  </widget>
+  <widget tag="16" type="com.example.serverdrivenui.schema.StatusCard">
+    <property tag="1" name="status" type="kotlin.String" />
+    <property tag="2" name="title" type="kotlin.String" />
+    <property tag="3" name="subtitle" type="kotlin.String" />
+    <property tag="4" name="daysLeft" type="kotlin.Int" />
+    <event tag="5" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="17" type="com.example.serverdrivenui.schema.ConsistencyStrip">
+    <property tag="1" name="monday" type="kotlin.String" />
+    <property tag="2" name="tuesday" type="kotlin.String" />
+    <property tag="3" name="wednesday" type="kotlin.String" />
+    <property tag="4" name="thursday" type="kotlin.String" />
+    <property tag="5" name="friday" type="kotlin.String" />
+    <property tag="6" name="saturday" type="kotlin.String" />
+    <property tag="7" name="sunday" type="kotlin.String" />
+  </widget>
+  <widget tag="18" type="com.example.serverdrivenui.schema.CoachCard">
+    <property tag="1" name="name" type="kotlin.String" />
+    <property tag="2" name="role" type="kotlin.String" />
+    <property tag="3" name="photoUrl" type="kotlin.String" />
+    <event tag="4" name="onClick" />
+  </widget>
+  <widget tag="19" type="com.example.serverdrivenui.schema.ScheduleItem">
+    <property tag="1" name="dayName" type="kotlin.String" />
+    <property tag="2" name="date" type="kotlin.String" />
+    <property tag="3" name="focus" type="kotlin.String" />
+    <property tag="4" name="isToday" type="kotlin.Boolean" />
+    <property tag="5" name="isAttended" type="kotlin.Boolean" />
+    <property tag="6" name="isRestDay" type="kotlin.Boolean" />
+    <event tag="7" name="onClick" />
+  </widget>
 </schema>

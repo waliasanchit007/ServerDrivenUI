@@ -19,6 +19,8 @@ import com.example.serverdrivenui.schema.widget.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import coil3.compose.AsyncImage
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 
 // ============= Existing Widgets =============
 
@@ -423,6 +425,329 @@ class CmpBackHandler : BackHandler<@Composable (androidx.compose.ui.Modifier) ->
     }
 }
 
+// ============= Caliclan Widgets =============
+
+// Caliclan Design Tokens
+private object CaliclanTheme {
+    val Background = androidx.compose.ui.graphics.Color(0xFF121212)
+    val Surface = androidx.compose.ui.graphics.Color(0xFF1E1E1E)
+    val Accent = androidx.compose.ui.graphics.Color(0xFFFFC107)
+    val Success = androidx.compose.ui.graphics.Color(0xFF4CAF50)
+    val Error = androidx.compose.ui.graphics.Color(0xFFE57373)
+    val TextPrimary = androidx.compose.ui.graphics.Color.White
+    val TextSecondary = androidx.compose.ui.graphics.Color(0xFFB0B0B0)
+    val Border = androidx.compose.ui.graphics.Color(0xFF2C2C2C)
+}
+
+/**
+ * LazyList - Scrollable vertical list
+ */
+class CmpLazyList : LazyList<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val widgets = (children as CmpChildren).widgets
+            items(widgets.size) { index ->
+                widgets[index].value(androidx.compose.ui.Modifier.fillMaxWidth())
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+}
+
+/**
+ * AsyncImage - URL-based image loading with Coil
+ */
+class CmpAsyncImage : AsyncImage<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var url by mutableStateOf("")
+    private var contentDescription by mutableStateOf("")
+    private var size by mutableStateOf(64)
+    private var circular by mutableStateOf(false)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val imageModifier = modifier
+            .size(size.dp)
+            .then(
+                if (circular) androidx.compose.ui.Modifier.then(
+                    androidx.compose.foundation.shape.CircleShape.let { shape ->
+                        androidx.compose.ui.Modifier
+                    }
+                ) else androidx.compose.ui.Modifier
+            )
+        
+        coil3.compose.AsyncImage(
+            model = url,
+            contentDescription = contentDescription,
+            modifier = if (circular) {
+                modifier
+                    .size(size.dp)
+                    .clip(CircleShape)
+            } else {
+                modifier.size(size.dp)
+            },
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun url(url: String) { this.url = url }
+    override fun contentDescription(contentDescription: String) { this.contentDescription = contentDescription }
+    override fun size(size: Int) { this.size = size }
+    override fun circular(circular: Boolean) { this.circular = circular }
+}
+
+/**
+ * StatusCard - Membership status with colored border
+ */
+class CmpStatusCard : StatusCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var status by mutableStateOf("active")
+    private var title by mutableStateOf("")
+    private var subtitle by mutableStateOf("")
+    private var daysLeft by mutableStateOf(0)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val borderColor = when (status) {
+            "active" -> CaliclanTheme.Success
+            "expiring" -> CaliclanTheme.Accent
+            "expired" -> CaliclanTheme.Error
+            else -> CaliclanTheme.Border
+        }
+        
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) androidx.compose.ui.Modifier.clickable { onClick?.invoke() } else androidx.compose.ui.Modifier),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(2.dp, borderColor)
+        ) {
+            Column(
+                modifier = androidx.compose.ui.Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = CaliclanTheme.TextPrimary
+                )
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CaliclanTheme.TextSecondary
+                    )
+                }
+                if (daysLeft > 0 && status == "expiring") {
+                    Text(
+                        text = "Expires in $daysLeft days",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CaliclanTheme.Accent
+                    )
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun status(status: String) { this.status = status }
+    override fun title(title: String) { this.title = title }
+    override fun subtitle(subtitle: String) { this.subtitle = subtitle }
+    override fun daysLeft(daysLeft: Int) { this.daysLeft = daysLeft }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+/**
+ * ConsistencyStrip - Weekly attendance indicators (Mon-Sun)
+ */
+class CmpConsistencyStrip : ConsistencyStrip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var monday by mutableStateOf("future")
+    private var tuesday by mutableStateOf("future")
+    private var wednesday by mutableStateOf("future")
+    private var thursday by mutableStateOf("future")
+    private var friday by mutableStateOf("future")
+    private var saturday by mutableStateOf("future")
+    private var sunday by mutableStateOf("future")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf(
+                "M" to monday, "T" to tuesday, "W" to wednesday,
+                "T" to thursday, "F" to friday, "S" to saturday, "S" to sunday
+            ).forEach { (label, status) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CaliclanTheme.TextSecondary
+                    )
+                    androidx.compose.foundation.Canvas(
+                        modifier = androidx.compose.ui.Modifier.size(12.dp)
+                    ) {
+                        when (status) {
+                            "attended" -> drawCircle(color = CaliclanTheme.Success)
+                            "today" -> drawCircle(color = CaliclanTheme.Accent)
+                            "missed" -> {
+                                drawCircle(
+                                    color = CaliclanTheme.TextSecondary,
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+                                )
+                            }
+                            "rest" -> drawLine(
+                                color = CaliclanTheme.TextSecondary,
+                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                                end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                                strokeWidth = 2f
+                            )
+                            else -> drawCircle(color = CaliclanTheme.Border)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun monday(monday: String) { this.monday = monday }
+    override fun tuesday(tuesday: String) { this.tuesday = tuesday }
+    override fun wednesday(wednesday: String) { this.wednesday = wednesday }
+    override fun thursday(thursday: String) { this.thursday = thursday }
+    override fun friday(friday: String) { this.friday = friday }
+    override fun saturday(saturday: String) { this.saturday = saturday }
+    override fun sunday(sunday: String) { this.sunday = sunday }
+}
+
+/**
+ * CoachCard - Coach preview with photo, name, role
+ */
+class CmpCoachCard : CoachCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var name by mutableStateOf("")
+    private var role by mutableStateOf("")
+    private var photoUrl by mutableStateOf("")
+    private var onClick by mutableStateOf({})
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier
+                .width(140.dp)
+                .clickable { onClick() },
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface)
+        ) {
+            Column(
+                modifier = androidx.compose.ui.Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                coil3.compose.AsyncImage(
+                    model = photoUrl,
+                    contentDescription = name,
+                    modifier = androidx.compose.ui.Modifier
+                        .size(80.dp)
+                        .clip(CircleShape),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CaliclanTheme.TextPrimary,
+                    maxLines = 1
+                )
+                Text(
+                    text = role,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CaliclanTheme.Accent,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun name(name: String) { this.name = name }
+    override fun role(role: String) { this.role = role }
+    override fun photoUrl(photoUrl: String) { this.photoUrl = photoUrl }
+    override fun onClick(onClick: () -> Unit) { this.onClick = onClick }
+}
+
+/**
+ * ScheduleItem - Training day row
+ */
+class CmpScheduleItem : ScheduleItem<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var dayName by mutableStateOf("")
+    private var date by mutableStateOf("")
+    private var focus by mutableStateOf("")
+    private var isToday by mutableStateOf(false)
+    private var isAttended by mutableStateOf(false)
+    private var isRestDay by mutableStateOf(false)
+    private var onClick by mutableStateOf({})
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val borderColor = when {
+            isToday -> CaliclanTheme.Accent
+            else -> CaliclanTheme.Border
+        }
+        
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
+            colors = CardDefaults.cardColors(
+                containerColor = if (isToday) CaliclanTheme.Surface else CaliclanTheme.Background
+            ),
+            border = if (isToday) androidx.compose.foundation.BorderStroke(1.dp, borderColor) else null
+        ) {
+            Row(
+                modifier = androidx.compose.ui.Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = dayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isToday) CaliclanTheme.Accent else CaliclanTheme.TextSecondary
+                    )
+                    Text(
+                        text = if (isRestDay) "Rest & Recovery" else focus,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CaliclanTheme.TextPrimary
+                    )
+                }
+                
+                if (isAttended) {
+                    Text(text = "✓", color = CaliclanTheme.Success)
+                } else if (isRestDay) {
+                    Text(text = "—", color = CaliclanTheme.TextSecondary)
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun dayName(dayName: String) { this.dayName = dayName }
+    override fun date(date: String) { this.date = date }
+    override fun focus(focus: String) { this.focus = focus }
+    override fun isToday(isToday: Boolean) { this.isToday = isToday }
+    override fun isAttended(isAttended: Boolean) { this.isAttended = isAttended }
+    override fun isRestDay(isRestDay: Boolean) { this.isRestDay = isRestDay }
+    override fun onClick(onClick: () -> Unit) { this.onClick = onClick }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -477,6 +802,25 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     override fun BackHandler(): BackHandler<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         println("CmpWidgetFactory: Creating BackHandler widget")
         return CmpBackHandler()
+    }
+    // Caliclan widgets
+    override fun LazyList(): LazyList<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpLazyList()
+    }
+    override fun AsyncImage(): AsyncImage<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpAsyncImage()
+    }
+    override fun StatusCard(): StatusCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpStatusCard()
+    }
+    override fun ConsistencyStrip(): ConsistencyStrip<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpConsistencyStrip()
+    }
+    override fun CoachCard(): CoachCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpCoachCard()
+    }
+    override fun ScheduleItem(): ScheduleItem<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpScheduleItem()
     }
 }
 

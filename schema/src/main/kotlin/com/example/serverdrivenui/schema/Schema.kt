@@ -22,6 +22,13 @@ import kotlin.Unit
         // Navigation widgets
         ScreenStack::class,
         BackHandler::class,
+        // Caliclan widgets
+        LazyList::class,
+        AsyncImage::class,
+        StatusCard::class,
+        ConsistencyStrip::class,
+        CoachCard::class,
+        ScheduleItem::class,
     ],
 )
 interface SduiSchema
@@ -101,7 +108,6 @@ data class SduiCard(
 
 /**
  * Container for screen content with transition support.
- * The Guest renders the current screen inside this widget.
  */
 @Widget(12)
 data class ScreenStack(
@@ -110,8 +116,6 @@ data class ScreenStack(
 
 /**
  * Back press interceptor widget.
- * When enabled, intercepts system back button (Android) and swipe gesture (iOS).
- * Calls onBack callback when triggered.
  */
 @Widget(13)
 data class BackHandler(
@@ -119,3 +123,76 @@ data class BackHandler(
     @Property(2) val onBack: () -> Unit,
 )
 
+// ============= Caliclan Widgets =============
+
+/**
+ * Scrollable vertical list for performance with many items.
+ */
+@Widget(14)
+data class LazyList(
+    @Children(1) val children: () -> Unit,
+)
+
+/**
+ * Image loaded from URL with placeholder support.
+ */
+@Widget(15)
+data class AsyncImage(
+    @Property(1) val url: String,
+    @Property(2) val contentDescription: String,
+    @Property(3) val size: Int, // Size in dp (square)
+    @Property(4) val circular: Boolean, // Clip to circle
+)
+
+/**
+ * Membership status card with colored border.
+ * status: "active", "expiring", "expired"
+ */
+@Widget(16)
+data class StatusCard(
+    @Property(1) val status: String,
+    @Property(2) val title: String,
+    @Property(3) val subtitle: String,
+    @Property(4) val daysLeft: Int,
+    @Property(5) val onClick: (() -> Unit)?,
+)
+
+/**
+ * Weekly attendance strip (Mon-Sun indicators).
+ * Each day status: "future", "today", "attended", "missed", "rest"
+ */
+@Widget(17)
+data class ConsistencyStrip(
+    @Property(1) val monday: String,
+    @Property(2) val tuesday: String,
+    @Property(3) val wednesday: String,
+    @Property(4) val thursday: String,
+    @Property(5) val friday: String,
+    @Property(6) val saturday: String,
+    @Property(7) val sunday: String,
+)
+
+/**
+ * Coach preview card with photo, name, role.
+ */
+@Widget(18)
+data class CoachCard(
+    @Property(1) val name: String,
+    @Property(2) val role: String,
+    @Property(3) val photoUrl: String,
+    @Property(4) val onClick: () -> Unit,
+)
+
+/**
+ * Training schedule day row.
+ */
+@Widget(19)
+data class ScheduleItem(
+    @Property(1) val dayName: String,
+    @Property(2) val date: String,
+    @Property(3) val focus: String,
+    @Property(4) val isToday: Boolean,
+    @Property(5) val isAttended: Boolean,
+    @Property(6) val isRestDay: Boolean,
+    @Property(7) val onClick: () -> Unit,
+)
