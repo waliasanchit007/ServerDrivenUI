@@ -5,8 +5,6 @@ import androidx.compose.runtime.remember
 import com.example.serverdrivenui.schema.compose.BackHandler
 import com.example.serverdrivenui.schema.compose.ScreenStack
 import com.example.serverdrivenui.presenter.screens.MainNavigationShell
-import com.example.serverdrivenui.presenter.screens.CaliclanHomeScreen
-import com.example.serverdrivenui.presenter.screens.CaliclanLoginScreen
 
 /**
  * Root UI composable for the Caliclan app.
@@ -54,14 +52,12 @@ fun RootUi(initialRoute: String = "main") {
  * 
  * Routes:
  * - "main" → MainNavigationShell (default, with bottom nav)
- * - "login" → CaliclanLoginScreen
- * - "home" → Direct CaliclanHomeScreen (legacy)
+ * - "login" → MainNavigationShell (Login removed for now)
  */
 fun routeToScreen(route: String): Screen {
     println("RootUi: routeToScreen($route)")
     return when (route) {
-        "main", "home", "dashboard" -> MainNavigationShell()
-        "login" -> CaliclanLoginScreen()
+        "main", "home", "dashboard", "login" -> MainNavigationShell()
         else -> {
             println("RootUi: Unknown route '$route', defaulting to MainNavigationShell")
             MainNavigationShell()

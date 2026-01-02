@@ -28,7 +28,25 @@ private sealed class MembershipUiState {
 @Composable
 fun MembershipScreenContent() {
     // State
-    var uiState by remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
+    var uiState by remember { 
+        val repo = GymServiceProvider.repository
+        
+        // Initial synchronous check
+        val initialState = if (repo != null && repo.cachedMembershipPlans != null && repo.cachedProfile != null) {
+            val plans = repo.cachedMembershipPlans ?: emptyList()
+            val profile = repo.cachedProfile
+            
+            if (plans.isNotEmpty()) {
+                MembershipUiState.Success(plans, profile)
+            } else {
+                MembershipUiState.Loading // Safer fallback
+            }
+        } else {
+            MembershipUiState.Loading
+        }
+        mutableStateOf(initialState)
+    }
+    
     val scope = rememberCoroutineScope()
     
     // Fetch data on mount

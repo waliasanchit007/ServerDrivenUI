@@ -28,7 +28,24 @@ private sealed class TrainingUiState {
 @Composable
 fun TrainingScreenContent() {
     // State
-    var uiState by remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
+    var uiState by remember { 
+        val repo = GymServiceProvider.repository
+        
+        // Initial synchronous check - if data is cached, use it immediately
+        val initialState = if (repo != null && repo.cachedWeeklySchedule != null) {
+            val schedule = repo.cachedWeeklySchedule ?: emptyList()
+            val attendance = repo.cachedWeeklyAttendance ?: emptyList()
+            if (schedule.isNotEmpty()) {
+                TrainingUiState.Success(schedule, attendance)
+            } else {
+                TrainingUiState.Loading // Maybe error? but Loading is safer fallback
+            }
+        } else {
+            TrainingUiState.Loading
+        }
+        mutableStateOf(initialState) 
+    }
+    
     val scope = rememberCoroutineScope()
     val today = "2026-01-02"
     
@@ -45,6 +62,8 @@ fun TrainingScreenContent() {
                     uiState = TrainingUiState.Error("GymService not available - check host binding")
                     return@launch
                 }
+                
+                // If we already have success state, we might skip or just refresh
                 
                 println("TrainingScreen: Calling getWeeklySchedule()...")
                 val schedule = repo.getWeeklySchedule()
@@ -64,6 +83,7 @@ fun TrainingScreenContent() {
             }
         }
     }
+
     
     ScrollableColumn(padding = 24) {
         // Header
