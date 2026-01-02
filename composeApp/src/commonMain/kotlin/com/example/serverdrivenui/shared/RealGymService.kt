@@ -153,6 +153,111 @@ class RealGymService(
         }
     }
     
+    override suspend fun getWeeklyAttendanceStatus(): String {
+        val userId = currentUserId ?: demoUserId
+        
+        return try {
+            val response = httpClient.get("$restUrl/attendance") {
+                parameter("user_id", "eq.$userId")
+                parameter("order", "date.asc")
+                parameter("limit", "7")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            val text = response.bodyAsText()
+            // Parse attended dates
+            val attendedDates = mutableSetOf<String>()
+            val regex = """"date":"(\d{4}-\d{2}-\d{2})"""".toRegex()
+            regex.findAll(text).forEach { match ->
+                attendedDates.add(match.groupValues[1])
+            }
+            
+            // Build status array for the week
+            val today = "2026-01-02"
+            val days = listOf(
+                "2025-12-29" to "Mon",
+                "2025-12-30" to "Tue",
+                "2025-12-31" to "Wed",
+                "2026-01-01" to "Thu",
+                "2026-01-02" to "Fri",
+                "2026-01-03" to "Sat",
+                "2026-01-04" to "Sun"
+            )
+            
+            val statuses = days.map { (date, _) ->
+                when {
+                    date == today -> "today"
+                    attendedDates.contains(date) -> "attended"
+                    date > today -> "future"
+                    else -> "missed"
+                }
+            }
+            """["${statuses.joinToString("\",\"")}"]"""
+        } catch (e: Exception) {
+            """["attended","attended","attended","attended","today","future","future"]"""
+        }
+    }
+    
+    // ============= Membership =============
+    
+    private val demoUserId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+    
+    override suspend fun getMembershipPlans(): String {
+        return try {
+            val response = httpClient.get("$restUrl/membership_plans") {
+                parameter("order", "sort_order.asc")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
+    override suspend fun getMembershipHistory(): String {
+        val userId = currentUserId ?: demoUserId
+        
+        return try {
+            val response = httpClient.get("$restUrl/membership_history") {
+                parameter("user_id", "eq.$userId")
+                parameter("order", "start_date.desc")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
+    override suspend fun getPaymentHistory(): String {
+        val userId = currentUserId ?: demoUserId
+        
+        return try {
+            val response = httpClient.get("$restUrl/payment_history") {
+                parameter("user_id", "eq.$userId")
+                parameter("order", "payment_date.desc")
+                parameter("select", "*")
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            response.bodyAsText()
+        } catch (e: Exception) {
+            """[]"""
+        }
+    }
+    
     // ============= Community =============
     
     override suspend fun getCoaches(): String {

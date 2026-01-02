@@ -46,6 +46,11 @@ import kotlin.Unit
         ActionButton::class,
         CoachGrid::class,
         WeeklyAttendance::class,
+        // Pixel-perfect screen widgets
+        TrainingDayCard::class,
+        MembershipPlanCard::class,
+        ProfileInfoCard::class,
+        HistoryItem::class,
     ],
 )
 interface SduiSchema
@@ -352,4 +357,57 @@ data class WeeklyAttendance(
     @Property(1) val streak: Int,
     @Property(2) val days: List<String>,      // ["attended", "attended", "today", "future", ...]
     @Property(3) val summary: String,         // "Trained 2 days this week"
+)
+
+/**
+ * TrainingDayCard - Full training day card with goals & supporting (matches web app exactly)
+ */
+@Widget(34)
+data class TrainingDayCard(
+    @Property(1) val day: String,             // "Monday"
+    @Property(2) val date: String,            // "Dec 30"
+    @Property(3) val focus: String,           // "Pull Strength & Skills"
+    @Property(4) val goals: List<String>,     // ["Muscle-ups", "Front Lever Progressions"]
+    @Property(5) val supporting: List<String>,// ["Core Stability", "Shoulder Mobility"]
+    @Property(6) val isToday: Boolean,
+    @Property(7) val attended: Boolean,
+)
+
+/**
+ * MembershipPlanCard - Plan card with features & CTA (matches web app exactly)
+ */
+@Widget(35)
+data class MembershipPlanCard(
+    @Property(1) val name: String,            // "Monthly Unlimited"
+    @Property(2) val duration: String,        // "1 Month"
+    @Property(3) val price: String,           // "₹2,500"
+    @Property(4) val priceLabel: String,      // "per month" or "total"
+    @Property(5) val features: List<String>,
+    @Property(6) val isCurrent: Boolean,
+    @Property(7) val isRecommended: Boolean,
+    @Property(8) val billingDate: String,     // only for current plan
+    @Property(9) val onSelect: (() -> Unit)?,
+)
+
+/**
+ * ProfileInfoCard - Member info display (matches web app exactly)
+ */
+@Widget(36)
+data class ProfileInfoCard(
+    @Property(1) val name: String,
+    @Property(2) val email: String,
+    @Property(3) val phone: String,
+    @Property(4) val batch: String,
+    @Property(5) val memberSince: String,
+)
+
+/**
+ * HistoryItem - Payment/Membership history item
+ */
+@Widget(37)
+data class HistoryItem(
+    @Property(1) val title: String,
+    @Property(2) val subtitle: String,
+    @Property(3) val status: String,          // "active", "completed", "pending"
+    @Property(4) val amount: String,
 )

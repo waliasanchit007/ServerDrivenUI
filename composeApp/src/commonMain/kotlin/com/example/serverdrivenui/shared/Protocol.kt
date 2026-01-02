@@ -1480,6 +1480,406 @@ class CmpWeeklyAttendance : WeeklyAttendance<@Composable (androidx.compose.ui.Mo
     override fun summary(summary: String) { this.summary = summary }
 }
 
+/**
+ * TrainingDayCard - Full training day card matching web app exactly
+ */
+class CmpTrainingDayCard : TrainingDayCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var day by mutableStateOf("")
+    private var date by mutableStateOf("")
+    private var focus by mutableStateOf("")
+    private var goals by mutableStateOf(listOf<String>())
+    private var supporting by mutableStateOf(listOf<String>())
+    private var isToday by mutableStateOf(false)
+    private var attended by mutableStateOf(false)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val bgColor = if (isToday) CaliclanTheme.AccentMuted else CaliclanTheme.Surface
+        val borderColor = if (isToday) CaliclanTheme.Accent else CaliclanTheme.Border
+        
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            border = androidx.compose.foundation.BorderStroke(2.dp, borderColor),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                // Day Header
+                Row(
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                day,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isToday) CaliclanTheme.Accent else CaliclanTheme.TextSecondary
+                            )
+                            if (isToday) {
+                                Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                                Box(
+                                    modifier = androidx.compose.ui.Modifier
+                                        .background(CaliclanTheme.Accent, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text("TODAY", style = MaterialTheme.typography.labelSmall, color = CaliclanTheme.Background)
+                                }
+                            }
+                            if (attended && !isToday) {
+                                Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                                Box(
+                                    modifier = androidx.compose.ui.Modifier
+                                        .size(20.dp)
+                                        .background(CaliclanTheme.SuccessBg, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("✓", style = MaterialTheme.typography.labelSmall, color = CaliclanTheme.Success)
+                                }
+                            }
+                        }
+                        Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                        Text(focus, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                    }
+                    Text(date, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextMuted)
+                }
+                
+                Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                
+                // Primary Goals
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🎯", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                    Text("Primary Goals", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                }
+                Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    goals.forEach { goal ->
+                        Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .background(
+                                    if (isToday) CaliclanTheme.AccentDark else CaliclanTheme.SurfaceVariant,
+                                    androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                goal,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isToday) CaliclanTheme.Accent else CaliclanTheme.TextPrimary
+                            )
+                        }
+                    }
+                }
+                
+                // Supporting
+                if (supporting.isNotEmpty()) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🕐", style = MaterialTheme.typography.bodySmall)
+                        Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                        Text("Supporting", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextMuted)
+                    }
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                    Text(
+                        supporting.joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CaliclanTheme.TextSecondary
+                    )
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun day(day: String) { this.day = day }
+    override fun date(date: String) { this.date = date }
+    override fun focus(focus: String) { this.focus = focus }
+    override fun goals(goals: List<String>) { this.goals = goals }
+    override fun supporting(supporting: List<String>) { this.supporting = supporting }
+    override fun isToday(isToday: Boolean) { this.isToday = isToday }
+    override fun attended(attended: Boolean) { this.attended = attended }
+}
+
+/**
+ * MembershipPlanCard - Plan card matching web app exactly
+ */
+class CmpMembershipPlanCard : MembershipPlanCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var name by mutableStateOf("")
+    private var duration by mutableStateOf("")
+    private var price by mutableStateOf("")
+    private var priceLabel by mutableStateOf("")
+    private var features by mutableStateOf(listOf<String>())
+    private var isCurrent by mutableStateOf(false)
+    private var isRecommended by mutableStateOf(false)
+    private var billingDate by mutableStateOf("")
+    private var onSelect by mutableStateOf<(() -> Unit)?>(null)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val borderColor = when {
+            isCurrent -> CaliclanTheme.Accent
+            isRecommended -> CaliclanTheme.AccentDark
+            else -> CaliclanTheme.Border
+        }
+        val bgColor = if (isCurrent) CaliclanTheme.AccentMuted else CaliclanTheme.Surface
+        
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            border = androidx.compose.foundation.BorderStroke(2.dp, borderColor),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                // Label
+                if (isCurrent) {
+                    Text(
+                        "CURRENT PLAN",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CaliclanTheme.Accent,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                }
+                if (isRecommended && !isCurrent) {
+                    Text(
+                        "RECOMMENDED",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CaliclanTheme.Accent,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                }
+                
+                // Header
+                Row(
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column {
+                        Text(name, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                        Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                        Text(duration, style = MaterialTheme.typography.bodyMedium, color = CaliclanTheme.TextSecondary)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(price, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                        Text(priceLabel, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                    }
+                }
+                
+                Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                
+                // Features
+                features.forEach { feature ->
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text(
+                            "✓",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isCurrent) CaliclanTheme.Accent else CaliclanTheme.TextMuted,
+                            modifier = androidx.compose.ui.Modifier.padding(top = 2.dp)
+                        )
+                        Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                        Text(
+                            feature,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isCurrent) CaliclanTheme.TextPrimary else CaliclanTheme.TextSecondary
+                        )
+                    }
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                }
+                
+                // Billing date (current plan)
+                if (isCurrent && billingDate.isNotEmpty()) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                    HorizontalDivider(color = CaliclanTheme.BorderLight)
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                    Text("Next billing date", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                    Text(billingDate, style = MaterialTheme.typography.bodyMedium, color = CaliclanTheme.TextPrimary)
+                }
+                
+                // Select button (non-current plans)
+                if (!isCurrent && onSelect != null) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                    Button(
+                        onClick = { onSelect?.invoke() },
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRecommended) CaliclanTheme.Accent else CaliclanTheme.SurfaceVariant
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            "Select Plan",
+                            color = if (isRecommended) CaliclanTheme.Background else CaliclanTheme.TextPrimary
+                        )
+                        Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                        Text("→", color = if (isRecommended) CaliclanTheme.Background else CaliclanTheme.TextPrimary)
+                    }
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun name(name: String) { this.name = name }
+    override fun duration(duration: String) { this.duration = duration }
+    override fun price(price: String) { this.price = price }
+    override fun priceLabel(priceLabel: String) { this.priceLabel = priceLabel }
+    override fun features(features: List<String>) { this.features = features }
+    override fun isCurrent(isCurrent: Boolean) { this.isCurrent = isCurrent }
+    override fun isRecommended(isRecommended: Boolean) { this.isRecommended = isRecommended }
+    override fun billingDate(billingDate: String) { this.billingDate = billingDate }
+    override fun onSelect(onSelect: (() -> Unit)?) { this.onSelect = onSelect }
+}
+
+/**
+ * ProfileInfoCard - Member info card matching web app exactly
+ */
+class CmpProfileInfoCard : ProfileInfoCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var name by mutableStateOf("")
+    private var email by mutableStateOf("")
+    private var phone by mutableStateOf("")
+    private var batch by mutableStateOf("")
+    private var memberSince by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.Border),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                // Avatar + Name
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = androidx.compose.ui.Modifier
+                            .size(64.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(CaliclanTheme.Accent, CaliclanTheme.AccentDark)
+                                ),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            name.take(2).uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = CaliclanTheme.Background
+                        )
+                    }
+                    Spacer(modifier = androidx.compose.ui.Modifier.width(16.dp))
+                    Column {
+                        Text(name, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                        Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                        Text(
+                            "Member since $memberSince",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CaliclanTheme.TextSecondary
+                        )
+                    }
+                }
+                
+                Spacer(modifier = androidx.compose.ui.Modifier.height(24.dp))
+                HorizontalDivider(color = CaliclanTheme.Border)
+                Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                
+                // Info rows
+                Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Email", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                    Text(email, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                }
+                Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Phone", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                    Text(phone, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                }
+                Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Batch", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                    Text(batch, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun name(name: String) { this.name = name }
+    override fun email(email: String) { this.email = email }
+    override fun phone(phone: String) { this.phone = phone }
+    override fun batch(batch: String) { this.batch = batch }
+    override fun memberSince(memberSince: String) { this.memberSince = memberSince }
+}
+
+/**
+ * HistoryItem - Payment/Membership history item
+ */
+class CmpHistoryItem : HistoryItem<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var title by mutableStateOf("")
+    private var subtitle by mutableStateOf("")
+    private var status by mutableStateOf("")
+    private var amount by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.Border),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(title, style = MaterialTheme.typography.bodyMedium, color = CaliclanTheme.TextPrimary)
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    if (amount.isNotEmpty()) {
+                        Text(amount, style = MaterialTheme.typography.bodyMedium, color = CaliclanTheme.TextPrimary)
+                    }
+                    val statusColor = when (status) {
+                        "active" -> CaliclanTheme.Success
+                        "completed" -> CaliclanTheme.Success
+                        else -> CaliclanTheme.TextSecondary
+                    }
+                    val statusBg = when (status) {
+                        "active" -> CaliclanTheme.SuccessBg
+                        else -> androidx.compose.ui.graphics.Color.Transparent
+                    }
+                    Box(
+                        modifier = if (status == "active") {
+                            androidx.compose.ui.Modifier
+                                .background(statusBg, androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        } else androidx.compose.ui.Modifier
+                    ) {
+                        Text(
+                            status.replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun title(title: String) { this.title = title }
+    override fun subtitle(subtitle: String) { this.subtitle = subtitle }
+    override fun status(status: String) { this.status = status }
+    override fun amount(amount: String) { this.amount = amount }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -1597,6 +1997,19 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     }
     override fun WeeklyAttendance(): WeeklyAttendance<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         return CmpWeeklyAttendance()
+    }
+    // Pixel-perfect screen widgets
+    override fun TrainingDayCard(): TrainingDayCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpTrainingDayCard()
+    }
+    override fun MembershipPlanCard(): MembershipPlanCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpMembershipPlanCard()
+    }
+    override fun ProfileInfoCard(): ProfileInfoCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpProfileInfoCard()
+    }
+    override fun HistoryItem(): HistoryItem<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpHistoryItem()
     }
 }
 

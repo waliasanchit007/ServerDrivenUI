@@ -11,22 +11,40 @@ interface GymService : ZiplineService {
     
     /**
      * Get current user's profile.
-     * Returns JSON: { "id": "...", "fullName": "...", "membershipStatus": "active|expired|grace", "membershipExpiry": "2026-03-01", "avatarUrl": "..." }
+     * Returns JSON: { "id": "...", "fullName": "...", "membershipStatus": "active|expired|grace", "membershipExpiry": "2026-03-01", "avatarUrl": "...", "email": "...", "phone": "...", "batch": "..." }
      */
     suspend fun getProfile(): String
+    
+    /**
+     * Get all membership plans.
+     * Returns JSON array of plans with id, name, duration, price, priceLabel, features, isRecommended.
+     */
+    suspend fun getMembershipPlans(): String
+    
+    /**
+     * Get current user's membership history.
+     * Returns JSON array of { planName, startDate, endDate, status }.
+     */
+    suspend fun getMembershipHistory(): String
+    
+    /**
+     * Get current user's payment history.
+     * Returns JSON array of { amount, paymentDate, method, status }.
+     */
+    suspend fun getPaymentHistory(): String
     
     // ============= Training =============
     
     /**
      * Get weekly training schedule.
      * @param weekStart ISO date string for Monday of the week (e.g., "2026-01-06")
-     * Returns JSON array of schedule items.
+     * Returns JSON array of schedule items with goals and supporting.
      */
     suspend fun getWeeklySchedule(weekStart: String): String
     
     /**
      * Get today's training focus.
-     * Returns JSON: { "focus": "...", "description": "...", "tags": [...], "isRestDay": false }
+     * Returns JSON: { "focus": "...", "description": "...", "goals": [...], "supporting": [...], "isRestDay": false }
      */
     suspend fun getTodaySchedule(): String
     
@@ -38,6 +56,12 @@ interface GymService : ZiplineService {
      * Returns JSON array of attended dates.
      */
     suspend fun getAttendanceForWeek(weekStart: String): String
+    
+    /**
+     * Get weekly attendance status as array.
+     * Returns JSON array: ["attended", "attended", "today", "future", ...]
+     */
+    suspend fun getWeeklyAttendanceStatus(): String
     
     /**
      * Mark attendance for a specific date.
@@ -98,3 +122,4 @@ interface GymService : ZiplineService {
      */
     suspend fun showToast(message: String)
 }
+

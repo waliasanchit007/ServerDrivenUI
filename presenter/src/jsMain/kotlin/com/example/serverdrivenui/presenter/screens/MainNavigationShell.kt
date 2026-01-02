@@ -4,9 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
+import com.example.serverdrivenui.presenter.GymServiceProvider
 import com.example.serverdrivenui.schema.compose.*
+import kotlinx.coroutines.launch
 
 /**
  * MainNavigationShell - Root container with bottom navigation.
@@ -228,246 +233,235 @@ private fun CaliclanHomeScreenContent(
 }
 
 /**
- * Training Screen Content - matches web app exactly
+ * Training Screen Content - PIXEL PERFECT match to web app
  */
 @Composable
 private fun CaliclanTrainingScreenContent() {
     ScrollableColumn(padding = 24) {
-        // Header matching web app
-        GreetingHeader(
-            subtitle = "This Week's Training",
-            title = "Structured calisthenics program"
-        )
+        // Header - matches web app exactly
+        HeaderText(text = "This Week's Training", size = "large")
+        Spacer(width = 0, height = 8)
+        SecondaryText(text = "Structured calisthenics program")
         
         Spacer(width = 0, height = 24)
         
-        // Weekly Schedule
-        ScheduleItem(
-            dayName = "Monday",
-            date = "Jan 27",
-            focus = "Pull Strength",
+        // Day 1: Monday - Attended
+        TrainingDayCard(
+            day = "Monday",
+            date = "Dec 30",
+            focus = "Pull Strength & Skills",
+            goals = listOf("Muscle-ups", "Front Lever Progressions", "Wide Grip Pull-ups"),
+            supporting = listOf("Core Stability", "Shoulder Mobility"),
             isToday = false,
-            isAttended = true,
-            isRestDay = false,
-            onClick = {}
+            attended = true
         )
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
-        ScheduleItem(
-            dayName = "Tuesday",
-            date = "Jan 28",
-            focus = "Push Strength",
+        // Day 2: Tuesday - Attended
+        TrainingDayCard(
+            day = "Tuesday",
+            date = "Dec 31",
+            focus = "Push Strength & Balance",
+            goals = listOf("Handstand Push-ups", "Planche Leans", "Ring Dips"),
+            supporting = listOf("Wrist Conditioning", "Scapular Control"),
             isToday = false,
-            isAttended = true,
-            isRestDay = false,
-            onClick = {}
+            attended = true
         )
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
-        ScheduleItem(
-            dayName = "Wednesday",
-            date = "Jan 29",
+        // Day 3: Wednesday - TODAY (amber highlight)
+        TrainingDayCard(
+            day = "Wednesday",
+            date = "Jan 1",
             focus = "Legs & Core",
-            isToday = false,
-            isAttended = true,
-            isRestDay = false,
-            onClick = {}
-        )
-        
-        Spacer(width = 0, height = 8)
-        
-        ScheduleItem(
-            dayName = "Thursday",
-            date = "Jan 30",
-            focus = "Skills Training",
+            goals = listOf("Pistol Squats", "L-Sits", "Dragon Flags"),
+            supporting = listOf("Hip Mobility", "Ankle Strength"),
             isToday = true,
-            isAttended = false,
-            isRestDay = false,
-            onClick = {}
+            attended = false
         )
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
-        ScheduleItem(
-            dayName = "Friday",
-            date = "Jan 31",
-            focus = "Full Body",
+        // Day 4: Thursday
+        TrainingDayCard(
+            day = "Thursday",
+            date = "Jan 2",
+            focus = "Skills & Flow",
+            goals = listOf("Bar Muscle-up", "Handstand Holds", "Bar Flow Combinations"),
+            supporting = listOf("Flexibility", "Movement Coordination"),
             isToday = false,
-            isAttended = false,
-            isRestDay = false,
-            onClick = {}
+            attended = false
         )
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
-        ScheduleItem(
-            dayName = "Saturday",
-            date = "Feb 1",
-            focus = "Mobility & Flexibility",
+        // Day 5: Friday
+        TrainingDayCard(
+            day = "Friday",
+            date = "Jan 3",
+            focus = "Mobility & Recovery",
+            goals = listOf("Deep Stretching", "Active Flexibility", "Joint Preparation"),
+            supporting = listOf("Breath Work", "Light Conditioning"),
             isToday = false,
-            isAttended = false,
-            isRestDay = false,
-            onClick = {}
+            attended = false
         )
         
-        Spacer(width = 0, height = 8)
+        Spacer(width = 0, height = 16)
         
-        ScheduleItem(
-            dayName = "Sunday",
-            date = "Feb 2",
-            focus = "",
+        // Day 6: Saturday
+        TrainingDayCard(
+            day = "Saturday",
+            date = "Jan 4",
+            focus = "Full Body Strength",
+            goals = listOf("Weighted Pull-ups", "Ring Muscle-ups", "Squat Variations"),
+            supporting = listOf("Core Compression", "Endurance"),
             isToday = false,
-            isAttended = false,
-            isRestDay = true,
-            onClick = {}
+            attended = false
+        )
+        
+        Spacer(width = 0, height = 16)
+        
+        // Day 7: Sunday - Active Rest
+        TrainingDayCard(
+            day = "Sunday",
+            date = "Jan 5",
+            focus = "Active Rest",
+            goals = listOf("Light Movement", "Yoga Flow", "Mobility Work"),
+            supporting = listOf("Recovery", "Mindfulness"),
+            isToday = false,
+            attended = false
         )
         
         Spacer(width = 0, height = 24)
+        
+        // Program Notes
+        SduiCard(onClick = null) {
+            FlexColumn(
+                verticalArrangement = "Top",
+                horizontalAlignment = "Start"
+            ) {
+                SecondaryText(text = "PROGRAM NOTES")
+                Spacer(width = 0, height = 8)
+                SecondaryText(text = "This module focuses on building foundational strength and mastering key calisthenics skills. Progress at your own pace and prioritize form over speed.")
+            }
+        }
+        
+        Spacer(width = 0, height = 32)
     }
 }
 
 /**
- * Membership Screen Content
+ * Membership Screen Content - PIXEL PERFECT match to web app
  */
 @Composable
 private fun CaliclanMembershipScreenContent() {
-    ScrollableColumn(padding = 16) {
+    ScrollableColumn(padding = 24) {
+        // Header
         HeaderText(text = "Membership", size = "large")
+        Spacer(width = 0, height = 8)
+        SecondaryText(text = "Manage your gym access")
         
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
         
-        // Current Plan Card
-        StatusCard(
-            status = "active",
-            title = "Monthly Plan",
-            subtitle = "Active until March 1, 2026",
-            daysLeft = 45,
-            onClick = null
+        // Current Plan Card (amber gradient border, prominent)
+        MembershipPlanCard(
+            name = "Monthly Unlimited",
+            duration = "1 Month",
+            price = "₹2,500",
+            priceLabel = "per month",
+            features = listOf(
+                "Unlimited access to all sessions",
+                "Weekly structured training program",
+                "Community support",
+                "Coach guidance"
+            ),
+            isCurrent = true,
+            isRecommended = false,
+            billingDate = "February 15, 2025",
+            onSelect = null
         )
         
         Spacer(width = 0, height = 32)
         
-        // Renewal Options
-        HeaderText(text = "Renewal Options", size = "medium")
+        // Upgrade or Renew section
+        HeaderText(text = "Upgrade or Renew", size = "medium")
         Spacer(width = 0, height = 16)
         
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                HeaderText(text = "1 Month", size = "small")
-                SecondaryText(text = "Continue your journey • ₹4,000")
-            }
-        }
+        // Quarterly - Recommended
+        MembershipPlanCard(
+            name = "Quarterly Unlimited",
+            duration = "3 Months",
+            price = "₹6,500",
+            priceLabel = "total",
+            features = listOf(
+                "Unlimited access to all sessions",
+                "Weekly structured training program",
+                "Community support",
+                "Coach guidance",
+                "Save 13% vs monthly"
+            ),
+            isCurrent = false,
+            isRecommended = true,
+            billingDate = "",
+            onSelect = { /* Select plan */ }
+        )
         
-        Spacer(width = 0, height = 12)
+        Spacer(width = 0, height = 16)
         
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                HeaderText(text = "3 Months", size = "small")
-                SecondaryText(text = "Commit to consistency • ₹10,500")
-                Spacer(width = 0, height = 8)
-                Chip(label = "Save 12%")
-            }
-        }
-        
-        Spacer(width = 0, height = 12)
-        
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                HeaderText(text = "6 Months", size = "small")
-                SecondaryText(text = "Best value • ₹18,000")
-                Spacer(width = 0, height = 8)
-                Chip(label = "Save 25%")
-            }
-        }
-        
-        Spacer(width = 0, height = 32)
-        
-        // Renew CTA
-        MyButton(
-            text = "Renew via WhatsApp",
-            onClick = { /* Open WhatsApp */ }
+        // Annual
+        MembershipPlanCard(
+            name = "Annual Unlimited",
+            duration = "12 Months",
+            price = "₹24,000",
+            priceLabel = "total",
+            features = listOf(
+                "Unlimited access to all sessions",
+                "Weekly structured training program",
+                "Community support",
+                "Coach guidance",
+                "Priority workshop access",
+                "Save 20% vs monthly"
+            ),
+            isCurrent = false,
+            isRecommended = false,
+            billingDate = "",
+            onSelect = { /* Select plan */ }
         )
         
         Spacer(width = 0, height = 24)
+        
+        // Contact Note
+        SduiCard(onClick = null) {
+            SecondaryText(text = "Need a custom plan or have questions? Contact us via WhatsApp for personalized membership options.")
+        }
+        
+        Spacer(width = 0, height = 32)
     }
 }
 
 /**
- * Profile Screen Content - matches web app exactly
+ * Profile Screen Content - PIXEL PERFECT match to web app
  */
 @Composable
 private fun CaliclanProfileScreenContent() {
     ScrollableColumn(padding = 24) {
         // Header
-        GreetingHeader(
-            subtitle = "Profile",
-            title = "Your account details"
-        )
+        HeaderText(text = "Profile", size = "large")
+        Spacer(width = 0, height = 8)
+        SecondaryText(text = "Your account details")
         
         Spacer(width = 0, height = 32)
         
         // Member Info Card
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                // Avatar + Name row
-                FlexRow(
-                    horizontalArrangement = "Start",
-                    verticalAlignment = "CenterVertically"
-                ) {
-                    // Avatar placeholder with initial
-                    Chip(label = "AM")
-                    Spacer(width = 16, height = 0)
-                    FlexColumn(
-                        verticalArrangement = "Top",
-                        horizontalAlignment = "Start"
-                    ) {
-                        HeaderText(text = "Alex Martinez", size = "medium")
-                        SecondaryText(text = "Member since Aug 2024")
-                    }
-                }
-                
-                Spacer(width = 0, height = 16)
-                
-                // Info rows
-                FlexRow(
-                    horizontalArrangement = "SpaceBetween",
-                    verticalAlignment = "CenterVertically"
-                ) {
-                    SecondaryText(text = "Email")
-                    MyText(text = "alex.martinez@email.com")
-                }
-                Spacer(width = 0, height = 8)
-                FlexRow(
-                    horizontalArrangement = "SpaceBetween",
-                    verticalAlignment = "CenterVertically"
-                ) {
-                    SecondaryText(text = "Phone")
-                    MyText(text = "+91 98765 43210")
-                }
-                Spacer(width = 0, height = 8)
-                FlexRow(
-                    horizontalArrangement = "SpaceBetween",
-                    verticalAlignment = "CenterVertically"
-                ) {
-                    SecondaryText(text = "Batch")
-                    MyText(text = "Adult Batch - Evening")
-                }
-            }
-        }
+        ProfileInfoCard(
+            name = "Alex Martinez",
+            email = "alex.martinez@email.com",
+            phone = "+91 98765 43210",
+            batch = "Adult Batch - Evening",
+            memberSince = "Aug 2024"
+        )
         
         Spacer(width = 0, height = 32)
         
@@ -475,49 +469,21 @@ private fun CaliclanProfileScreenContent() {
         HeaderText(text = "📅 Membership History", size = "medium")
         Spacer(width = 0, height = 16)
         
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                FlexRow(
-                    horizontalArrangement = "SpaceBetween",
-                    verticalAlignment = "Top"
-                ) {
-                    FlexColumn(
-                        verticalArrangement = "Top",
-                        horizontalAlignment = "Start"
-                    ) {
-                        MyText(text = "Monthly Unlimited")
-                        SecondaryText(text = "Dec 15, 2024 - Jan 15, 2025")
-                    }
-                    Chip(label = "Active")
-                }
-            }
-        }
+        HistoryItem(
+            title = "Monthly Unlimited",
+            subtitle = "Dec 15, 2024 - Jan 15, 2025",
+            status = "active",
+            amount = ""
+        )
         
         Spacer(width = 0, height = 12)
         
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                FlexRow(
-                    horizontalArrangement = "SpaceBetween",
-                    verticalAlignment = "Top"
-                ) {
-                    FlexColumn(
-                        verticalArrangement = "Top",
-                        horizontalAlignment = "Start"
-                    ) {
-                        MyText(text = "Quarterly Unlimited")
-                        SecondaryText(text = "Aug 15, 2024 - Nov 15, 2024")
-                    }
-                    SecondaryText(text = "Completed")
-                }
-            }
-        }
+        HistoryItem(
+            title = "Quarterly Unlimited",
+            subtitle = "Aug 15, 2024 - Nov 15, 2024",
+            status = "completed",
+            amount = ""
+        )
         
         Spacer(width = 0, height = 32)
         
@@ -525,43 +491,25 @@ private fun CaliclanProfileScreenContent() {
         HeaderText(text = "💳 Payment History", size = "medium")
         Spacer(width = 0, height = 16)
         
-        SduiCard(onClick = null) {
-            FlexRow(
-                horizontalArrangement = "SpaceBetween",
-                verticalAlignment = "CenterVertically"
-            ) {
-                FlexColumn(
-                    verticalArrangement = "Top",
-                    horizontalAlignment = "Start"
-                ) {
-                    MyText(text = "₹2,500")
-                    SecondaryText(text = "Dec 15, 2024 • UPI")
-                }
-                MyText(text = "✓ Completed")
-            }
-        }
+        HistoryItem(
+            title = "₹2,500",
+            subtitle = "Dec 15, 2024 • UPI",
+            status = "completed",
+            amount = ""
+        )
         
         Spacer(width = 0, height = 12)
         
-        SduiCard(onClick = null) {
-            FlexRow(
-                horizontalArrangement = "SpaceBetween",
-                verticalAlignment = "CenterVertically"
-            ) {
-                FlexColumn(
-                    verticalArrangement = "Top",
-                    horizontalAlignment = "Start"
-                ) {
-                    MyText(text = "₹6,500")
-                    SecondaryText(text = "Aug 15, 2024 • UPI")
-                }
-                MyText(text = "✓ Completed")
-            }
-        }
+        HistoryItem(
+            title = "₹6,500",
+            subtitle = "Aug 15, 2024 • UPI",
+            status = "completed",
+            amount = ""
+        )
         
         Spacer(width = 0, height = 32)
         
-        // Support section
+        // Support
         HeaderText(text = "Support", size = "medium")
         Spacer(width = 0, height = 16)
         
@@ -574,7 +522,7 @@ private fun CaliclanProfileScreenContent() {
         
         Spacer(width = 0, height = 16)
         
-        // Sign out
+        // Sign out (red text)
         ActionButton(
             icon = "logout",
             text = "Sign Out",
@@ -585,6 +533,7 @@ private fun CaliclanProfileScreenContent() {
         Spacer(width = 0, height = 32)
     }
 }
+
 
 /**
  * Coach Profile Sheet Content

@@ -48,6 +48,9 @@ fun main() {
     } catch (e: Throwable) {
         println("Zipline JS: Failed to take host console: ${e.message}")
     }
+    
+    // Initialize GymService provider for screens
+    GymServiceProvider.initialize()
 
     // Capture original console for fallback
     val originalConsole: dynamic = js("console")

@@ -54,6 +54,33 @@ class MockGymService : GymService {
     
     override suspend fun getStreak(): Int = 4
     
+    override suspend fun getWeeklyAttendanceStatus(): String = """
+        ["attended","attended","attended","attended","today","future","future"]
+    """.trimIndent()
+    
+    override suspend fun getMembershipPlans(): String = """
+        [
+            {"id": "1", "name": "Monthly Unlimited", "duration": "1 Month", "price": "₹2,500", "price_label": "per month", "features": ["Unlimited access to all sessions", "Weekly structured training program", "Community support", "Coach guidance"], "is_recommended": false, "sort_order": 1},
+            {"id": "2", "name": "Quarterly Unlimited", "duration": "3 Months", "price": "₹6,500", "price_label": "total", "features": ["Unlimited access to all sessions", "Weekly structured training program", "Community support", "Coach guidance", "Save 13% vs monthly"], "is_recommended": true, "sort_order": 2},
+            {"id": "3", "name": "Annual Unlimited", "duration": "12 Months", "price": "₹24,000", "price_label": "total", "features": ["Unlimited access to all sessions", "Weekly structured training program", "Community support", "Coach guidance", "Priority workshop access", "Save 20% vs monthly"], "is_recommended": false, "sort_order": 3}
+        ]
+    """.trimIndent()
+    
+    override suspend fun getMembershipHistory(): String = """
+        [
+            {"id": "1", "user_id": "mock-user", "plan_name": "Monthly Unlimited", "start_date": "2024-12-15", "end_date": "2025-01-15", "status": "active"},
+            {"id": "2", "user_id": "mock-user", "plan_name": "Quarterly Unlimited", "start_date": "2024-08-15", "end_date": "2024-11-15", "status": "completed"}
+        ]
+    """.trimIndent()
+    
+    override suspend fun getPaymentHistory(): String = """
+        [
+            {"id": "1", "user_id": "mock-user", "amount": "₹2,500", "payment_date": "2024-12-15", "method": "UPI", "status": "completed"},
+            {"id": "2", "user_id": "mock-user", "amount": "₹6,500", "payment_date": "2024-08-15", "method": "UPI", "status": "completed"}
+        ]
+    """.trimIndent()
+
+    
     override suspend fun getCoaches(): String = """
         [
             {"id": "1", "name": "Hemant Singh", "role": "Head Coach", "bio": "Founder of Caliclan. Specializing in statics and front lever mechanics.", "instagram_handle": "hemant_caliclan", "photo_url": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400", "sort_order": 1},
