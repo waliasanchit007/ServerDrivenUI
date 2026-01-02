@@ -47,8 +47,8 @@ class RealGymService(
         }
     }
     
-    // Demo user ID for anonymous access
-    private val demoUserId = "demo-user-001"
+    // Demo user ID for anonymous access (must be valid UUID for Supabase)
+    private val demoUserId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
     
     // ============= Training =============
     
