@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.zipline)
     alias(libs.plugins.redwood.generator.compose)
     alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 redwoodSchema {
@@ -25,6 +26,7 @@ kotlin {
             implementation(libs.redwood.treehouse.guest)
             implementation(libs.zipline)
             implementation(project(":shared"))
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
         }
         val jsMain by getting {
             dependencies {
