@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.cash.redwood.Modifier
 import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.redwood.treehouse.AppService
@@ -454,17 +455,32 @@ class CmpBackHandler : BackHandler<@Composable (androidx.compose.ui.Modifier) ->
 
 // ============= Caliclan Widgets =============
 
-// Caliclan Design Tokens
+// Caliclan Design Tokens - matches web app neutral-950 palette
 private object CaliclanTheme {
-    val Background = androidx.compose.ui.graphics.Color(0xFF121212)
-    val Surface = androidx.compose.ui.graphics.Color(0xFF1E1E1E)
-    val SurfaceVariant = androidx.compose.ui.graphics.Color(0xFF2C2C2C)
-    val Accent = androidx.compose.ui.graphics.Color(0xFFFFC107)
-    val Success = androidx.compose.ui.graphics.Color(0xFF4CAF50)
-    val Error = androidx.compose.ui.graphics.Color(0xFFE57373)
-    val TextPrimary = androidx.compose.ui.graphics.Color.White
-    val TextSecondary = androidx.compose.ui.graphics.Color(0xFFB0B0B0)
-    val Border = androidx.compose.ui.graphics.Color(0xFF2C2C2C)
+    // Backgrounds (from web tailwind neutral scale)
+    val Background = androidx.compose.ui.graphics.Color(0xFF0A0A0A)  // neutral-950
+    val Surface = androidx.compose.ui.graphics.Color(0xFF171717)     // neutral-900
+    val SurfaceVariant = androidx.compose.ui.graphics.Color(0xFF262626)  // neutral-800
+    val SurfaceElevated = androidx.compose.ui.graphics.Color(0xFF262626) // neutral-800
+    
+    // Accent colors (amber scale)
+    val Accent = androidx.compose.ui.graphics.Color(0xFFF59E0B)      // amber-500
+    val AccentDark = androidx.compose.ui.graphics.Color(0xFF92400E)  // amber-900/50 approx
+    val AccentMuted = androidx.compose.ui.graphics.Color(0xFF78350F) // amber-950/40 approx
+    
+    // Status colors
+    val Success = androidx.compose.ui.graphics.Color(0xFF059669)     // emerald-600
+    val SuccessBg = androidx.compose.ui.graphics.Color(0xFF064E3B)   // emerald-950/40 approx
+    val Error = androidx.compose.ui.graphics.Color(0xFFDC2626)       // red-600
+    
+    // Text
+    val TextPrimary = androidx.compose.ui.graphics.Color(0xFFFAFAFA)   // neutral-50
+    val TextSecondary = androidx.compose.ui.graphics.Color(0xFFA3A3A3) // neutral-400
+    val TextMuted = androidx.compose.ui.graphics.Color(0xFF737373)     // neutral-500
+    
+    // Borders
+    val Border = androidx.compose.ui.graphics.Color(0xFF262626)        // neutral-800
+    val BorderLight = androidx.compose.ui.graphics.Color(0xFF404040)   // neutral-700
 }
 
 /**
@@ -1106,6 +1122,23 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                                 indicatorColor = CaliclanTheme.SurfaceVariant
                             )
                         )
+                        // Profile tab
+                        NavigationBarItem(
+                            icon = { Text("👤", style = MaterialTheme.typography.titleMedium) },
+                            label = { 
+                                Text(
+                                    "Profile", 
+                                    color = if (selectedTab == "profile") CaliclanTheme.Accent else CaliclanTheme.TextSecondary,
+                                    style = MaterialTheme.typography.labelMedium
+                                ) 
+                            },
+                            selected = selectedTab == "profile",
+                            onClick = { onTabSelected("profile") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = CaliclanTheme.Accent,
+                                indicatorColor = CaliclanTheme.SurfaceVariant
+                            )
+                        )
                     }
                 }
             }
@@ -1125,6 +1158,326 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
     override fun showBottomBar(showBottomBar: Boolean) { this.showBottomBar = showBottomBar }
     override fun selectedTab(selectedTab: String) { this.selectedTab = selectedTab }
     override fun onTabSelected(onTabSelected: (String) -> Unit) { this.onTabSelected = onTabSelected }
+}
+
+/**
+ * GreetingHeader - Two-line greeting matching web app
+ */
+class CmpGreetingHeader : GreetingHeader<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var subtitle by mutableStateOf("Welcome back,")
+    private var title by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.titleMedium,
+                color = CaliclanTheme.TextSecondary
+            )
+            Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineLarge,
+                color = CaliclanTheme.TextPrimary
+            )
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun subtitle(subtitle: String) { this.subtitle = subtitle }
+    override fun title(title: String) { this.title = title }
+}
+
+/**
+ * TrainingSessionCard - Today's session card with focus + goals
+ */
+class CmpTrainingSessionCard : TrainingSessionCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var label by mutableStateOf("Today's Session")
+    private var focus by mutableStateOf("")
+    private var goals by mutableStateOf(listOf<String>())
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) androidx.compose.ui.Modifier.clickable { onClick?.invoke() } else androidx.compose.ui.Modifier),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.Border),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                // Header row
+                Row(
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                        Text(
+                            text = label.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CaliclanTheme.TextSecondary,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
+                        Text(
+                            text = focus,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = CaliclanTheme.TextPrimary
+                        )
+                    }
+                    Text("›", style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextMuted)
+                }
+                
+                // Goals section
+                if (goals.isNotEmpty()) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                    Text(
+                        text = "Focus Areas",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CaliclanTheme.TextSecondary
+                    )
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        goals.forEach { goal ->
+                            Box(
+                                modifier = androidx.compose.ui.Modifier
+                                    .background(CaliclanTheme.SurfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(goal, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun label(label: String) { this.label = label }
+    override fun focus(focus: String) { this.focus = focus }
+    override fun goals(goals: List<String>) { this.goals = goals }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+/**
+ * AnnouncementCard - Amber-bordered coach update
+ */
+class CmpAnnouncementCard : AnnouncementCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var label by mutableStateOf("Coach Update")
+    private var title by mutableStateOf("")
+    private var message by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.AccentDark),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                Text(
+                    text = label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CaliclanTheme.Accent,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = CaliclanTheme.TextPrimary
+                )
+                Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CaliclanTheme.TextSecondary,
+                    lineHeight = 22.sp
+                )
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun label(label: String) { this.label = label }
+    override fun title(title: String) { this.title = title }
+    override fun message(message: String) { this.message = message }
+}
+
+/**
+ * ActionButton - Full-width button with icon
+ */
+class CmpActionButton : ActionButton<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var icon by mutableStateOf("whatsapp")
+    private var text by mutableStateOf("")
+    private var variant by mutableStateOf("secondary")
+    private var onClick by mutableStateOf({})
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val (bgColor, textColor) = when (variant) {
+            "primary" -> CaliclanTheme.Accent to CaliclanTheme.Background
+            "ghost" -> androidx.compose.ui.graphics.Color.Transparent to CaliclanTheme.TextPrimary
+            else -> CaliclanTheme.Surface to CaliclanTheme.TextPrimary
+        }
+        val iconEmoji = when (icon) {
+            "whatsapp" -> "💬"
+            "arrow_right" -> "→"
+            else -> "•"
+        }
+        
+        Button(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = bgColor),
+            border = if (variant == "secondary") androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.Border) else null,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            Text(iconEmoji, style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+            Text(text, color = textColor, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun icon(icon: String) { this.icon = icon }
+    override fun text(text: String) { this.text = text }
+    override fun variant(variant: String) { this.variant = variant }
+    override fun onClick(onClick: () -> Unit) { this.onClick = onClick }
+}
+
+/**
+ * CoachGrid - 2-column grid of coach cards
+ */
+class CmpCoachGrid : CoachGrid<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val widgets = (children as CmpChildren).widgets
+        // 2-column grid layout
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            for (i in widgets.indices step 2) {
+                Row(
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                        widgets[i].value(androidx.compose.ui.Modifier.fillMaxWidth())
+                    }
+                    if (i + 1 < widgets.size) {
+                        Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                            widgets[i + 1].value(androidx.compose.ui.Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Spacer(modifier = androidx.compose.ui.Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+}
+
+/**
+ * WeeklyAttendance - 7-day visual strip matching web app
+ */
+class CmpWeeklyAttendance : WeeklyAttendance<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var streak by mutableStateOf(0)
+    private var days by mutableStateOf(listOf<String>())
+    private var summary by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CaliclanTheme.Border),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.padding(24.dp)) {
+                // Streak header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🔥", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = androidx.compose.ui.Modifier.width(8.dp))
+                    Text(
+                        "$streak-day streak",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CaliclanTheme.TextPrimary
+                    )
+                }
+                
+                Spacer(modifier = androidx.compose.ui.Modifier.height(16.dp))
+                
+                // Weekly visual
+                val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                Row(
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    dayLabels.forEachIndexed { index, label ->
+                        val status = days.getOrElse(index) { "future" }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CaliclanTheme.TextMuted
+                            )
+                            Spacer(modifier = androidx.compose.ui.Modifier.height(6.dp))
+                            Box(
+                                modifier = androidx.compose.ui.Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        when (status) {
+                                            "today" -> CaliclanTheme.Accent
+                                            "attended" -> CaliclanTheme.SuccessBg
+                                            else -> CaliclanTheme.SurfaceVariant
+                                        },
+                                        androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                when (status) {
+                                    "attended" -> Box(
+                                        modifier = androidx.compose.ui.Modifier
+                                            .size(8.dp)
+                                            .background(CaliclanTheme.Success, CircleShape)
+                                    )
+                                    "today" -> Box(
+                                        modifier = androidx.compose.ui.Modifier
+                                            .size(6.dp)
+                                            .background(CaliclanTheme.Background, CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Summary
+                if (summary.isNotEmpty()) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                    HorizontalDivider(color = CaliclanTheme.Border)
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CaliclanTheme.TextSecondary
+                    )
+                }
+            }
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+    override fun streak(streak: Int) { this.streak = streak }
+    override fun days(days: List<String>) { this.days = days }
+    override fun summary(summary: String) { this.summary = summary }
 }
 
 // ============= Widget Factory =============
@@ -1225,6 +1578,25 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     }
     override fun AppScaffold(): AppScaffold<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         return CmpAppScaffold()
+    }
+    // New Home screen widgets
+    override fun GreetingHeader(): GreetingHeader<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpGreetingHeader()
+    }
+    override fun TrainingSessionCard(): TrainingSessionCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpTrainingSessionCard()
+    }
+    override fun AnnouncementCard(): AnnouncementCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpAnnouncementCard()
+    }
+    override fun ActionButton(): ActionButton<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpActionButton()
+    }
+    override fun CoachGrid(): CoachGrid<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpCoachGrid()
+    }
+    override fun WeeklyAttendance(): WeeklyAttendance<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpWeeklyAttendance()
     }
 }
 

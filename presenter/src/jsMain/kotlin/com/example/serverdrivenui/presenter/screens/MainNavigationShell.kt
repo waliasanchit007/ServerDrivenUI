@@ -45,6 +45,7 @@ class MainNavigationShell : Screen {
                 )
                 "training" -> CaliclanTrainingScreenContent()
                 "membership" -> CaliclanMembershipScreenContent()
+                "profile" -> CaliclanProfileScreenContent()
             }
         }
         
@@ -66,137 +67,177 @@ class MainNavigationShell : Screen {
 }
 
 /**
- * Home Screen Content
+ * Home Screen Content - matches web app exactly
  */
 @Composable
 private fun CaliclanHomeScreenContent(
     onCoachClick: (String, String, String, String, String) -> Unit
 ) {
-    ScrollableColumn(padding = 16) {
-        // Greeting
-        HeaderText(text = "Good Morning, Rahul", size = "large")
+    ScrollableColumn(padding = 24) {
+        // 1. Greeting (two-line like web app)
+        GreetingHeader(
+            subtitle = "Welcome back,",
+            title = "Alex"
+        )
         
-        Spacer(width = 0, height = 16)
+        Spacer(width = 0, height = 32)
         
-        // Membership Card
+        // 2. Membership Status Card
         StatusCard(
             status = "active",
-            title = "Active Member",
-            subtitle = "Monthly Plan · Auto-renews Mar 1",
+            title = "Active",
+            subtitle = "Expires on February 15, 2025",
             daysLeft = 45,
             onClick = null
         )
         
         Spacer(width = 0, height = 32)
         
-        // TODAY'S TRAINING - PRIMARY HERO CARD
-        HeaderText(text = "TODAY'S TRAINING", size = "small")
-        Spacer(width = 0, height = 12)
-        
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                // Large dominant title
-                HeaderText(text = "Skills Training", size = "large")
-                Spacer(width = 0, height = 8)
-                SecondaryText(text = "Handstand practice and skill-specific drills")
-                Spacer(width = 0, height = 16)
-                FlexRow(
-                    horizontalArrangement = "Start",
-                    verticalAlignment = "CenterVertically"
-                ) {
-                    Chip(label = "Skills")
-                    Spacer(width = 8, height = 0)
-                    Chip(label = "Balance")
-                }
-            }
-        }
+        // 3. Today's Session Card
+        TrainingSessionCard(
+            label = "Today's Session",
+            focus = "Legs & Core",
+            goals = listOf("Pistol Squats", "L-Sits", "Dragon Flags"),
+            onClick = null
+        )
         
         Spacer(width = 0, height = 32)
         
-        // CONSISTENCY - Quiet Accountability
-        HeaderText(text = "Consistency", size = "medium")
-        Spacer(width = 0, height = 12)
-        
-        SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
-                HeaderText(text = "🔥 4-day streak", size = "small")
-                Spacer(width = 0, height = 12)
-                ConsistencyStrip(
-                    monday = "attended",
-                    tuesday = "attended",
-                    wednesday = "attended",
-                    thursday = "today",
-                    friday = "future",
-                    saturday = "future",
-                    sunday = "rest"
-                )
-                Spacer(width = 0, height = 12)
-                // NEUTRAL COPY - no motivational coaching tone
-                SecondaryText(text = "You trained yesterday")
-            }
-        }
+        // 4. Training Consistency (streak + weekly visual)
+        WeeklyAttendance(
+            streak = 4,
+            days = listOf("attended", "attended", "today", "future", "future", "future", "future"),
+            summary = "Trained 2 days this week"
+        )
         
         Spacer(width = 0, height = 32)
         
-        // MEET YOUR COACHES - Bottom section, visually present
+        // 5. Coach Announcement
+        AnnouncementCard(
+            label = "Coach Update",
+            title = "Advanced Skills Workshop",
+            message = "Join us this Saturday at 10 AM for a special muscle-up workshop."
+        )
+        
+        Spacer(width = 0, height = 32)
+        
+        // 6. WhatsApp CTA Button
+        ActionButton(
+            icon = "whatsapp",
+            text = "Contact Gym via WhatsApp",
+            variant = "secondary",
+            onClick = { /* Open WhatsApp */ }
+        )
+        
+        Spacer(width = 0, height = 32)
+        
+        // 7. Meet Your Coaches (2-column grid with 6 coaches)
         HeaderText(text = "Meet Your Coaches", size = "medium")
-        Spacer(width = 0, height = 12)
+        Spacer(width = 0, height = 16)
         
-        FlexRow(
-            horizontalArrangement = "Start",
-            verticalAlignment = "Top"
-        ) {
+        CoachGrid {
             CoachCard(
                 name = "Hemant",
-                role = "Head Coach",
-                photoUrl = "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400",
+                role = "Founder, Master Coach",
+                photoUrl = "",
                 onClick = {
                     onCoachClick(
-                        "Hemant Singh",
-                        "Head Coach",
-                        "Founder of Caliclan. Specializing in statics and front lever mechanics. 8+ years of calisthenics experience.",
-                        "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400",
+                        "Hemant",
+                        "Founder, Master Coach",
+                        "Specializing in statics and front lever mechanics. 8+ years of calisthenics experience.",
+                        "",
                         "hemant_caliclan"
                     )
                 }
             )
-            Spacer(width = 12, height = 0)
             CoachCard(
-                name = "Arjun",
-                role = "Strength",
-                photoUrl = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400",
+                name = "Ankit",
+                role = "Head Coach",
+                photoUrl = "",
                 onClick = {
                     onCoachClick(
-                        "Arjun Verma",
-                        "Strength Coach",
-                        "Expert in progressive overload and weighted calisthenics. Certified fitness trainer.",
-                        "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400",
-                        "arjun_strength"
+                        "Ankit",
+                        "Head Coach",
+                        "Expert in progressive training and muscle-up progressions.",
+                        "",
+                        "ankit_coach"
+                    )
+                }
+            )
+            CoachCard(
+                name = "Shoaib",
+                role = "Coach",
+                photoUrl = "",
+                onClick = {
+                    onCoachClick(
+                        "Shoaib",
+                        "Coach",
+                        "Specializing in handstand and balance work.",
+                        "",
+                        "shoaib_coach"
+                    )
+                }
+            )
+            CoachCard(
+                name = "Tejas",
+                role = "Coach",
+                photoUrl = "",
+                onClick = {
+                    onCoachClick(
+                        "Tejas",
+                        "Coach",
+                        "Focus on strength and endurance training.",
+                        "",
+                        "tejas_coach"
+                    )
+                }
+            )
+            CoachCard(
+                name = "Mayank",
+                role = "Coach",
+                photoUrl = "",
+                onClick = {
+                    onCoachClick(
+                        "Mayank",
+                        "Coach",
+                        "Mobility and flexibility specialist.",
+                        "",
+                        "mayank_coach"
+                    )
+                }
+            )
+            CoachCard(
+                name = "Gupta Ji",
+                role = "Coach",
+                photoUrl = "",
+                onClick = {
+                    onCoachClick(
+                        "Gupta Ji",
+                        "Coach",
+                        "Senior coach with years of experience.",
+                        "",
+                        "guptaji_coach"
                     )
                 }
             )
         }
         
         // Bottom padding for scrolling room
-        Spacer(width = 0, height = 24)
+        Spacer(width = 0, height = 32)
     }
 }
 
 /**
- * Training Screen Content
+ * Training Screen Content - matches web app exactly
  */
 @Composable
 private fun CaliclanTrainingScreenContent() {
-    ScrollableColumn(padding = 16) {
-        HeaderText(text = "This Week", size = "large")
-        Spacer(width = 0, height = 8)
-        SecondaryText(text = "January 2026")
+    ScrollableColumn(padding = 24) {
+        // Header matching web app
+        GreetingHeader(
+            subtitle = "This Week's Training",
+            title = "Structured calisthenics program"
+        )
         
         Spacer(width = 0, height = 24)
         
@@ -359,6 +400,189 @@ private fun CaliclanMembershipScreenContent() {
         )
         
         Spacer(width = 0, height = 24)
+    }
+}
+
+/**
+ * Profile Screen Content - matches web app exactly
+ */
+@Composable
+private fun CaliclanProfileScreenContent() {
+    ScrollableColumn(padding = 24) {
+        // Header
+        GreetingHeader(
+            subtitle = "Profile",
+            title = "Your account details"
+        )
+        
+        Spacer(width = 0, height = 32)
+        
+        // Member Info Card
+        SduiCard(onClick = null) {
+            FlexColumn(
+                verticalArrangement = "Top",
+                horizontalAlignment = "Start"
+            ) {
+                // Avatar + Name row
+                FlexRow(
+                    horizontalArrangement = "Start",
+                    verticalAlignment = "CenterVertically"
+                ) {
+                    // Avatar placeholder with initial
+                    Chip(label = "AM")
+                    Spacer(width = 16, height = 0)
+                    FlexColumn(
+                        verticalArrangement = "Top",
+                        horizontalAlignment = "Start"
+                    ) {
+                        HeaderText(text = "Alex Martinez", size = "medium")
+                        SecondaryText(text = "Member since Aug 2024")
+                    }
+                }
+                
+                Spacer(width = 0, height = 16)
+                
+                // Info rows
+                FlexRow(
+                    horizontalArrangement = "SpaceBetween",
+                    verticalAlignment = "CenterVertically"
+                ) {
+                    SecondaryText(text = "Email")
+                    MyText(text = "alex.martinez@email.com")
+                }
+                Spacer(width = 0, height = 8)
+                FlexRow(
+                    horizontalArrangement = "SpaceBetween",
+                    verticalAlignment = "CenterVertically"
+                ) {
+                    SecondaryText(text = "Phone")
+                    MyText(text = "+91 98765 43210")
+                }
+                Spacer(width = 0, height = 8)
+                FlexRow(
+                    horizontalArrangement = "SpaceBetween",
+                    verticalAlignment = "CenterVertically"
+                ) {
+                    SecondaryText(text = "Batch")
+                    MyText(text = "Adult Batch - Evening")
+                }
+            }
+        }
+        
+        Spacer(width = 0, height = 32)
+        
+        // Membership History
+        HeaderText(text = "📅 Membership History", size = "medium")
+        Spacer(width = 0, height = 16)
+        
+        SduiCard(onClick = null) {
+            FlexColumn(
+                verticalArrangement = "Top",
+                horizontalAlignment = "Start"
+            ) {
+                FlexRow(
+                    horizontalArrangement = "SpaceBetween",
+                    verticalAlignment = "Top"
+                ) {
+                    FlexColumn(
+                        verticalArrangement = "Top",
+                        horizontalAlignment = "Start"
+                    ) {
+                        MyText(text = "Monthly Unlimited")
+                        SecondaryText(text = "Dec 15, 2024 - Jan 15, 2025")
+                    }
+                    Chip(label = "Active")
+                }
+            }
+        }
+        
+        Spacer(width = 0, height = 12)
+        
+        SduiCard(onClick = null) {
+            FlexColumn(
+                verticalArrangement = "Top",
+                horizontalAlignment = "Start"
+            ) {
+                FlexRow(
+                    horizontalArrangement = "SpaceBetween",
+                    verticalAlignment = "Top"
+                ) {
+                    FlexColumn(
+                        verticalArrangement = "Top",
+                        horizontalAlignment = "Start"
+                    ) {
+                        MyText(text = "Quarterly Unlimited")
+                        SecondaryText(text = "Aug 15, 2024 - Nov 15, 2024")
+                    }
+                    SecondaryText(text = "Completed")
+                }
+            }
+        }
+        
+        Spacer(width = 0, height = 32)
+        
+        // Payment History
+        HeaderText(text = "💳 Payment History", size = "medium")
+        Spacer(width = 0, height = 16)
+        
+        SduiCard(onClick = null) {
+            FlexRow(
+                horizontalArrangement = "SpaceBetween",
+                verticalAlignment = "CenterVertically"
+            ) {
+                FlexColumn(
+                    verticalArrangement = "Top",
+                    horizontalAlignment = "Start"
+                ) {
+                    MyText(text = "₹2,500")
+                    SecondaryText(text = "Dec 15, 2024 • UPI")
+                }
+                MyText(text = "✓ Completed")
+            }
+        }
+        
+        Spacer(width = 0, height = 12)
+        
+        SduiCard(onClick = null) {
+            FlexRow(
+                horizontalArrangement = "SpaceBetween",
+                verticalAlignment = "CenterVertically"
+            ) {
+                FlexColumn(
+                    verticalArrangement = "Top",
+                    horizontalAlignment = "Start"
+                ) {
+                    MyText(text = "₹6,500")
+                    SecondaryText(text = "Aug 15, 2024 • UPI")
+                }
+                MyText(text = "✓ Completed")
+            }
+        }
+        
+        Spacer(width = 0, height = 32)
+        
+        // Support section
+        HeaderText(text = "Support", size = "medium")
+        Spacer(width = 0, height = 16)
+        
+        ActionButton(
+            icon = "whatsapp",
+            text = "Contact Gym Support",
+            variant = "secondary",
+            onClick = { /* Open WhatsApp */ }
+        )
+        
+        Spacer(width = 0, height = 16)
+        
+        // Sign out
+        ActionButton(
+            icon = "logout",
+            text = "Sign Out",
+            variant = "ghost",
+            onClick = { /* Sign out */ }
+        )
+        
+        Spacer(width = 0, height = 32)
     }
 }
 

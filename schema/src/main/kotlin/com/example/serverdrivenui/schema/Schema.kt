@@ -39,6 +39,13 @@ import kotlin.Unit
         Chip::class,
         // Layout widgets
         AppScaffold::class,
+        // New Home screen widgets
+        GreetingHeader::class,
+        TrainingSessionCard::class,
+        AnnouncementCard::class,
+        ActionButton::class,
+        CoachGrid::class,
+        WeeklyAttendance::class,
     ],
 )
 interface SduiSchema
@@ -287,4 +294,62 @@ data class AppScaffold(
     @Children(1) val content: () -> Unit,
 )
 
+/**
+ * GreetingHeader - Two-line greeting: "Welcome back," + name
+ */
+@Widget(28)
+data class GreetingHeader(
+    @Property(1) val subtitle: String,  // "Welcome back,"
+    @Property(2) val title: String,     // user name
+)
 
+/**
+ * TrainingSessionCard - Today's session with focus + goal chips
+ */
+@Widget(29)
+data class TrainingSessionCard(
+    @Property(1) val label: String,           // "Today's Session"
+    @Property(2) val focus: String,           // "Legs & Core"
+    @Property(3) val goals: List<String>,     // ["Pistol Squats", "L-Sits"]
+    @Property(4) val onClick: (() -> Unit)?,
+)
+
+/**
+ * AnnouncementCard - Amber-bordered coach update
+ */
+@Widget(30)
+data class AnnouncementCard(
+    @Property(1) val label: String,           // "Coach Update"
+    @Property(2) val title: String,           // "Advanced Skills Workshop"
+    @Property(3) val message: String,         // description
+)
+
+/**
+ * ActionButton - Full-width button with icon
+ */
+@Widget(31)
+data class ActionButton(
+    @Property(1) val icon: String,            // "whatsapp", "arrow_right"
+    @Property(2) val text: String,
+    @Property(3) val variant: String,         // "primary", "secondary", "ghost"
+    @Property(4) val onClick: () -> Unit,
+)
+
+/**
+ * CoachGrid - 2-column grid of coach cards
+ */
+@Widget(32)
+data class CoachGrid(
+    @Children(1) val children: () -> Unit,
+)
+
+/**
+ * WeeklyAttendance - 7-day visual strip (replaces ConsistencyStrip)
+ * More detailed with day labels and proper styling
+ */
+@Widget(33)
+data class WeeklyAttendance(
+    @Property(1) val streak: Int,
+    @Property(2) val days: List<String>,      // ["attended", "attended", "today", "future", ...]
+    @Property(3) val summary: String,         // "Trained 2 days this week"
+)
