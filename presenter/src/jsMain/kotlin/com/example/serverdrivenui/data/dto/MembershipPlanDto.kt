@@ -8,11 +8,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class MembershipPlanDto(
-    val id: String,
-    val name: String,
-    val duration: String,
-    val price: String,
-    @SerialName("price_label") val priceLabel: String,
+    val id: String = "",
+    val name: String = "",
+    val duration: String = "",
+    val price: String = "",
+    @SerialName("price_label") val priceLabel: String = "",
     val features: List<String> = emptyList(),
     @SerialName("is_recommended") val isRecommended: Boolean = false,
     @SerialName("sort_order") val sortOrder: Int = 0,

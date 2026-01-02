@@ -2,42 +2,76 @@ package com.example.serverdrivenui.presenter
 
 import app.cash.zipline.Zipline
 import com.example.serverdrivenui.shared.GymService
+import com.example.serverdrivenui.data.repository.GymRepository
 
 /**
- * GymServiceProvider - Singleton accessor for GymService in presenter.
+ * GymServiceProvider - Singleton accessor for GymService and GymRepository in presenter.
  * 
- * The presenter runs as a Zipline guest. GymService is bound by the host
- * and taken here for use across all screens.
+ * Uses LAZY INITIALIZATION: The service is taken from Zipline on first access,
+ * not at startup. This is necessary because the presenter's main() runs before
+ * the host's bindServices() binds the GymService.
  */
 object GymServiceProvider {
     
     private var _service: GymService? = null
+    private var _repository: GymRepository? = null
+    private var initialized = false
     
     /**
-     * Initialize the service provider by taking GymService from Zipline.
-     * Should be called once in Main.kt after Zipline is set up.
+     * Lazy initialization - takes GymService from Zipline on first access.
      */
-    fun initialize() {
+    private fun ensureInitialized() {
+        if (initialized) return
+        initialized = true
+        
         try {
             val zipline = Zipline.get()
             _service = zipline.take<GymService>("gym")
-            println("GymServiceProvider: GymService bound successfully")
+            _repository = _service?.let { GymRepository(it) }
+            println("GymServiceProvider: LAZY INIT SUCCESS - GymService and Repository initialized")
         } catch (e: Throwable) {
-            println("GymServiceProvider: Failed to take GymService: ${e.message}")
+            println("GymServiceProvider: LAZY INIT FAILED - ${e.message}")
             _service = null
+            _repository = null
         }
     }
     
     /**
-     * Get the GymService instance.
-     * Returns null if not initialized or binding failed.
+     * Get the GymService instance (raw JSON methods).
+     * Initializes lazily on first access.
      */
     val service: GymService?
-        get() = _service
+        get() {
+            ensureInitialized()
+            return _service
+        }
     
     /**
-     * Check if GymService is available.
+     * Get the GymRepository instance (parsed DTOs).
+     * Use this in screens for type-safe data access.
+     * Initializes lazily on first access.
+     */
+    val repository: GymRepository?
+        get() {
+            ensureInitialized()
+            return _repository
+        }
+    
+    /**
+     * Check if services are available.
      */
     val isAvailable: Boolean
-        get() = _service != null
+        get() {
+            ensureInitialized()
+            return _service != null && _repository != null
+        }
+    
+    /**
+     * Force re-initialization (useful if first attempt failed).
+     */
+    fun reset() {
+        initialized = false
+        _service = null
+        _repository = null
+    }
 }

@@ -8,10 +8,10 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class TrainingDayDto(
-    val id: String,
-    val date: String,
-    @SerialName("day_name") val dayName: String,
-    val focus: String,
+    val id: String = "",
+    val date: String = "",
+    @SerialName("day_name") val dayName: String = "",
+    val focus: String = "",
     val description: String? = null,
     val goals: List<String> = emptyList(),
     val supporting: List<String> = emptyList(),

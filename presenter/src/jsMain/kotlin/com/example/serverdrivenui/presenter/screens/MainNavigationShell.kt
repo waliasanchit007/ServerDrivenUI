@@ -2,6 +2,7 @@ package com.example.serverdrivenui.presenter.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -10,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.presenter.GymServiceProvider
+import com.example.serverdrivenui.data.dto.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
@@ -233,118 +235,114 @@ private fun CaliclanHomeScreenContent(
 }
 
 /**
- * Training Screen Content - PIXEL PERFECT match to web app
+ * Training Screen Content - LIVE DATA from Supabase via GymRepository
  */
 @Composable
 private fun CaliclanTrainingScreenContent() {
+    // Sealed class for UI state
+    sealed class TrainingUiState {
+        object Loading : TrainingUiState()
+        data class Success(
+            val schedule: List<TrainingDayDto>,
+            val attendanceStatus: List<String>
+        ) : TrainingUiState()
+        data class Error(val message: String) : TrainingUiState()
+    }
+    
+    // State
+    var uiState by remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
+    val scope = rememberCoroutineScope()
+    val today = "2026-01-02"
+    
+    // Fetch data on mount - REAL API CALLS ONLY
+    LaunchedEffect(Unit) {
+        println("TrainingScreen: LaunchedEffect triggered")
+        scope.launch {
+            println("TrainingScreen: Coroutine launched, accessing repository...")
+            try {
+                val repo = GymServiceProvider.repository
+                println("TrainingScreen: Repository = ${repo != null}")
+                
+                if (repo == null) {
+                    uiState = TrainingUiState.Error("GymService not available - check host binding")
+                    return@launch
+                }
+                
+                println("TrainingScreen: Calling getWeeklySchedule()...")
+                val schedule = repo.getWeeklySchedule()
+                println("TrainingScreen: Got ${schedule.size} days")
+                
+                val attendance = repo.getWeeklyAttendanceStatus()
+                println("TrainingScreen: Got ${attendance.size} attendance records")
+                
+                uiState = if (schedule.isNotEmpty()) {
+                    TrainingUiState.Success(schedule, attendance)
+                } else {
+                    TrainingUiState.Error("No training schedule found")
+                }
+            } catch (e: Exception) {
+                println("TrainingScreen: Exception: ${e.message}")
+                uiState = TrainingUiState.Error("Failed to load: ${e.message}")
+            }
+        }
+    }
+    
     ScrollableColumn(padding = 24) {
-        // Header - matches web app exactly
+        // Header
         HeaderText(text = "This Week's Training", size = "large")
         Spacer(width = 0, height = 8)
         SecondaryText(text = "Structured calisthenics program")
         
         Spacer(width = 0, height = 24)
         
-        // Day 1: Monday - Attended
-        TrainingDayCard(
-            day = "Monday",
-            date = "Dec 30",
-            focus = "Pull Strength & Skills",
-            goals = listOf("Muscle-ups", "Front Lever Progressions", "Wide Grip Pull-ups"),
-            supporting = listOf("Core Stability", "Shoulder Mobility"),
-            isToday = false,
-            attended = true
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 2: Tuesday - Attended
-        TrainingDayCard(
-            day = "Tuesday",
-            date = "Dec 31",
-            focus = "Push Strength & Balance",
-            goals = listOf("Handstand Push-ups", "Planche Leans", "Ring Dips"),
-            supporting = listOf("Wrist Conditioning", "Scapular Control"),
-            isToday = false,
-            attended = true
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 3: Wednesday - TODAY (amber highlight)
-        TrainingDayCard(
-            day = "Wednesday",
-            date = "Jan 1",
-            focus = "Legs & Core",
-            goals = listOf("Pistol Squats", "L-Sits", "Dragon Flags"),
-            supporting = listOf("Hip Mobility", "Ankle Strength"),
-            isToday = true,
-            attended = false
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 4: Thursday
-        TrainingDayCard(
-            day = "Thursday",
-            date = "Jan 2",
-            focus = "Skills & Flow",
-            goals = listOf("Bar Muscle-up", "Handstand Holds", "Bar Flow Combinations"),
-            supporting = listOf("Flexibility", "Movement Coordination"),
-            isToday = false,
-            attended = false
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 5: Friday
-        TrainingDayCard(
-            day = "Friday",
-            date = "Jan 3",
-            focus = "Mobility & Recovery",
-            goals = listOf("Deep Stretching", "Active Flexibility", "Joint Preparation"),
-            supporting = listOf("Breath Work", "Light Conditioning"),
-            isToday = false,
-            attended = false
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 6: Saturday
-        TrainingDayCard(
-            day = "Saturday",
-            date = "Jan 4",
-            focus = "Full Body Strength",
-            goals = listOf("Weighted Pull-ups", "Ring Muscle-ups", "Squat Variations"),
-            supporting = listOf("Core Compression", "Endurance"),
-            isToday = false,
-            attended = false
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Day 7: Sunday - Active Rest
-        TrainingDayCard(
-            day = "Sunday",
-            date = "Jan 5",
-            focus = "Active Rest",
-            goals = listOf("Light Movement", "Yoga Flow", "Mobility Work"),
-            supporting = listOf("Recovery", "Mindfulness"),
-            isToday = false,
-            attended = false
-        )
+        // Render based on UI state
+        when (val state = uiState) {
+            is TrainingUiState.Loading -> {
+                SduiCard(onClick = null) {
+                    SecondaryText(text = "Loading training schedule...")
+                }
+            }
+            is TrainingUiState.Error -> {
+                SduiCard(onClick = null) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                        SecondaryText(text = "⚠️ Error")
+                        Spacer(width = 0, height = 8)
+                        SecondaryText(text = state.message)
+                    }
+                }
+            }
+            is TrainingUiState.Success -> {
+                // Render each day from live data
+                state.schedule.forEachIndexed { index, day ->
+                    val isToday = day.date == today
+                    val attended = index < state.attendanceStatus.size && state.attendanceStatus[index] == "attended"
+                    val dateDisplay = formatDateDisplay(day.date)
+                    
+                    TrainingDayCard(
+                        day = day.dayName,
+                        date = dateDisplay,
+                        focus = day.focus,
+                        goals = day.goals,
+                        supporting = day.supporting,
+                        isToday = isToday,
+                        attended = attended
+                    )
+                    
+                    if (index < state.schedule.size - 1) {
+                        Spacer(width = 0, height = 16)
+                    }
+                }
+            }
+        }
         
         Spacer(width = 0, height = 24)
         
-        // Program Notes
+        // Program Notes (always show)
         SduiCard(onClick = null) {
-            FlexColumn(
-                verticalArrangement = "Top",
-                horizontalAlignment = "Start"
-            ) {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
                 SecondaryText(text = "PROGRAM NOTES")
                 Spacer(width = 0, height = 8)
-                SecondaryText(text = "This module focuses on building foundational strength and mastering key calisthenics skills. Progress at your own pace and prioritize form over speed.")
+                SecondaryText(text = "This module focuses on building foundational strength and mastering key calisthenics skills.")
             }
         }
         
@@ -353,10 +351,85 @@ private fun CaliclanTrainingScreenContent() {
 }
 
 /**
- * Membership Screen Content - PIXEL PERFECT match to web app
+ * Format date string from ISO to display format (e.g., "Jan 2")
+ */
+private fun formatDateDisplay(isoDate: String): String {
+    return try {
+        val parts = isoDate.split("-")
+        if (parts.size == 3) {
+            val month = when (parts[1]) {
+                "01" -> "Jan"
+                "02" -> "Feb"
+                "03" -> "Mar"
+                "04" -> "Apr"
+                "05" -> "May"
+                "06" -> "Jun"
+                "07" -> "Jul"
+                "08" -> "Aug"
+                "09" -> "Sep"
+                "10" -> "Oct"
+                "11" -> "Nov"
+                "12" -> "Dec"
+                else -> parts[1]
+            }
+            val day = parts[2].toIntOrNull() ?: parts[2]
+            "$month $day"
+        } else {
+            isoDate
+        }
+    } catch (e: Exception) {
+        isoDate
+    }
+}
+
+/**
+ * Membership Screen Content - REAL API CALLS ONLY
  */
 @Composable
 private fun CaliclanMembershipScreenContent() {
+    // Sealed class for UI state
+    sealed class MembershipUiState {
+        object Loading : MembershipUiState()
+        data class Success(
+            val plans: List<MembershipPlanDto>,
+            val profile: ProfileDto?
+        ) : MembershipUiState()
+        data class Error(val message: String) : MembershipUiState()
+    }
+    
+    // State
+    var uiState by remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
+    val scope = rememberCoroutineScope()
+    
+    // Fetch data on mount
+    LaunchedEffect(Unit) {
+        println("MembershipScreen: LaunchedEffect triggered")
+        scope.launch {
+            try {
+                val repo = GymServiceProvider.repository
+                println("MembershipScreen: Repository = ${repo != null}")
+                
+                if (repo == null) {
+                    uiState = MembershipUiState.Error("GymService not available")
+                    return@launch
+                }
+                
+                val plans = repo.getMembershipPlans()
+                val profile = repo.getProfile()
+                println("MembershipScreen: Fetched ${plans.size} plans")
+                
+                uiState = if (plans.isNotEmpty()) {
+                    MembershipUiState.Success(plans, profile)
+                } else {
+                    MembershipUiState.Error("No membership plans found")
+                }
+            } catch (e: Exception) {
+                println("MembershipScreen: Exception: ${e.message}")
+                uiState = MembershipUiState.Error("Failed to load: ${e.message}")
+            }
+        }
+    }
+    
     ScrollableColumn(padding = 24) {
         // Header
         HeaderText(text = "Membership", size = "large")
@@ -365,76 +438,70 @@ private fun CaliclanMembershipScreenContent() {
         
         Spacer(width = 0, height = 32)
         
-        // Current Plan Card (amber gradient border, prominent)
-        MembershipPlanCard(
-            name = "Monthly Unlimited",
-            duration = "1 Month",
-            price = "₹2,500",
-            priceLabel = "per month",
-            features = listOf(
-                "Unlimited access to all sessions",
-                "Weekly structured training program",
-                "Community support",
-                "Coach guidance"
-            ),
-            isCurrent = true,
-            isRecommended = false,
-            billingDate = "February 15, 2025",
-            onSelect = null
-        )
-        
-        Spacer(width = 0, height = 32)
-        
-        // Upgrade or Renew section
-        HeaderText(text = "Upgrade or Renew", size = "medium")
-        Spacer(width = 0, height = 16)
-        
-        // Quarterly - Recommended
-        MembershipPlanCard(
-            name = "Quarterly Unlimited",
-            duration = "3 Months",
-            price = "₹6,500",
-            priceLabel = "total",
-            features = listOf(
-                "Unlimited access to all sessions",
-                "Weekly structured training program",
-                "Community support",
-                "Coach guidance",
-                "Save 13% vs monthly"
-            ),
-            isCurrent = false,
-            isRecommended = true,
-            billingDate = "",
-            onSelect = { /* Select plan */ }
-        )
-        
-        Spacer(width = 0, height = 16)
-        
-        // Annual
-        MembershipPlanCard(
-            name = "Annual Unlimited",
-            duration = "12 Months",
-            price = "₹24,000",
-            priceLabel = "total",
-            features = listOf(
-                "Unlimited access to all sessions",
-                "Weekly structured training program",
-                "Community support",
-                "Coach guidance",
-                "Priority workshop access",
-                "Save 20% vs monthly"
-            ),
-            isCurrent = false,
-            isRecommended = false,
-            billingDate = "",
-            onSelect = { /* Select plan */ }
-        )
+        when (val state = uiState) {
+            is MembershipUiState.Loading -> {
+                SduiCard(onClick = null) {
+                    SecondaryText(text = "Loading membership plans...")
+                }
+            }
+            is MembershipUiState.Error -> {
+                SduiCard(onClick = null) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                        SecondaryText(text = "⚠️ Error")
+                        Spacer(width = 0, height = 8)
+                        SecondaryText(text = state.message)
+                    }
+                }
+            }
+            is MembershipUiState.Success -> {
+                // Current Plan (first plan)
+                val currentPlan = state.plans.firstOrNull()
+                if (currentPlan != null) {
+                    MembershipPlanCard(
+                        name = currentPlan.name,
+                        duration = currentPlan.duration,
+                        price = currentPlan.price,
+                        priceLabel = currentPlan.priceLabel,
+                        features = currentPlan.features,
+                        isCurrent = true,
+                        isRecommended = false,
+                        billingDate = state.profile?.membershipExpiry?.let { formatDateDisplay(it) } ?: "",
+                        onSelect = null
+                    )
+                }
+                
+                Spacer(width = 0, height = 32)
+                
+                // Upgrade or Renew section
+                HeaderText(text = "Upgrade or Renew", size = "medium")
+                Spacer(width = 0, height = 16)
+                
+                // Show upgrade plans (skip first/current)
+                state.plans.drop(1).forEachIndexed { index, plan ->
+                    MembershipPlanCard(
+                        name = plan.name,
+                        duration = plan.duration,
+                        price = plan.price,
+                        priceLabel = plan.priceLabel,
+                        features = plan.features,
+                        isCurrent = false,
+                        isRecommended = plan.isRecommended,
+                        billingDate = "",
+                        onSelect = { /* Select plan */ }
+                    )
+                    
+                    if (index < state.plans.size - 2) {
+                        Spacer(width = 0, height = 16)
+                    }
+                }
+            }
+        }
         
         Spacer(width = 0, height = 24)
         
-        // Contact Note
+        // Contact Note (always show)
         SduiCard(onClick = null) {
-            SecondaryText(text = "Need a custom plan or have questions? Contact us via WhatsApp for personalized membership options.")
+            SecondaryText(text = "Need a custom plan or have questions? Contact us via WhatsApp.")
         }
         
         Spacer(width = 0, height = 32)
@@ -442,10 +509,57 @@ private fun CaliclanMembershipScreenContent() {
 }
 
 /**
- * Profile Screen Content - PIXEL PERFECT match to web app
+ * Profile Screen Content - REAL API CALLS ONLY
  */
 @Composable
 private fun CaliclanProfileScreenContent() {
+    // Sealed class for UI state
+    sealed class ProfileUiState {
+        object Loading : ProfileUiState()
+        data class Success(
+            val profile: ProfileDto,
+            val membershipHistory: List<MembershipHistoryDto>,
+            val paymentHistory: List<PaymentHistoryDto>
+        ) : ProfileUiState()
+        data class Error(val message: String) : ProfileUiState()
+    }
+    
+    // State
+    var uiState by remember { mutableStateOf<ProfileUiState>(ProfileUiState.Loading) }
+    val scope = rememberCoroutineScope()
+    
+    // Fetch data on mount
+    LaunchedEffect(Unit) {
+        println("ProfileScreen: LaunchedEffect triggered")
+        scope.launch {
+            try {
+                val repo = GymServiceProvider.repository
+                println("ProfileScreen: Repository = ${repo != null}")
+                
+                if (repo == null) {
+                    uiState = ProfileUiState.Error("GymService not available")
+                    return@launch
+                }
+                
+                val profile = repo.getProfile()
+                println("ProfileScreen: Profile = ${profile?.fullName}")
+                
+                if (profile == null) {
+                    uiState = ProfileUiState.Error("Profile not found")
+                    return@launch
+                }
+                
+                val membershipHistory = repo.getMembershipHistory()
+                val paymentHistory = repo.getPaymentHistory()
+                
+                uiState = ProfileUiState.Success(profile, membershipHistory, paymentHistory)
+            } catch (e: Exception) {
+                println("ProfileScreen: Exception: ${e.message}")
+                uiState = ProfileUiState.Error("Failed to load: ${e.message}")
+            }
+        }
+    }
+    
     ScrollableColumn(padding = 24) {
         // Header
         HeaderText(text = "Profile", size = "large")
@@ -454,62 +568,80 @@ private fun CaliclanProfileScreenContent() {
         
         Spacer(width = 0, height = 32)
         
-        // Member Info Card
-        ProfileInfoCard(
-            name = "Alex Martinez",
-            email = "alex.martinez@email.com",
-            phone = "+91 98765 43210",
-            batch = "Adult Batch - Evening",
-            memberSince = "Aug 2024"
-        )
+        when (val state = uiState) {
+            is ProfileUiState.Loading -> {
+                SduiCard(onClick = null) {
+                    SecondaryText(text = "Loading profile...")
+                }
+            }
+            is ProfileUiState.Error -> {
+                SduiCard(onClick = null) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                        SecondaryText(text = "⚠️ Error")
+                        Spacer(width = 0, height = 8)
+                        SecondaryText(text = state.message)
+                    }
+                }
+            }
+            is ProfileUiState.Success -> {
+                // Member Info Card
+                ProfileInfoCard(
+                    name = state.profile.fullName,
+                    email = state.profile.email ?: "",
+                    phone = state.profile.phone ?: "",
+                    batch = state.profile.batch ?: "",
+                    memberSince = state.profile.createdAt?.let { formatDateDisplay(it) } ?: ""
+                )
+                
+                Spacer(width = 0, height = 32)
+                
+                // Membership History
+                HeaderText(text = "📅 Membership History", size = "medium")
+                Spacer(width = 0, height = 16)
+                
+                if (state.membershipHistory.isEmpty()) {
+                    SecondaryText(text = "No membership history")
+                } else {
+                    state.membershipHistory.forEachIndexed { index, item ->
+                        HistoryItem(
+                            title = item.planName,
+                            subtitle = "${formatDateDisplay(item.startDate)} - ${formatDateDisplay(item.endDate)}",
+                            status = item.status,
+                            amount = ""
+                        )
+                        if (index < state.membershipHistory.size - 1) {
+                            Spacer(width = 0, height = 12)
+                        }
+                    }
+                }
+                
+                Spacer(width = 0, height = 32)
+                
+                // Payment History
+                HeaderText(text = "💳 Payment History", size = "medium")
+                Spacer(width = 0, height = 16)
+                
+                if (state.paymentHistory.isEmpty()) {
+                    SecondaryText(text = "No payment history")
+                } else {
+                    state.paymentHistory.forEachIndexed { index, item ->
+                        HistoryItem(
+                            title = item.amount,
+                            subtitle = "${formatDateDisplay(item.paymentDate)} • ${item.method}",
+                            status = item.status,
+                            amount = ""
+                        )
+                        if (index < state.paymentHistory.size - 1) {
+                            Spacer(width = 0, height = 12)
+                        }
+                    }
+                }
+            }
+        }
         
         Spacer(width = 0, height = 32)
         
-        // Membership History
-        HeaderText(text = "📅 Membership History", size = "medium")
-        Spacer(width = 0, height = 16)
-        
-        HistoryItem(
-            title = "Monthly Unlimited",
-            subtitle = "Dec 15, 2024 - Jan 15, 2025",
-            status = "active",
-            amount = ""
-        )
-        
-        Spacer(width = 0, height = 12)
-        
-        HistoryItem(
-            title = "Quarterly Unlimited",
-            subtitle = "Aug 15, 2024 - Nov 15, 2024",
-            status = "completed",
-            amount = ""
-        )
-        
-        Spacer(width = 0, height = 32)
-        
-        // Payment History
-        HeaderText(text = "💳 Payment History", size = "medium")
-        Spacer(width = 0, height = 16)
-        
-        HistoryItem(
-            title = "₹2,500",
-            subtitle = "Dec 15, 2024 • UPI",
-            status = "completed",
-            amount = ""
-        )
-        
-        Spacer(width = 0, height = 12)
-        
-        HistoryItem(
-            title = "₹6,500",
-            subtitle = "Aug 15, 2024 • UPI",
-            status = "completed",
-            amount = ""
-        )
-        
-        Spacer(width = 0, height = 32)
-        
-        // Support
+        // Support (always show)
         HeaderText(text = "Support", size = "medium")
         Spacer(width = 0, height = 16)
         
@@ -522,7 +654,6 @@ private fun CaliclanProfileScreenContent() {
         
         Spacer(width = 0, height = 16)
         
-        // Sign out (red text)
         ActionButton(
             icon = "logout",
             text = "Sign Out",
@@ -595,3 +726,4 @@ private fun CoachProfileSheetContent(
         )
     }
 }
+

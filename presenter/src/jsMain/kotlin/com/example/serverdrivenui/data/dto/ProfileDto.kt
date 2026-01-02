@@ -8,8 +8,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class ProfileDto(
-    val id: String,
-    @SerialName("full_name") val fullName: String,
+    val id: String = "",
+    @SerialName("full_name") val fullName: String = "",
     val email: String? = null,
     val phone: String? = null,
     val batch: String? = null,

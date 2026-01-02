@@ -8,9 +8,9 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class CoachDto(
-    val id: String,
-    val name: String,
-    val role: String,
+    val id: String = "",
+    val name: String = "",
+    val role: String = "",
     val bio: String? = null,
     @SerialName("instagram_handle") val instagramHandle: String? = null,
     @SerialName("photo_url") val photoUrl: String? = null,

@@ -25,7 +25,9 @@ class RealGymService(
     // ============= Profile & Membership =============
     
     override suspend fun getProfile(): String {
-        val userId = currentUserId ?: return """{"error": "Not logged in"}"""
+        // Use demo user if not logged in
+        val userId = currentUserId ?: demoUserId
+        println("RealGymService: getProfile for userId=$userId")
         
         return try {
             val response = httpClient.get("$restUrl/profiles") {
@@ -36,18 +38,25 @@ class RealGymService(
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            response.bodyAsText()
+            val result = response.bodyAsText()
+            println("RealGymService: getProfile result=$result")
+            result
         } catch (e: Exception) {
+            println("RealGymService: getProfile error=${e.message}")
             """{"error": "${e.message}"}"""
         }
     }
     
+    // Demo user ID for anonymous access
+    private val demoUserId = "demo-user-001"
+    
     // ============= Training =============
     
     override suspend fun getWeeklySchedule(weekStart: String): String {
+        println("RealGymService: getWeeklySchedule called")
         return try {
+            // Fetch all training schedule (no date filter for demo)
             val response = httpClient.get("$restUrl/training_schedule") {
-                parameter("date", "gte.$weekStart")
                 parameter("order", "date.asc")
                 parameter("limit", "7")
                 headers {
@@ -55,8 +64,11 @@ class RealGymService(
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            response.bodyAsText()
+            val result = response.bodyAsText()
+            println("RealGymService: getWeeklySchedule result=$result")
+            result
         } catch (e: Exception) {
+            println("RealGymService: getWeeklySchedule error=${e.message}")
             """[]"""
         }
     }
@@ -202,9 +214,8 @@ class RealGymService(
     
     // ============= Membership =============
     
-    private val demoUserId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-    
     override suspend fun getMembershipPlans(): String {
+        println("RealGymService: getMembershipPlans called")
         return try {
             val response = httpClient.get("$restUrl/membership_plans") {
                 parameter("order", "sort_order.asc")
@@ -214,14 +225,18 @@ class RealGymService(
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            response.bodyAsText()
+            val result = response.bodyAsText()
+            println("RealGymService: getMembershipPlans result=$result")
+            result
         } catch (e: Exception) {
+            println("RealGymService: getMembershipPlans error=${e.message}")
             """[]"""
         }
     }
     
     override suspend fun getMembershipHistory(): String {
         val userId = currentUserId ?: demoUserId
+        println("RealGymService: getMembershipHistory for userId=$userId")
         
         return try {
             val response = httpClient.get("$restUrl/membership_history") {
@@ -233,14 +248,18 @@ class RealGymService(
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            response.bodyAsText()
+            val result = response.bodyAsText()
+            println("RealGymService: getMembershipHistory result=$result")
+            result
         } catch (e: Exception) {
+            println("RealGymService: getMembershipHistory error=${e.message}")
             """[]"""
         }
     }
     
     override suspend fun getPaymentHistory(): String {
         val userId = currentUserId ?: demoUserId
+        println("RealGymService: getPaymentHistory for userId=$userId")
         
         return try {
             val response = httpClient.get("$restUrl/payment_history") {
@@ -252,8 +271,11 @@ class RealGymService(
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            response.bodyAsText()
+            val result = response.bodyAsText()
+            println("RealGymService: getPaymentHistory result=$result")
+            result
         } catch (e: Exception) {
+            println("RealGymService: getPaymentHistory error=${e.message}")
             """[]"""
         }
     }

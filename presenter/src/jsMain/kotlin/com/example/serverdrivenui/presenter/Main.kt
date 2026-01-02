@@ -49,8 +49,8 @@ fun main() {
         println("Zipline JS: Failed to take host console: ${e.message}")
     }
     
-    // Initialize GymService provider for screens
-    GymServiceProvider.initialize()
+    // NOTE: GymServiceProvider uses lazy initialization - no need to call initialize() here
+    // The service is taken from Zipline on first screen access
 
     // Capture original console for fallback
     val originalConsole: dynamic = js("console")
