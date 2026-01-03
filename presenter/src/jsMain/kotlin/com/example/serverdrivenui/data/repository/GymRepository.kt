@@ -2,6 +2,7 @@ package com.example.serverdrivenui.data.repository
 
 import com.example.serverdrivenui.data.dto.*
 import com.example.serverdrivenui.shared.GymService
+import com.example.serverdrivenui.shared.StorageService
 import kotlinx.serialization.json.Json
 
 /**
@@ -12,8 +13,14 @@ import kotlinx.serialization.json.Json
  * 
  * Includes simple IN-MEMORY CACHING to prevent UI flicker/delays on tab switching.
  * Cache persists as long as the Zipline context is alive.
+ * 
+ * OFFLINE SUPPORT: Uses StorageService to persist data to disk.
+ * Stale-While-Revalidate: Returns disk data immediately, then fetches fresh data.
  */
-class GymRepository(private val service: GymService) {
+class GymRepository(
+    private val service: GymService,
+    private val storage: StorageService
+) {
     
     private val json = Json { 
         ignoreUnknownKeys = true 
@@ -46,23 +53,47 @@ class GymRepository(private val service: GymService) {
     suspend fun getProfile(forceRefresh: Boolean = false): ProfileDto? {
         if (!forceRefresh && cachedProfile != null) return cachedProfile
         
-        return try {
-            val response = service.getProfile()
-            val parsed: ProfileDto? = if (response.startsWith("[")) {
-                // Array response - take first item
-                val profiles = json.decodeFromString<List<ProfileDto>>(response)
-                profiles.firstOrNull()
-            } else if (response.startsWith("{") && !response.contains("error")) {
-                json.decodeFromString<ProfileDto>(response)
-            } else {
-                null
+        // Step 1: Try Disk Cache if in-memory is empty
+        if (cachedProfile == null) {
+            try {
+                val diskJson = storage.getString("profile")
+                if (diskJson != null) {
+                    val parsed = parseProfile(diskJson)
+                    if (parsed != null) cachedProfile = parsed
+                }
+            } catch (e: Exception) {
+                // Ignore disk read errors
             }
-            if (parsed != null) cachedProfile = parsed
-            parsed
-        } catch (e: Exception) {
-            println("GymRepository: Error parsing profile: ${e.message}")
-            null
         }
+        
+        // Step 2: Fetch Live & Update Disk
+        try {
+            val response = service.getProfile()
+            storage.setString("profile", response) // Persist
+            
+            val parsed = parseProfile(response)
+            if (parsed != null) cachedProfile = parsed
+            return parsed
+        } catch (e: Exception) {
+            println("GymRepository: Network failed for profile: ${e.message}")
+            // Return cached/disk data if available
+            return cachedProfile
+        }
+    }
+
+    private fun parseProfile(jsonStr: String): ProfileDto? {
+         return try {
+             if (jsonStr.startsWith("[")) {
+                 val profiles = json.decodeFromString<List<ProfileDto>>(jsonStr)
+                 profiles.firstOrNull()
+             } else if (jsonStr.startsWith("{") && !jsonStr.contains("error")) {
+                 json.decodeFromString<ProfileDto>(jsonStr)
+             } else {
+                 null
+             }
+         } catch (e: Exception) {
+             null
+         }
     }
     
     // ============= Training =============
@@ -70,33 +101,66 @@ class GymRepository(private val service: GymService) {
     suspend fun getWeeklySchedule(forceRefresh: Boolean = false): List<TrainingDayDto> {
         if (!forceRefresh && cachedWeeklySchedule != null) return cachedWeeklySchedule!!
 
+        // Step 1: Disk
+        if (cachedWeeklySchedule == null) {
+            try {
+                val diskJson = storage.getString("schedule")
+                if (diskJson != null) {
+                    cachedWeeklySchedule = json.decodeFromString<List<TrainingDayDto>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
+        // Step 2: Network
         return try {
             val response = service.getWeeklySchedule("") // Date param ignored by mock/demo
+            storage.setString("schedule", response)
             val list = json.decodeFromString<List<TrainingDayDto>>(response)
             cachedWeeklySchedule = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing schedule: ${e.message}")
-            emptyList()
+            println("GymRepository: Network failed for schedule: ${e.message}")
+            cachedWeeklySchedule ?: emptyList()
         }
     }
     
     suspend fun getTodayTraining(forceRefresh: Boolean = false): TrainingDayDto? {
          if (!forceRefresh && cachedTodayTraining != null) return cachedTodayTraining
 
+        // Step 1: Disk
+        if (cachedTodayTraining == null) {
+            try {
+                val diskJson = storage.getString("today_training")
+                if (diskJson != null) {
+                    val parsed = parseToday(diskJson)
+                    if (parsed != null) cachedTodayTraining = parsed
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getTodaySchedule()
-            val parsed: TrainingDayDto? = if (response.startsWith("{") && !response.contains("error")) {
-                json.decodeFromString<TrainingDayDto>(response)
-            } else {
-                null
-            }
+            storage.setString("today_training", response)
+            
+            val parsed = parseToday(response)
             if (parsed != null) cachedTodayTraining = parsed
             parsed
         } catch (e: Exception) {
-            println("GymRepository: Error parsing today's training: ${e.message}")
-            null
+            println("GymRepository: Network failed for today's training: ${e.message}")
+            cachedTodayTraining
         }
+    }
+
+    private fun parseToday(jsonStr: String): TrainingDayDto? {
+         return try {
+             if (jsonStr.startsWith("{") && !jsonStr.contains("error")) {
+                 json.decodeFromString<TrainingDayDto>(jsonStr)
+             } else {
+                 null
+             }
+         } catch (e: Exception) {
+             null
+         }
     }
     
     // ============= Coaches =============
@@ -104,14 +168,25 @@ class GymRepository(private val service: GymService) {
     suspend fun getCoaches(forceRefresh: Boolean = false): List<CoachDto> {
         if (!forceRefresh && cachedCoaches != null) return cachedCoaches!!
 
+        // Step 1: Disk
+        if (cachedCoaches == null) {
+            try {
+                val diskJson = storage.getString("coaches")
+                if (diskJson != null) {
+                    cachedCoaches = json.decodeFromString<List<CoachDto>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getCoaches()
+             storage.setString("coaches", response)
             val list = json.decodeFromString<List<CoachDto>>(response)
             cachedCoaches = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing coaches: ${e.message}")
-            emptyList()
+            println("GymRepository: Network failed for coaches: ${e.message}")
+            cachedCoaches ?: emptyList()
         }
     }
     
@@ -143,14 +218,25 @@ class GymRepository(private val service: GymService) {
     suspend fun getMembershipPlans(forceRefresh: Boolean = false): List<MembershipPlanDto> {
         if (!forceRefresh && cachedMembershipPlans != null) return cachedMembershipPlans!!
 
+        // Step 1: Disk
+        if (cachedMembershipPlans == null) {
+            try {
+                val diskJson = storage.getString("plans")
+                if (diskJson != null) {
+                    cachedMembershipPlans = json.decodeFromString<List<MembershipPlanDto>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getMembershipPlans()
+            storage.setString("plans", response)
             val list = json.decodeFromString<List<MembershipPlanDto>>(response)
             cachedMembershipPlans = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing membership plans: ${e.message}")
-            emptyList()
+            println("GymRepository: Network failed for memberships: ${e.message}")
+            cachedMembershipPlans ?: emptyList()
         }
     }
     
@@ -168,28 +254,50 @@ class GymRepository(private val service: GymService) {
     suspend fun getMembershipHistory(forceRefresh: Boolean = false): List<MembershipHistoryDto> {
         if (!forceRefresh && cachedMembershipHistory != null) return cachedMembershipHistory!!
 
+        // Step 1: Disk
+        if (cachedMembershipHistory == null) {
+            try {
+                val diskJson = storage.getString("membership_history")
+                if (diskJson != null) {
+                    cachedMembershipHistory = json.decodeFromString<List<MembershipHistoryDto>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getMembershipHistory()
+            storage.setString("membership_history", response)
             val list = json.decodeFromString<List<MembershipHistoryDto>>(response)
             cachedMembershipHistory = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing membership history: ${e.message}")
-            emptyList()
+            println("GymRepository: Network failed for membership history: ${e.message}")
+            cachedMembershipHistory ?: emptyList()
         }
     }
     
     suspend fun getPaymentHistory(forceRefresh: Boolean = false): List<PaymentHistoryDto> {
         if (!forceRefresh && cachedPaymentHistory != null) return cachedPaymentHistory!!
 
+        // Step 1: Disk
+        if (cachedPaymentHistory == null) {
+            try {
+                val diskJson = storage.getString("payment_history")
+                if (diskJson != null) {
+                    cachedPaymentHistory = json.decodeFromString<List<PaymentHistoryDto>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getPaymentHistory()
+            storage.setString("payment_history", response)
             val list = json.decodeFromString<List<PaymentHistoryDto>>(response)
             cachedPaymentHistory = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing payment history: ${e.message}")
-            emptyList()
+             println("GymRepository: Network failed for payments: ${e.message}")
+            cachedPaymentHistory ?: emptyList()
         }
     }
     
@@ -198,26 +306,48 @@ class GymRepository(private val service: GymService) {
     suspend fun getStreak(forceRefresh: Boolean = false): Int {
         if (!forceRefresh && cachedStreak != null) return cachedStreak!!
         
+        // Step 1: Disk
+        if (cachedStreak == null) {
+            try {
+                val diskStr = storage.getString("streak")
+                if (diskStr != null) {
+                    cachedStreak = diskStr.toIntOrNull()
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val streak = service.getStreak()
+            storage.setString("streak", streak.toString())
             cachedStreak = streak
             streak
         } catch (e: Exception) {
-            0
+            cachedStreak ?: 0
         }
     }
     
     suspend fun getWeeklyAttendanceStatus(forceRefresh: Boolean = false): List<String> {
         if (!forceRefresh && cachedWeeklyAttendance != null) return cachedWeeklyAttendance!!
         
+        // Step 1: Disk
+        if (cachedWeeklyAttendance == null) {
+            try {
+                val diskJson = storage.getString("weekly_attendance")
+                if (diskJson != null) {
+                    cachedWeeklyAttendance = json.decodeFromString<List<String>>(diskJson)
+                }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
         return try {
             val response = service.getWeeklyAttendanceStatus()
+            storage.setString("weekly_attendance", response)
             val list = json.decodeFromString<List<String>>(response)
             cachedWeeklyAttendance = list
             list
         } catch (e: Exception) {
-            println("GymRepository: Error parsing attendance status: ${e.message}")
-            listOf("attended", "attended", "attended", "attended", "today", "future", "future")
+            println("GymRepository: Network failed for attendance status: ${e.message}")
+            cachedWeeklyAttendance ?: listOf("attended", "attended", "attended", "attended", "today", "future", "future")
         }
     }
     

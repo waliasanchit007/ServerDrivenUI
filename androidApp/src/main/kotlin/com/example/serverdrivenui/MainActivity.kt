@@ -76,18 +76,71 @@ class MainActivity : ComponentActivity() {
         
         Log.d("SDUI", "MainActivity onCreate - Using SharedAppSpec with RealGymService")
 
+        // Task 2: Configure OkHttp Cache for Zipline code loading
+        val cacheSize = 50L * 1024L * 1024L // 50 MB
+        val cache = okhttp3.Cache(java.io.File(applicationContext.cacheDir, "http_cache"), cacheSize)
+
         val httpClient = OkHttpClient.Builder()
+            .cache(cache) // CRITICAL: Enable disk cache for Zipline
             .addInterceptor { chain ->
-                val request = chain.request()
-                Log.d("SDUI", "HTTP Request: ${request.url}")
-                try {
-                    val response = chain.proceed(request)
-                    Log.d("SDUI", "HTTP Response: ${response.code} for ${request.url}")
-                    response
+                var request = chain.request()
+                // Force cache if we are offline (hacky check, or just rely on cache logic)
+                // For Zipline dev server, we often get 'no-cache'. We want to FORCE usage if offline.
+                
+                // Note: Proper offline detection requires checking NetworkCapabilities.
+                // For now, we will try network, and if it fails, we MIGHT not be able to fallback easily 
+                // because OkHttp requires FORCE_CACHE to be set on the request *before* execution 
+                // if we want to skip network.
+                
+                // However, a common pattern is:
+                // 1. Try network.
+                // 2. If failure (IOException), nothing happens unless we have a custom mechanism.
+                
+                // BETTER STRATEGY for Zipline/OkHttp:
+                // Use an interceptor that treats standard calls as "prefer network",
+                // but if that fails, maybe we can't easily "retry" with FORCE_CACHE in the same chain 
+                // without re-constructing/cloning.
+                
+                // SIMPLEST FIX for "Black Screen":
+                // Zipline's loader usually tries to hit the network.
+                // If the DEV SERVER sends `Cache-Control: no-store` or `no-cache`, OkHttp won't cache it.
+                // We must INTERCEPT responses to force them to be cached.
+                
+                val originalResponse = try {
+                    chain.proceed(request)
                 } catch (e: Exception) {
-                    Log.e("SDUI", "HTTP Error: ${e.message} for ${request.url}")
-                    throw e
+                    // Start of fallback logic
+                    // If network fails, we can try to force cache?
+                    // But we can't easily restart the chain here with a new request 
+                    // unless we catch, creates new request with CacheControl.FORCE_CACHE, and proceed.
+                     val offlineRequest = request.newBuilder()
+                        .cacheControl(okhttp3.CacheControl.FORCE_CACHE)
+                        .build()
+                    try {
+                        return@addInterceptor chain.proceed(offlineRequest)
+                    } catch (e2: Exception) {
+                        throw e // Both network and cache failed
+                    }
                 }
+                
+                // Rewrite response headers to force caching (e.g. for 1 day)
+                // This ensures that even if the dev server says "no-cache", we persist it in disk.
+                originalResponse.newBuilder()
+                    .header("Cache-Control", "public, max-age=" + 60 * 60 * 24 * 7) // 1 week
+                    .removeHeader("Pragma")
+                    .build()
+            }
+            .addInterceptor { chain ->
+                 val request = chain.request()
+                 // Log.d("SDUI", "HTTP Request: ${request.url}")
+                 try {
+                     val response = chain.proceed(request)
+                     // Log.d("SDUI", "HTTP Response: ${response.code} for ${request.url}")
+                     response
+                 } catch (e: Exception) {
+                     Log.e("SDUI", "HTTP Error: ${e.message} for ${request.url}")
+                     throw e
+                 }
             }
             .build()
         
@@ -113,7 +166,8 @@ class MainActivity : ComponentActivity() {
             manifestUrl = manifestUrlFlow.asStateFlow(),
             httpClient = ktorHttpClient,
             hostApi = hostApiConfig,
-            hostConsole = AndroidRealHostConsole()
+            hostConsole = AndroidRealHostConsole(),
+            storage = AndroidStorageService(applicationContext) // Task 1: Bind Storage
         )
 
         val app = treehouseAppFactory.create(

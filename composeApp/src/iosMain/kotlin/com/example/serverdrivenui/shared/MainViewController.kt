@@ -178,7 +178,8 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         manifestUrl = manifestUrlFlow.asStateFlow(),
         httpClient = ktorHttpClient,
         hostApi = hostApiConfig,
-        hostConsole = IosRealHostConsole()
+        hostConsole = IosRealHostConsole(),
+        storage = IosStorageService()
     )
     
     val app = treehouseAppFactory.create(

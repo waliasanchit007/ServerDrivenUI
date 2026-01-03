@@ -27,7 +27,13 @@ object GymServiceProvider {
         try {
             val zipline = Zipline.get()
             _service = zipline.take<GymService>("gym")
-            _repository = _service?.let { GymRepository(it) }
+            val storage = zipline.take<com.example.serverdrivenui.shared.StorageService>("storage")
+            
+            _repository = if (_service != null) {
+                GymRepository(_service!!, storage)
+            } else {
+                null
+            }
             println("GymServiceProvider: LAZY INIT SUCCESS - GymService and Repository initialized")
         } catch (e: Throwable) {
             println("GymServiceProvider: LAZY INIT FAILED - ${e.message}")

@@ -80,9 +80,16 @@ fun HomeScreenContent(
                 // If we already have success state from cache, we could skip this or run essentially as no-op verify
                 // But repo methods will return cache fast, so it's safe to call them.
                 
-                // Parallel fetching would be better, but sequential is safer for now
+                // Parallel fetchinging would be better, but sequential is safer for now
                 val profile = repo.getProfile()
-                val profileName = profile?.fullName?.split(" ")?.firstOrNull() ?: "Member"
+                
+                // FAIL-SAFE UI: If no profile (no cache AND no network), show offline error
+                if (profile == null) {
+                    uiState = HomeUiState.Error("No Internet Connection - Connect to load data")
+                    return@launch
+                }
+                
+                val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
                 
                 // Membership logic
                 val membershipHistory = repo.getMembershipHistory()

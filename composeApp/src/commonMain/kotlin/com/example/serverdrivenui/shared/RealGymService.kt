@@ -29,22 +29,17 @@ class RealGymService(
         val userId = currentUserId ?: demoUserId
         println("RealGymService: getProfile for userId=$userId")
         
-        return try {
-            val response = httpClient.get("$restUrl/profiles") {
-                parameter("id", "eq.$userId")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/profiles") {
+            parameter("id", "eq.$userId")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            println("RealGymService: getProfile result=$result")
-            result
-        } catch (e: Exception) {
-            println("RealGymService: getProfile error=${e.message}")
-            """{"error": "${e.message}"}"""
         }
+        val result = response.bodyAsText()
+        println("RealGymService: getProfile result=$result")
+        return result
     }
     
     // Demo user ID for anonymous access (must be valid UUID for Supabase)
@@ -54,50 +49,41 @@ class RealGymService(
     
     override suspend fun getWeeklySchedule(weekStart: String): String {
         println("RealGymService: getWeeklySchedule called")
-        return try {
-            // Fetch all training schedule (no date filter for demo)
-            val response = httpClient.get("$restUrl/training_schedule") {
-                parameter("order", "date.asc")
-                parameter("limit", "7")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        // Fetch all training schedule (no date filter for demo)
+        val response = httpClient.get("$restUrl/training_schedule") {
+            parameter("order", "date.asc")
+            parameter("limit", "7")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            println("RealGymService: getWeeklySchedule result=$result")
-            result
-        } catch (e: Exception) {
-            println("RealGymService: getWeeklySchedule error=${e.message}")
-            """[]"""
         }
+        val result = response.bodyAsText()
+        println("RealGymService: getWeeklySchedule result=$result")
+        return result
     }
     
     override suspend fun getTodaySchedule(): String {
         val today = "2026-01-01" // TODO: Use actual date
-        return try {
-            val response = httpClient.get("$restUrl/training_schedule") {
-                parameter("date", "eq.$today")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/training_schedule") {
+            parameter("date", "eq.$today")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            // Return first item or default
-            if (result.startsWith("[") && result.length > 2) {
-                val items = result.trimStart('[').trimEnd(']')
-                if (items.contains("},")) {
-                    items.split("},")[0] + "}"
-                } else {
-                    items
-                }
+        }
+        val result = response.bodyAsText()
+        // Return first item or default
+        if (result.startsWith("[") && result.length > 2) {
+            val items = result.trimStart('[').trimEnd(']')
+            if (items.contains("},")) {
+                return items.split("},")[0] + "}"
             } else {
-                """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
+                return items
             }
-        } catch (e: Exception) {
-            """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
+        } else {
+            return """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
         }
     }
     
@@ -106,20 +92,16 @@ class RealGymService(
     override suspend fun getAttendanceForWeek(weekStart: String): String {
         val userId = currentUserId ?: return """[]"""
         
-        return try {
-            val response = httpClient.get("$restUrl/attendance") {
-                parameter("user_id", "eq.$userId")
-                parameter("date", "gte.$weekStart")
-                parameter("select", "date,status")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/attendance") {
+            parameter("user_id", "eq.$userId")
+            parameter("date", "gte.$weekStart")
+            parameter("select", "date,status")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            response.bodyAsText()
-        } catch (e: Exception) {
-            """[]"""
         }
+        return response.bodyAsText()
     }
     
     override suspend fun markAttendance(date: String): Boolean {
@@ -216,102 +198,80 @@ class RealGymService(
     
     override suspend fun getMembershipPlans(): String {
         println("RealGymService: getMembershipPlans called")
-        return try {
-            val response = httpClient.get("$restUrl/membership_plans") {
-                parameter("order", "sort_order.asc")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        println("RealGymService: getMembershipPlans called")
+        val response = httpClient.get("$restUrl/membership_plans") {
+            parameter("order", "sort_order.asc")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            println("RealGymService: getMembershipPlans result=$result")
-            result
-        } catch (e: Exception) {
-            println("RealGymService: getMembershipPlans error=${e.message}")
-            """[]"""
         }
+        val result = response.bodyAsText()
+        println("RealGymService: getMembershipPlans result=$result")
+        return result
     }
     
     override suspend fun getMembershipHistory(): String {
         val userId = currentUserId ?: demoUserId
         println("RealGymService: getMembershipHistory for userId=$userId")
         
-        return try {
-            val response = httpClient.get("$restUrl/membership_history") {
-                parameter("user_id", "eq.$userId")
-                parameter("order", "start_date.desc")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/membership_history") {
+            parameter("user_id", "eq.$userId")
+            parameter("order", "start_date.desc")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            println("RealGymService: getMembershipHistory result=$result")
-            result
-        } catch (e: Exception) {
-            println("RealGymService: getMembershipHistory error=${e.message}")
-            """[]"""
         }
+        val result = response.bodyAsText()
+        println("RealGymService: getMembershipHistory result=$result")
+        return result
     }
     
     override suspend fun getPaymentHistory(): String {
         val userId = currentUserId ?: demoUserId
         println("RealGymService: getPaymentHistory for userId=$userId")
         
-        return try {
-            val response = httpClient.get("$restUrl/payment_history") {
-                parameter("user_id", "eq.$userId")
-                parameter("order", "payment_date.desc")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/payment_history") {
+            parameter("user_id", "eq.$userId")
+            parameter("order", "payment_date.desc")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            val result = response.bodyAsText()
-            println("RealGymService: getPaymentHistory result=$result")
-            result
-        } catch (e: Exception) {
-            println("RealGymService: getPaymentHistory error=${e.message}")
-            """[]"""
         }
+        val result = response.bodyAsText()
+        println("RealGymService: getPaymentHistory result=$result")
+        return result
     }
     
     // ============= Community =============
     
     override suspend fun getCoaches(): String {
-        return try {
-            val response = httpClient.get("$restUrl/coaches") {
-                parameter("order", "sort_order.asc")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/coaches") {
+            parameter("order", "sort_order.asc")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            response.bodyAsText()
-        } catch (e: Exception) {
-            """[]"""
         }
+        return response.bodyAsText()
     }
     
     override suspend fun getCoach(coachId: String): String {
-        return try {
-            val response = httpClient.get("$restUrl/coaches") {
-                parameter("id", "eq.$coachId")
-                parameter("select", "*")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
+        val response = httpClient.get("$restUrl/coaches") {
+            parameter("id", "eq.$coachId")
+            parameter("select", "*")
+            headers {
+                append("apikey", supabaseKey)
+                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
             }
-            response.bodyAsText()
-        } catch (e: Exception) {
-            """{}"""
         }
+        return response.bodyAsText()
     }
     
     // ============= Auth =============

@@ -16,7 +16,8 @@ class SharedAppSpec(
     override val manifestUrl: Flow<String>,
     private val httpClient: HttpClient,
     private val hostApi: HostApiConfig,
-    private val hostConsole: HostConsole
+    private val hostConsole: HostConsole,
+    private val storage: StorageService
 ) : TreehouseApp.Spec<SduiAppService>() {
     
     override val name: String = "sdui"
@@ -30,6 +31,10 @@ class SharedAppSpec(
         // Bind console for logging
         zipline.bind<HostConsole>("console", hostConsole)
         println("SharedAppSpec: console bound")
+        
+        // Bind Storage for offline support
+        zipline.bind<StorageService>("storage", storage)
+        println("SharedAppSpec: storage bound")
         
         // Bind GymService for Supabase data access
         val gymService = RealGymService(
