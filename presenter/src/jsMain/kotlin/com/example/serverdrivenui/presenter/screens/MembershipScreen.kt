@@ -13,7 +13,7 @@ import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
 // Sealed class for UI state (Top level)
-private sealed class MembershipUiState {
+sealed class MembershipUiState {
     object Loading : MembershipUiState()
     data class Success(
         val plans: List<MembershipPlanDto>,
@@ -22,42 +22,34 @@ private sealed class MembershipUiState {
     data class Error(val message: String) : MembershipUiState()
 }
 
+suspend fun fetchMembershipData(): MembershipUiState {
+    return try {
+        val repo = GymServiceProvider.getRepository()
+        
+        if (repo == null) {
+            return MembershipUiState.Error("GymService not available")
+        }
+        
+        val plans = repo.getMembershipPlans()
+        val profile = repo.getProfile()
+        
+        if (plans.isNotEmpty()) {
+            MembershipUiState.Success(plans, profile)
+        } else {
+            MembershipUiState.Error("No membership plans found")
+        }
+    } catch (e: Exception) {
+        MembershipUiState.Error("Failed to load: ${e.message}")
+    }
+}
+
 /**
  * Membership Screen Content - REAL API CALLS ONLY
  */
 @Composable
-fun MembershipScreenContent() {
-    // State
-    // State
-    var uiState by remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
-    
-    val scope = rememberCoroutineScope()
-    
-    // Fetch data on mount
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val repo = GymServiceProvider.getRepository()
-                
-                if (repo == null) {
-                    uiState = MembershipUiState.Error("GymService not available")
-                    return@launch
-                }
-                
-                val plans = repo.getMembershipPlans()
-                val profile = repo.getProfile()
-                
-                uiState = if (plans.isNotEmpty()) {
-                    MembershipUiState.Success(plans, profile)
-                } else {
-                    MembershipUiState.Error("No membership plans found")
-                }
-            } catch (e: Exception) {
-                uiState = MembershipUiState.Error("Failed to load: ${e.message}")
-            }
-        }
-    }
-    
+fun MembershipScreenContent(
+    uiState: MembershipUiState
+) {
     ScrollableColumn(padding = 24) {
         // Header
         HeaderText(text = "Membership", size = "large")

@@ -31,6 +31,15 @@ class MainNavigationShell : Screen {
         var isLoggedIn by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         
+        // --- State Hoisting for Bottom Nav Tabs ---
+        // We use 'remember' (or rememberSaveable) to hold state across tab switches.
+        // This PREVENTS RELOADING when switching tabs.
+        
+        val homeUiState = remember { mutableStateOf<HomeUiState>(HomeUiState.Loading) }
+        val trainingUiState = remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
+        val membershipUiState = remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
+        val profileUiState = remember { mutableStateOf<ProfileUiState>(ProfileUiState.Loading) }
+        
         // Check Auth on Mount
         LaunchedEffect(Unit) {
             println("MainNavigationShell: Checking Auth...")
@@ -43,6 +52,31 @@ class MainNavigationShell : Screen {
                 println("MainNavigationShell: Auth check failed: $e")
             } finally {
                 isChecking = false
+            }
+        }
+        
+        // Data Fetching Logic (Lazy Loading)
+        // Fetches data for the current tab ONLY if it is still in Loading state.
+        LaunchedEffect(currentTab, isLoggedIn) {
+            if (isLoggedIn) {
+                when (currentTab) {
+                    "home" -> if (homeUiState.value is HomeUiState.Loading) {
+                        println("MainNavigationShell: Fetching HOME data...")
+                        homeUiState.value = fetchHomeData()
+                    }
+                    "training" -> if (trainingUiState.value is TrainingUiState.Loading) {
+                        println("MainNavigationShell: Fetching TRAINING data...")
+                        trainingUiState.value = fetchTrainingData()
+                    }
+                    "membership" -> if (membershipUiState.value is MembershipUiState.Loading) {
+                        println("MainNavigationShell: Fetching MEMBERSHIP data...")
+                        membershipUiState.value = fetchMembershipData()
+                    }
+                    "profile" -> if (profileUiState.value is ProfileUiState.Loading) {
+                         println("MainNavigationShell: Fetching PROFILE data...")
+                         profileUiState.value = fetchProfileData()
+                    }
+                }
             }
         }
         
@@ -64,8 +98,10 @@ class MainNavigationShell : Screen {
                 }
             ) {
                 // Content based on selected tab - delegate to separate screen files
+                // Passing Hoisted State
                 when (currentTab) {
                     "home" -> HomeScreenContent(
+                        uiState = homeUiState.value,
                         onCoachClick = { name, role, bio, photoUrl, instagram ->
                             selectedCoachName = name
                             selectedCoachRole = role
@@ -75,12 +111,22 @@ class MainNavigationShell : Screen {
                             showingCoachSheet = true
                         }
                     )
-                    "training" -> TrainingScreenContent()
-                    "membership" -> MembershipScreenContent()
+                    "training" -> TrainingScreenContent(
+                        uiState = trainingUiState.value
+                    )
+                    "membership" -> MembershipScreenContent(
+                        uiState = membershipUiState.value
+                    )
                     "profile" -> ProfileScreenContent(
+                        uiState = profileUiState.value,
                         onLogout = {
                             isLoggedIn = false
                             currentTab = "home" // Reset tab
+                            // Reset states on logout!
+                            homeUiState.value = HomeUiState.Loading
+                            trainingUiState.value = TrainingUiState.Loading
+                            membershipUiState.value = MembershipUiState.Loading
+                            profileUiState.value = ProfileUiState.Loading
                         }
                     )
                 }

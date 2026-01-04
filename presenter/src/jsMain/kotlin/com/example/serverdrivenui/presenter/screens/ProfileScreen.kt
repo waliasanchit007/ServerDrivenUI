@@ -13,7 +13,7 @@ import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
 // Sealed class for UI state (Top level)
-private sealed class ProfileUiState {
+sealed class ProfileUiState {
     object Loading : ProfileUiState()
     data class Success(
         val profile: ProfileDto,
@@ -23,46 +23,38 @@ private sealed class ProfileUiState {
     data class Error(val message: String) : ProfileUiState()
 }
 
+suspend fun fetchProfileData(): ProfileUiState {
+    return try {
+        val repo = GymServiceProvider.getRepository()
+        
+        if (repo == null) {
+            return ProfileUiState.Error("GymService not available")
+        }
+        
+        val profile = repo.getProfile()
+        
+        if (profile == null) {
+            return ProfileUiState.Error("Profile not found")
+        }
+        
+        val membershipHistory = repo.getMembershipHistory()
+        val paymentHistory = repo.getPaymentHistory()
+        
+        ProfileUiState.Success(profile, membershipHistory, paymentHistory)
+    } catch (e: Exception) {
+        ProfileUiState.Error("Failed to load: ${e.message}")
+    }
+}
+
 /**
  * Profile Screen Content - REAL API CALLS ONLY
  */
 @Composable
 fun ProfileScreenContent(
+    uiState: ProfileUiState,
     onLogout: () -> Unit
 ) {
-    // State
-    // State
-    var uiState by remember { mutableStateOf<ProfileUiState>(ProfileUiState.Loading) }
-    
     val scope = rememberCoroutineScope()
-    
-    // Fetch data on mount
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val repo = GymServiceProvider.getRepository()
-                
-                if (repo == null) {
-                    uiState = ProfileUiState.Error("GymService not available")
-                    return@launch
-                }
-                
-                val profile = repo.getProfile()
-                
-                if (profile == null) {
-                    uiState = ProfileUiState.Error("Profile not found")
-                    return@launch
-                }
-                
-                val membershipHistory = repo.getMembershipHistory()
-                val paymentHistory = repo.getPaymentHistory()
-                
-                uiState = ProfileUiState.Success(profile, membershipHistory, paymentHistory)
-            } catch (e: Exception) {
-                uiState = ProfileUiState.Error("Failed to load: ${e.message}")
-            }
-        }
-    }
     
     ScrollableColumn(padding = 24) {
         // Header

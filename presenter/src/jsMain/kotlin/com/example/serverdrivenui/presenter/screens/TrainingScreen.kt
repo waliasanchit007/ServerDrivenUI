@@ -13,7 +13,7 @@ import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
 // Sealed class for UI state (Top level)
-private sealed class TrainingUiState {
+sealed class TrainingUiState {
     object Loading : TrainingUiState()
     data class Success(
         val schedule: List<TrainingDayDto>,
@@ -22,46 +22,36 @@ private sealed class TrainingUiState {
     data class Error(val message: String) : TrainingUiState()
 }
 
+suspend fun fetchTrainingData(): TrainingUiState {
+    val weekStart = "2026-01-01" 
+    return try {
+        val repo = GymServiceProvider.getRepository()
+        
+        if (repo == null) {
+            return TrainingUiState.Error("GymService not available")
+        }
+        
+        val schedule = repo.getWeeklySchedule(weekStart)
+        val attendance = repo.getWeeklyAttendanceStatus()
+        
+        if (schedule.isNotEmpty()) {
+            TrainingUiState.Success(schedule, attendance)
+        } else {
+            TrainingUiState.Error("No training schedule found")
+        }
+    } catch (e: Exception) {
+        TrainingUiState.Error("Failed to load: ${e.message}")
+    }
+}
+
 /**
  * Training Screen Content - REAL API CALLS ONLY
  */
 @Composable
-fun TrainingScreenContent() {
-    // State
-    // State
-    var uiState by remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
-    
-    val scope = rememberCoroutineScope()
-    // Dynamic date usually comes from simple Date util or passed in. 
-    // Using fixed Monday for demo consistency with Admin panel data.
-    val weekStart = "2026-01-01" 
+fun TrainingScreenContent(
+    uiState: TrainingUiState
+) {
     val today = "2026-01-02"
-    
-    // Fetch data on mount
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val repo = GymServiceProvider.getRepository()
-                
-                if (repo == null) {
-                    uiState = TrainingUiState.Error("GymService not available")
-                    return@launch
-                }
-                
-                val schedule = repo.getWeeklySchedule(weekStart)
-                val attendance = repo.getWeeklyAttendanceStatus()
-                
-                uiState = if (schedule.isNotEmpty()) {
-                    TrainingUiState.Success(schedule, attendance)
-                } else {
-                    TrainingUiState.Error("No training schedule found")
-                }
-            } catch (e: Exception) {
-                uiState = TrainingUiState.Error("Failed to load: ${e.message}")
-            }
-        }
-    }
-
     
     ScrollableColumn(padding = 24) {
         // Header

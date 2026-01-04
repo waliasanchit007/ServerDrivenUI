@@ -13,7 +13,7 @@ import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
 // Sealed class for UI state
-private sealed class HomeUiState {
+sealed class HomeUiState {
     object Loading : HomeUiState()
     data class Success(
         val userName: String,
@@ -27,76 +27,63 @@ private sealed class HomeUiState {
     data class Error(val message: String) : HomeUiState()
 }
 
+suspend fun fetchHomeData(): HomeUiState {
+    return try {
+        println("HomeScreen: Getting Repository...")
+        val repo = GymServiceProvider.getRepository()
+        if (repo == null) {
+            println("HomeScreen: GymService/Repo is null")
+            return HomeUiState.Error("GymService not available")
+        }
+        println("HomeScreen: Repository obtained. Fetching Data...")
+        
+        // Fetch Data
+        val profile = repo.getProfile()
+        if (profile == null) {
+            println("HomeScreen: No Profile Found")
+            return HomeUiState.Error("No Profile Found")
+        }
+        
+        println("HomeScreen: Profile Fetched: ${profile.fullName}")
+        val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
+        
+        // Membership
+        val membershipHistory = repo.getMembershipHistory()
+        val activePlan = membershipHistory.firstOrNull { it.status == "active" }
+        val status = activePlan?.status ?: "inactive"
+        val expiry = activePlan?.endDate 
+        val daysLeft = if (status == "active") 30 else 0 
+        
+        // Training
+        val todayTraining = repo.getTodaySchedule()
+        
+        // Consistency
+        val streak = repo.getStreak()
+        val attendanceDays = repo.getWeeklyAttendanceStatus()
+        
+        HomeUiState.Success(
+            userName = profileName,
+            membershipStatus = status,
+            membershipExpiry = expiry,
+            daysLeft = daysLeft,
+            todayTraining = todayTraining,
+            streak = streak,
+            attendanceDays = attendanceDays
+        )
+    } catch (e: Exception) {
+        println("HomeScreen: Error loading data: ${e.message}")
+        HomeUiState.Error("Failed to load: ${e.message}")
+    }
+}
+
 /**
  * Home Screen Content - Real Data
  */
 @Composable
 fun HomeScreenContent(
+    uiState: HomeUiState,
     onCoachClick: (String, String, String, String, String) -> Unit
 ) {
-    // State
-    var uiState by remember { mutableStateOf<HomeUiState>(HomeUiState.Loading) }
-    
-    val scope = rememberCoroutineScope()
-    
-    // Fetch data on mount
-    // Fetch data on mount
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                // Get Repository (Async)
-                // Get Repository (Async)
-                println("HomeScreen: Getting Repository...")
-                val repo = GymServiceProvider.getRepository()
-                if (repo == null) {
-                    println("HomeScreen: GymService/Repo is null")
-                    uiState = HomeUiState.Error("GymService not available")
-                    return@launch
-                }
-                println("HomeScreen: Repository obtained. Fetching Data...")
-                
-                // Fetch Data
-                val profile = repo.getProfile()
-                if (profile == null) {
-                    println("HomeScreen: No Profile Found")
-                    uiState = HomeUiState.Error("No Profile Found")
-                    return@launch
-                }
-                
-                println("HomeScreen: Profile Fetched: ${profile.fullName}")
-                val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
-                
-                // Membership
-                val membershipHistory = repo.getMembershipHistory()
-                val activePlan = membershipHistory.firstOrNull { it.status == "active" }
-                val status = activePlan?.status ?: "inactive"
-                // Simple date formatting helper (or just use raw string if helper missing)
-                val expiry = activePlan?.endDate 
-                val daysLeft = if (status == "active") 30 else 0 
-                
-                // Training
-                val todayTraining = repo.getTodaySchedule()
-                
-                // Consistency
-                val streak = repo.getStreak()
-                val attendanceDays = repo.getWeeklyAttendanceStatus()
-                
-                uiState = HomeUiState.Success(
-                    userName = profileName,
-                    membershipStatus = status,
-                    membershipExpiry = expiry,
-                    daysLeft = daysLeft,
-                    todayTraining = todayTraining,
-                    streak = streak,
-                    attendanceDays = attendanceDays
-                )
-            } catch (e: Exception) {
-                println("HomeScreen: Error loading data: ${e.message}")
-                uiState = HomeUiState.Error("Failed to load: ${e.message}")
-            }
-        }
-    }
-    
     ScrollableColumn(padding = 24) {
         when (val state = uiState) {
             is HomeUiState.Loading -> {
