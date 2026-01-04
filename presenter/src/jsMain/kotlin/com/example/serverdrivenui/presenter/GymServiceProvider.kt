@@ -2,82 +2,130 @@ package com.example.serverdrivenui.presenter
 
 import app.cash.zipline.Zipline
 import com.example.serverdrivenui.shared.GymService
-import com.example.serverdrivenui.data.repository.GymRepository
+import com.example.serverdrivenui.core.data.SupabaseGymRepository
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 
 /**
- * GymServiceProvider - Singleton accessor for GymService and GymRepository in presenter.
+ * GymServiceProvider - Singleton accessor for GymService and SupabaseGymRepository.
  * 
- * Uses LAZY INITIALIZATION: The service is taken from Zipline on first access,
- * not at startup. This is necessary because the presenter's main() runs before
- * the host's bindServices() binds the GymService.
+ * Host provides Config via GymService.
+ * Guest instantiates SupabaseGymRepository locally.
  */
 object GymServiceProvider {
     
     private var _service: GymService? = null
-    private var _repository: GymRepository? = null
+    private var _repository: SupabaseGymRepository? = null
     private var initialized = false
     
     /**
-     * Lazy initialization - takes GymService from Zipline on first access.
+     * Lazy initialization.
      */
-    private fun ensureInitialized() {
+    private suspend fun ensureInitialized() {
         if (initialized) return
-        initialized = true
         
         try {
             val zipline = Zipline.get()
             _service = zipline.take<GymService>("gym")
-            val storage = zipline.take<com.example.serverdrivenui.shared.StorageService>("storage")
             
-            _repository = if (_service != null) {
-                GymRepository(_service!!, storage)
-            } else {
-                null
+            // Initialize Repository using Host Config
+            if (_service != null) {
+                initializeRepository(_service!!)
             }
-            println("GymServiceProvider: LAZY INIT SUCCESS - GymService and Repository initialized")
+            
+            initialized = true
+            println("GymServiceProvider: Initialized")
         } catch (e: Throwable) {
-            println("GymServiceProvider: LAZY INIT FAILED - ${e.message}")
+            println("GymServiceProvider: INIT FAILED - ${e.message}")
             _service = null
             _repository = null
         }
     }
     
+    private suspend fun initializeRepository(service: GymService) {
+        try {
+            println("GymServiceProvider: Fetching Host Config...")
+            val config = service.getHostConfig()
+            val token = service.getSessionToken()
+            val userId = service.getSessionUserId()
+            
+            println("GymServiceProvider: Creating Local Repository with ${config.supabaseUrl}")
+            
+            // USE PROXY ENGINE
+            val engine = ZiplineProxyEngine(service)
+            val client = HttpClient(engine) {
+                install(ContentNegotiation) {
+                    json(Json {
+                        prettyPrint = true
+                        isLenient = true
+                        ignoreUnknownKeys = true
+                    })
+                }
+            }
+            val repo = SupabaseGymRepository(
+                httpClient = client,
+                supabaseUrl = config.supabaseUrl,
+                supabaseKey = config.supabaseKey
+            )
+            
+            // Restore session
+            if (token != null && token.isNotEmpty() && userId != null && userId.isNotEmpty()) {
+                println("GymServiceProvider: Restoring Session (User: $userId)")
+                repo.setSession(userId, token) 
+            } else {
+                println("GymServiceProvider: No persisted session found.")
+            }
+            
+            _repository = repo
+        } catch (e: Exception) {
+            println("GymServiceProvider: Repo Init Failed: ${e.message}")
+            _repository = null
+        }
+    }
+    
     /**
-     * Get the GymService instance (raw JSON methods).
+     * Get the GymService instance (Access to Config/Native Actions).
      * Initializes lazily on first access.
      */
-    val service: GymService?
-        get() {
-            ensureInitialized()
-            return _service
-        }
+    suspend fun getService(): GymService? {
+        ensureInitialized()
+        return _service
+    }
     
     /**
-     * Get the GymRepository instance (parsed DTOs).
-     * Use this in screens for type-safe data access.
-     * Initializes lazily on first access.
+     * Get the Local Supabase Repository.
+     * Call this from Screens to get data.
      */
-    val repository: GymRepository?
-        get() {
-            ensureInitialized()
-            return _repository
-        }
+    suspend fun getRepository(): SupabaseGymRepository? {
+        ensureInitialized()
+        return _repository
+    }
     
     /**
-     * Check if services are available.
-     */
-    val isAvailable: Boolean
-        get() {
-            ensureInitialized()
-            return _service != null && _repository != null
-        }
-    
-    /**
-     * Force re-initialization (useful if first attempt failed).
+     * Force re-initialization.
      */
     fun reset() {
         initialized = false
         _service = null
         _repository = null
+    }
+
+    suspend fun saveSession(userId: String, token: String) {
+        val service = getService()
+        if (service != null) {
+            println("GymServiceProvider: Saving session to Host...")
+            service.saveSession(userId, token)
+        }
+    }
+
+    suspend fun clearSession() {
+        val service = getService()
+        if (service != null) {
+            println("GymServiceProvider: Clearing session on Host...")
+            service.clearSession()
+        }
+        _repository?.logout()
     }
 }

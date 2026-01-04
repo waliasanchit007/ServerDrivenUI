@@ -42,8 +42,6 @@ dependencyResolutionManagement {
 
 include(":composeApp")
 include(":androidApp")
-include(":androidApp")
-include(":composeApp")
 include(":shared")
 include(":shared-protocol-host")
 include(":shared-protocol-guest")

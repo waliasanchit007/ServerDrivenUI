@@ -28,34 +28,16 @@ private sealed class MembershipUiState {
 @Composable
 fun MembershipScreenContent() {
     // State
-    var uiState by remember { 
-        val repo = GymServiceProvider.repository
-        
-        // Initial synchronous check
-        val initialState = if (repo != null && repo.cachedMembershipPlans != null && repo.cachedProfile != null) {
-            val plans = repo.cachedMembershipPlans ?: emptyList()
-            val profile = repo.cachedProfile
-            
-            if (plans.isNotEmpty()) {
-                MembershipUiState.Success(plans, profile)
-            } else {
-                MembershipUiState.Loading // Safer fallback
-            }
-        } else {
-            MembershipUiState.Loading
-        }
-        mutableStateOf(initialState)
-    }
+    // State
+    var uiState by remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
     
     val scope = rememberCoroutineScope()
     
     // Fetch data on mount
     LaunchedEffect(Unit) {
-        println("MembershipScreen: LaunchedEffect triggered")
         scope.launch {
             try {
-                val repo = GymServiceProvider.repository
-                println("MembershipScreen: Repository = ${repo != null}")
+                val repo = GymServiceProvider.getRepository()
                 
                 if (repo == null) {
                     uiState = MembershipUiState.Error("GymService not available")
@@ -64,7 +46,6 @@ fun MembershipScreenContent() {
                 
                 val plans = repo.getMembershipPlans()
                 val profile = repo.getProfile()
-                println("MembershipScreen: Fetched ${plans.size} plans")
                 
                 uiState = if (plans.isNotEmpty()) {
                     MembershipUiState.Success(plans, profile)
@@ -72,7 +53,6 @@ fun MembershipScreenContent() {
                     MembershipUiState.Error("No membership plans found")
                 }
             } catch (e: Exception) {
-                println("MembershipScreen: Exception: ${e.message}")
                 uiState = MembershipUiState.Error("Failed to load: ${e.message}")
             }
         }

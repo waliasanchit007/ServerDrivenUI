@@ -13,7 +13,7 @@ object DevConfig {
      * - Use "127.0.0.1" with `adb reverse tcp:8080 tcp:8080` for USB debugging
      * - Use your machine's actual IP for wireless debugging
      */
-    const val SERVER_IP = "192.168.1.86"
+    const val SERVER_IP = "127.0.0.1"
     
     /**
      * Server port (default 8080)

@@ -100,53 +100,21 @@ fun App(
             modifier = Modifier.fillMaxSize(),
             color = CaliclanColors.Background
         ) {
-            // State
-            var isAuth by remember { mutableStateOf(false) }
-            var isChecking by remember { mutableStateOf(true) }
-            
-            LaunchedEffect(Unit) {
-                if (gymService != null) {
-                    // Check if already logged in (e.g. valid token in repo)
-                    if (gymService.isLoggedIn()) {
-                         isAuth = true
-                    }
-                }
-                isChecking = false
-            }
-
-            if (isChecking) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+            if (treehouseApp != null) {
+                println("SDUI: App composable - rendering TreehouseContent with Caliclan theme")
+                val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
+                TreehouseContent(
+                    treehouseApp = treehouseApp,
+                    widgetSystem = widgetSystem,
+                    contentSource = SduiContentSource(),
+                    modifier = Modifier.fillMaxSize()
+                )
             } else {
-                if (!isAuth) {
-                    if (gymService != null) {
-                         LoginScreen(
-                             gymService = gymService,
-                             onLoginSuccess = { isAuth = true }
-                         )
-                    } else {
-                        // Fallback purely for preview or error state
-                        Text("GymService not initialized", color = Color.Red)
-                    }
-                } else {
-                    if (treehouseApp != null) {
-                        println("SDUI: App composable - rendering TreehouseContent with Caliclan theme")
-                        val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
-                        TreehouseContent(
-                            treehouseApp = treehouseApp,
-                            widgetSystem = widgetSystem,
-                            contentSource = SduiContentSource(),
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        println("SDUI: App composable - treehouseApp is NULL")
-                        androidx.compose.material3.Text(
-                            text = "Redwood not initialized on this platform",
-                            color = CaliclanColors.TextSecondary
-                        )
-                    }
-                }
+                println("SDUI: App composable - treehouseApp is NULL")
+                androidx.compose.material3.Text(
+                    text = "Redwood not initialized on this platform",
+                    color = CaliclanColors.TextSecondary
+                )
             }
         }
     }

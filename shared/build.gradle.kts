@@ -20,7 +20,9 @@ kotlin {
             implementation(libs.redwood.treehouse)
             implementation(libs.redwoodProtocol)
             implementation(libs.redwood.protocol.host)
+            implementation(libs.redwood.protocol.host)
             api(libs.zipline)
+            api(project(":core-data"))
             
             // Ktor HTTP Client
             implementation(libs.ktor.client.core)

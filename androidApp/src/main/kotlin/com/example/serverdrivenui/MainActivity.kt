@@ -15,7 +15,7 @@ import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
 import com.example.serverdrivenui.shared.SharedAppSpec
-import com.example.serverdrivenui.shared.HostApiConfig
+import com.example.serverdrivenui.core.data.dto.HostApiConfig
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
@@ -36,13 +36,6 @@ import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 import androidx.lifecycle.lifecycleScope
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
-
-// ============= Supabase Config =============
-
-private object SupabaseConfig {
-    const val PROJECT_URL = "https://tumdkgcpikspixovmzrw.supabase.co"
-    const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bWRrZ2NwaWtzcGl4b3ZtenJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNDkxNTEsImV4cCI6MjA4MjgyNTE1MX0.Qewg6JqydPboYKSkQ1wxuoHeD2fWMBez9XiO1CTcyA4"
-}
 
 // ============= Host Console =============
 
@@ -158,8 +151,8 @@ class MainActivity : ComponentActivity() {
 
         // Use SharedAppSpec with Ktor HttpClient for RealGymService
         val hostApiConfig = HostApiConfig(
-            supabaseUrl = SupabaseConfig.PROJECT_URL,
-            supabaseKey = SupabaseConfig.ANON_KEY
+            supabaseUrl = "https://tumdkgcpikspixovmzrw.supabase.co",
+            supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bWRrZ2NwaWtzcGl4b3ZtenJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNDkxNTEsImV4cCI6MjA4MjgyNTE1MX0.Qewg6JqydPboYKSkQ1wxuoHeD2fWMBez9XiO1CTcyA4"
         )
         
         val spec = SharedAppSpec(
@@ -167,7 +160,7 @@ class MainActivity : ComponentActivity() {
             httpClient = ktorHttpClient,
             hostApi = hostApiConfig,
             hostConsole = AndroidRealHostConsole(),
-            storage = AndroidStorageService(applicationContext) // Task 1: Bind Storage
+            storage = AndroidStorageService(applicationContext) 
         )
 
         val app = treehouseAppFactory.create(
@@ -178,21 +171,6 @@ class MainActivity : ComponentActivity() {
         
         // Connect to hot reload WebSocket
         hotReloadManager.connect(DevConfig.hotReloadUrl)
-
-        // Create Host-side GymService for Native Login
-        val repository = com.example.serverdrivenui.core.data.SupabaseGymRepository(
-            httpClient = ktorHttpClient,
-            supabaseUrl = SupabaseConfig.PROJECT_URL,
-            supabaseKey = SupabaseConfig.ANON_KEY
-        )
-        val hostGymService = com.example.serverdrivenui.shared.RealGymService(repository)
-        hostGymService.setUrlOpener { url -> 
-            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
-            startActivity(intent)
-        }
-        hostGymService.setToastShower { msg ->
-            android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show()
-        }
 
         setContent {
             // Observe hot reload triggers
@@ -206,7 +184,7 @@ class MainActivity : ComponentActivity() {
             }
             
             // Render the app
-            App(treehouseApp = app, gymService = hostGymService)
+            App(treehouseApp = app, gymService = null)
         }
     }
     

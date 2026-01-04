@@ -27,37 +27,20 @@ private sealed class ProfileUiState {
  * Profile Screen Content - REAL API CALLS ONLY
  */
 @Composable
-fun ProfileScreenContent() {
+fun ProfileScreenContent(
+    onLogout: () -> Unit
+) {
     // State
-    var uiState by remember { 
-        val repo = GymServiceProvider.repository
-        
-        // Initial synchronous check
-        val initialState = if (repo != null && repo.cachedProfile != null && repo.cachedMembershipHistory != null && repo.cachedPaymentHistory != null) {
-            val profile = repo.cachedProfile
-            val membership = repo.cachedMembershipHistory ?: emptyList()
-            val payment = repo.cachedPaymentHistory ?: emptyList()
-            
-            if (profile != null) {
-                ProfileUiState.Success(profile, membership, payment)
-            } else {
-                ProfileUiState.Loading
-            }
-        } else {
-            ProfileUiState.Loading
-        }
-        mutableStateOf(initialState)
-    }
+    // State
+    var uiState by remember { mutableStateOf<ProfileUiState>(ProfileUiState.Loading) }
     
     val scope = rememberCoroutineScope()
     
     // Fetch data on mount
     LaunchedEffect(Unit) {
-        println("ProfileScreen: LaunchedEffect triggered")
         scope.launch {
             try {
-                val repo = GymServiceProvider.repository
-                println("ProfileScreen: Repository = ${repo != null}")
+                val repo = GymServiceProvider.getRepository()
                 
                 if (repo == null) {
                     uiState = ProfileUiState.Error("GymService not available")
@@ -65,7 +48,6 @@ fun ProfileScreenContent() {
                 }
                 
                 val profile = repo.getProfile()
-                println("ProfileScreen: Profile = ${profile?.fullName}")
                 
                 if (profile == null) {
                     uiState = ProfileUiState.Error("Profile not found")
@@ -77,7 +59,6 @@ fun ProfileScreenContent() {
                 
                 uiState = ProfileUiState.Success(profile, membershipHistory, paymentHistory)
             } catch (e: Exception) {
-                println("ProfileScreen: Exception: ${e.message}")
                 uiState = ProfileUiState.Error("Failed to load: ${e.message}")
             }
         }
@@ -181,7 +162,12 @@ fun ProfileScreenContent() {
             icon = "logout",
             text = "Sign Out",
             variant = "ghost",
-            onClick = { /* Sign out */ }
+            onClick = { 
+                scope.launch {
+                    GymServiceProvider.clearSession()
+                    onLogout()
+                }
+            }
         )
         
         Spacer(width = 0, height = 32)

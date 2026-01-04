@@ -4,6 +4,7 @@ import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.zipline.Zipline
 import io.ktor.client.*
 import kotlinx.coroutines.flow.Flow
+import com.example.serverdrivenui.core.data.dto.HostApiConfig
 
 /**
  * SharedAppSpec - Platform-agnostic TreehouseApp.Spec implementation.
@@ -40,7 +41,10 @@ class SharedAppSpec(
         val gymService = RealGymService(
             httpClient = httpClient,
             supabaseUrl = hostApi.supabaseUrl,
-            supabaseKey = hostApi.supabaseKey
+            supabaseKey = hostApi.supabaseKey,
+            storage = storage,
+            toastShower = { msg -> println("HOST TOAST: $msg") },
+            urlOpener = { url -> println("HOST OPEN URL: $url") }
         )
         zipline.bind<GymService>("gym", gymService)
         println("SharedAppSpec: gym service bound")

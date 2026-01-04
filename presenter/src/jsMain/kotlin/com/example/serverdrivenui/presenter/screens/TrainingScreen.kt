@@ -28,49 +28,28 @@ private sealed class TrainingUiState {
 @Composable
 fun TrainingScreenContent() {
     // State
-    var uiState by remember { 
-        val repo = GymServiceProvider.repository
-        
-        // Initial synchronous check - if data is cached, use it immediately
-        val initialState = if (repo != null && repo.cachedWeeklySchedule != null) {
-            val schedule = repo.cachedWeeklySchedule ?: emptyList()
-            val attendance = repo.cachedWeeklyAttendance ?: emptyList()
-            if (schedule.isNotEmpty()) {
-                TrainingUiState.Success(schedule, attendance)
-            } else {
-                TrainingUiState.Loading // Maybe error? but Loading is safer fallback
-            }
-        } else {
-            TrainingUiState.Loading
-        }
-        mutableStateOf(initialState) 
-    }
+    // State
+    var uiState by remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
     
     val scope = rememberCoroutineScope()
+    // Dynamic date usually comes from simple Date util or passed in. 
+    // Using fixed Monday for demo consistency with Admin panel data.
+    val weekStart = "2026-01-01" 
     val today = "2026-01-02"
     
-    // Fetch data on mount - REAL API CALLS ONLY
+    // Fetch data on mount
     LaunchedEffect(Unit) {
-        println("TrainingScreen: LaunchedEffect triggered")
         scope.launch {
-            println("TrainingScreen: Coroutine launched, accessing repository...")
             try {
-                val repo = GymServiceProvider.repository
-                println("TrainingScreen: Repository = ${repo != null}")
+                val repo = GymServiceProvider.getRepository()
                 
                 if (repo == null) {
-                    uiState = TrainingUiState.Error("GymService not available - check host binding")
+                    uiState = TrainingUiState.Error("GymService not available")
                     return@launch
                 }
                 
-                // If we already have success state, we might skip or just refresh
-                
-                println("TrainingScreen: Calling getWeeklySchedule()...")
-                val schedule = repo.getWeeklySchedule()
-                println("TrainingScreen: Got ${schedule.size} days")
-                
+                val schedule = repo.getWeeklySchedule(weekStart)
                 val attendance = repo.getWeeklyAttendanceStatus()
-                println("TrainingScreen: Got ${attendance.size} attendance records")
                 
                 uiState = if (schedule.isNotEmpty()) {
                     TrainingUiState.Success(schedule, attendance)
@@ -78,7 +57,6 @@ fun TrainingScreenContent() {
                     TrainingUiState.Error("No training schedule found")
                 }
             } catch (e: Exception) {
-                println("TrainingScreen: Exception: ${e.message}")
                 uiState = TrainingUiState.Error("Failed to load: ${e.message}")
             }
         }

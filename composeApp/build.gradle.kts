@@ -58,19 +58,19 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
-            implementation(project(":core-data"))
-            implementation("org.jetbrains.compose.ui:ui-backhandler:1.8.0")  // Cross-platform BackHandler
+            api(project(":core-data")) // Exposed in SharedAppSpec
+            implementation("org.jetbrains.compose.ui:ui-backhandler:1.8.0")
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.redwood.widget)
-            implementation(libs.redwood.treehouse.host)
-            implementation(libs.redwood.treehouse)
+            api(libs.redwood.treehouse.host) // Exposed in SharedAppSpec
+            api(libs.redwood.treehouse) // Exposed in SharedAppSpec
             implementation(libs.redwood.compose)
             implementation(libs.redwood.treehouse.host.composeui)
-            api(project(":shared")) // Use api() for iOS framework export
-            api(project(":shared-widget")) // Use api() for iOS framework export
-            api(project(":shared-protocol-host")) // For SduiSchemaHostProtocol
-            implementation(libs.zipline)
-            implementation(libs.zipline.loader)
+            api(project(":shared"))
+            api(project(":shared-widget"))
+            api(project(":shared-protocol-host"))
+            api(libs.zipline) // Exposed in SharedAppSpec
+            api(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.coil.compose)
             // Ktor HTTP Client core

@@ -7,6 +7,10 @@ import androidx.compose.runtime.setValue
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.schema.compose.*
+import com.example.serverdrivenui.presenter.GymServiceProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 
 /**
  * MainNavigationShell - Root container with bottom navigation.
@@ -23,45 +27,79 @@ class MainNavigationShell : Screen {
     
     @Composable
     override fun Content(navigator: Navigator) {
-        // AppScaffold handles bottom nav layout properly with Compose Scaffold
-        AppScaffold(
-            showBottomBar = true,
-            selectedTab = currentTab,
-            onTabSelected = { tab ->
-                currentTab = tab
-            }
-        ) {
-            // Content based on selected tab - delegate to separate screen files
-            when (currentTab) {
-                "home" -> HomeScreenContent(
-                    onCoachClick = { name, role, bio, photoUrl, instagram ->
-                        selectedCoachName = name
-                        selectedCoachRole = role
-                        selectedCoachBio = bio
-                        selectedCoachPhotoUrl = photoUrl
-                        selectedCoachInstagram = instagram
-                        showingCoachSheet = true
-                    }
-                )
-                "training" -> TrainingScreenContent()
-                "membership" -> MembershipScreenContent()
-                "profile" -> ProfileScreenContent()
+        var isChecking by remember { mutableStateOf(true) }
+        var isLoggedIn by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        
+        // Check Auth on Mount
+        LaunchedEffect(Unit) {
+            println("MainNavigationShell: Checking Auth...")
+            try {
+                // Use local repo which restores session from Host
+                val repo = GymServiceProvider.getRepository()
+                isLoggedIn = repo?.isLoggedIn() ?: false
+                println("MainNavigationShell: Auth Check Result: isLoggedIn=$isLoggedIn")
+            } catch (e: Exception) {
+                println("MainNavigationShell: Auth check failed: $e")
+            } finally {
+                isChecking = false
             }
         }
         
-        // Coach Profile Bottom Sheet (overlays on top)
-        BottomSheet(
-            isVisible = showingCoachSheet,
-            onDismiss = { showingCoachSheet = false }
-        ) {
-            CoachProfileSheetContent(
-                name = selectedCoachName,
-                role = selectedCoachRole,
-                bio = selectedCoachBio,
-                photoUrl = selectedCoachPhotoUrl,
-                instagram = selectedCoachInstagram,
-                onClose = { showingCoachSheet = false }
-            )
+        println("MainNavigationShell: Recompose. isChecking=$isChecking, isLoggedIn=$isLoggedIn")
+        
+        if (isChecking) {
+             FlexColumn(verticalArrangement = "Center", horizontalAlignment = "CenterHorizontally") {
+                 SecondaryText(text = "Loading...")
+             }
+        } else if (!isLoggedIn) {
+            LoginScreenContent(onLoginSuccess = { isLoggedIn = true })
+        } else {
+            // AppScaffold handles bottom nav layout properly with Compose Scaffold
+            AppScaffold(
+                showBottomBar = true,
+                selectedTab = currentTab,
+                onTabSelected = { tab ->
+                    currentTab = tab
+                }
+            ) {
+                // Content based on selected tab - delegate to separate screen files
+                when (currentTab) {
+                    "home" -> HomeScreenContent(
+                        onCoachClick = { name, role, bio, photoUrl, instagram ->
+                            selectedCoachName = name
+                            selectedCoachRole = role
+                            selectedCoachBio = bio
+                            selectedCoachPhotoUrl = photoUrl
+                            selectedCoachInstagram = instagram
+                            showingCoachSheet = true
+                        }
+                    )
+                    "training" -> TrainingScreenContent()
+                    "membership" -> MembershipScreenContent()
+                    "profile" -> ProfileScreenContent(
+                        onLogout = {
+                            isLoggedIn = false
+                            currentTab = "home" // Reset tab
+                        }
+                    )
+                }
+            }
+            
+            // Coach Profile Bottom Sheet (overlays on top)
+            BottomSheet(
+                isVisible = showingCoachSheet,
+                onDismiss = { showingCoachSheet = false }
+            ) {
+                CoachProfileSheetContent(
+                    name = selectedCoachName,
+                    role = selectedCoachRole,
+                    bio = selectedCoachBio,
+                    photoUrl = selectedCoachPhotoUrl,
+                    instagram = selectedCoachInstagram,
+                    onClose = { showingCoachSheet = false }
+                )
+            }
         }
     }
 }

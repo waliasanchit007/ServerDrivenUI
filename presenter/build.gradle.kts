@@ -28,12 +28,14 @@ kotlin {
             implementation(project(":shared"))
             implementation(libs.kotlinx.serialization.json)
             implementation(project(":core-data"))
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
         }
         val jsMain by getting {
             dependencies {
                 implementation(project(":shared-protocol-guest"))
                 implementation(project(":shared-widget"))
-                implementation(npm("@js-joda/core", "3.2.0"))
             }
         }
     }

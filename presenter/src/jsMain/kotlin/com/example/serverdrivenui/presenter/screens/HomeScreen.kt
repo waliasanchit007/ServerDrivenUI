@@ -35,72 +35,47 @@ fun HomeScreenContent(
     onCoachClick: (String, String, String, String, String) -> Unit
 ) {
     // State
-    var uiState by remember { 
-        val repo = GymServiceProvider.repository
-        val initialState = if (repo != null && repo.cachedProfile != null) {
-            // Synchronous init from cache
-            val profile = repo.cachedProfile
-            val profileName = profile?.fullName?.split(" ")?.firstOrNull() ?: "Member"
-            val membershipHistory = repo.cachedMembershipHistory ?: emptyList()
-            val activePlan = membershipHistory.firstOrNull { it.status == "active" }
-            val status = activePlan?.status ?: "inactive"
-            val expiry = activePlan?.endDate?.let { formatDateDisplay(it) }
-            val daysLeft = if (status == "active") 45 else 0 
-            val todayTraining = repo.cachedTodayTraining
-            val streak = repo.cachedStreak ?: 0
-            val attendanceDays = repo.cachedWeeklyAttendance ?: emptyList()
-            
-            HomeUiState.Success(
-                userName = profileName,
-                membershipStatus = status,
-                membershipExpiry = expiry,
-                daysLeft = daysLeft,
-                todayTraining = todayTraining,
-                streak = streak,
-                attendanceDays = attendanceDays
-            )
-        } else {
-            HomeUiState.Loading
-        }
-        mutableStateOf(initialState)
-    }
+    var uiState by remember { mutableStateOf<HomeUiState>(HomeUiState.Loading) }
     
     val scope = rememberCoroutineScope()
     
-    // Fetch data on mount (will update cache or confirm freshness)
+    // Fetch data on mount
+    // Fetch data on mount
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                val repo = GymServiceProvider.repository
+                // Get Repository (Async)
+                // Get Repository (Async)
+                println("HomeScreen: Getting Repository...")
+                val repo = GymServiceProvider.getRepository()
                 if (repo == null) {
+                    println("HomeScreen: GymService/Repo is null")
                     uiState = HomeUiState.Error("GymService not available")
                     return@launch
                 }
+                println("HomeScreen: Repository obtained. Fetching Data...")
                 
-                // If we already have success state from cache, we could skip this or run essentially as no-op verify
-                // But repo methods will return cache fast, so it's safe to call them.
-                
-                // Parallel fetchinging would be better, but sequential is safer for now
+                // Fetch Data
                 val profile = repo.getProfile()
-                
-                // FAIL-SAFE UI: If no profile (no cache AND no network), show offline error
                 if (profile == null) {
-                    uiState = HomeUiState.Error("No Internet Connection - Connect to load data")
+                    println("HomeScreen: No Profile Found")
+                    uiState = HomeUiState.Error("No Profile Found")
                     return@launch
                 }
                 
+                println("HomeScreen: Profile Fetched: ${profile.fullName}")
                 val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
                 
-                // Membership logic
+                // Membership
                 val membershipHistory = repo.getMembershipHistory()
                 val activePlan = membershipHistory.firstOrNull { it.status == "active" }
                 val status = activePlan?.status ?: "inactive"
-                val expiry = activePlan?.endDate?.let { formatDateDisplay(it) }
-                // Simple days left calculation (mock for now as we don't have date math easily available in commonMain without library)
-                val daysLeft = if (status == "active") 45 else 0 
+                // Simple date formatting helper (or just use raw string if helper missing)
+                val expiry = activePlan?.endDate 
+                val daysLeft = if (status == "active") 30 else 0 
                 
                 // Training
-                val todayTraining = repo.getTodayTraining()
+                val todayTraining = repo.getTodaySchedule()
                 
                 // Consistency
                 val streak = repo.getStreak()

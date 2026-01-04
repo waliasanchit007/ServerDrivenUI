@@ -3,6 +3,9 @@ package com.example.serverdrivenui.shared
 import com.example.serverdrivenui.core.data.SupabaseGymRepository
 import com.example.serverdrivenui.core.data.dto.*
 import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -11,113 +14,107 @@ import kotlinx.serialization.json.Json
  * RealGymService - Adapter that implements GymService (Zipline)
  * but delegates logic to Core Data (SupabaseGymRepository).
  */
+/**
+ * RealGymService - Adapter that implements GymService (Zipline)
+ * but delegates logic to Core Data (SupabaseGymRepository) or Storage.
+ */
 class RealGymService(
-    private val repository: SupabaseGymRepository
+    private val repository: SupabaseGymRepository,
+    private val storage: StorageService?, // Optional for backward compat, but needed for proper persistence
+    private val toastShower: ((String) -> Unit)? = null,
+    private val urlOpener: ((String) -> Unit)? = null
 ) : GymService {
 
-    constructor(httpClient: HttpClient, supabaseUrl: String, supabaseKey: String) : this(
-        SupabaseGymRepository(httpClient, supabaseUrl, supabaseKey)
+    constructor(
+        httpClient: HttpClient, 
+        supabaseUrl: String, 
+        supabaseKey: String,
+        storage: StorageService?,
+        toastShower: ((String) -> Unit)? = null,
+        urlOpener: ((String) -> Unit)? = null
+    ) : this(
+        SupabaseGymRepository(httpClient, supabaseUrl, supabaseKey),
+        storage,
+        toastShower,
+        urlOpener
     )
     
     // Auth & Utilities
+    
+    override suspend fun getHostConfig(): HostApiConfig {
+        return HostApiConfig(repository.supabaseUrl, repository.supabaseKey)
+    }
+
+    override suspend fun getSessionToken(): String? {
+        // Prefer storage, fallback to repo memory
+        return storage?.getString("auth_token") ?: repository.currentAccessToken
+    }
+
+    override suspend fun getSessionUserId(): String? {
+        return storage?.getString("user_id") ?: repository.currentUserId
+    }
+
+    override suspend fun saveSession(userId: String, accessToken: String) {
+        storage?.setString("user_id", userId)
+        storage?.setString("auth_token", accessToken)
+        // Also update local repo just in case (though Guest has its own repo)
+        repository.setSession(userId, accessToken)
+    }
+
+    override suspend fun clearSession() {
+        storage?.setString("user_id", "")
+        storage?.setString("auth_token", "")
+        repository.setSession(null, null)
+    }
+
     override suspend fun showToast(message: String) {
         toastShower?.invoke(message)
-    }
-    
-    private var urlOpener: ((String) -> Unit)? = null
-    private var toastShower: ((String) -> Unit)? = null
-    
-    fun setUrlOpener(opener: (String) -> Unit) {
-        urlOpener = opener
-    }
-    
-    fun setToastShower(shower: (String) -> Unit) {
-        toastShower = shower
     }
     
     override suspend fun openUrl(url: String) {
         urlOpener?.invoke(url)
     }
 
-    // ============= User Methods =============
-    override suspend fun getProfile(): String = 
-        repository.getProfile()?.let { Json.encodeToString(it) } ?: "null"
-
-    override suspend fun getMembershipPlans(): String = 
-        Json.encodeToString(repository.getMembershipPlans())
-
-    override suspend fun getMembershipHistory(): String = 
-        Json.encodeToString(repository.getMembershipHistory())
-
-    override suspend fun getPaymentHistory(): String = 
-        Json.encodeToString(repository.getPaymentHistory())
-
-    override suspend fun getWeeklySchedule(weekStart: String): String = 
-        Json.encodeToString(repository.getWeeklySchedule(weekStart))
-
-    override suspend fun getTodaySchedule(): String = 
-        repository.getTodaySchedule()?.let { Json.encodeToString(it) } ?: "null"
-
-    override suspend fun getAttendanceForWeek(weekStart: String): String = 
-        Json.encodeToString(repository.getAttendanceForWeek(weekStart))
-
-    override suspend fun getWeeklyAttendanceStatus(): String = 
-        Json.encodeToString(repository.getWeeklyAttendanceStatus())
-
-    override suspend fun markAttendance(date: String): Boolean = 
-        repository.markAttendance(date)
-
-    override suspend fun getStreak(): Int = 
-        repository.getStreak()
-
-    override suspend fun getCoaches(): String = 
-        Json.encodeToString(repository.getCoaches())
-
-    override suspend fun getCoach(coachId: String): String = 
-        repository.getCoach(coachId)?.let { Json.encodeToString(it) } ?: "{}"
-
-    override suspend fun isLoggedIn(): Boolean = 
-        repository.isLoggedIn()
-
-    override suspend fun auth_logout() = 
-        repository.logout()
-
-    override suspend fun requestOtp(email: String): Boolean = 
-        repository.requestOtp(email)
-
-    override suspend fun verifyOtp(email: String, otp: String): Boolean = 
-        repository.verifyOtp(email, otp)
-        
-    override suspend fun updateProfile(name: String, email: String): Boolean {
-        // Todo: Actually update generic profile. Using updateUser for now.
-        // We need to fetch current profile ID first? 
-        // Or assume repository handles it contextually.
-        // For MVP: We assume we are updating the current user.
-        return repository.updateUser(ProfileDto(full_name = name, email = email))
+    // ============= Network Proxy =============
+    
+    private val proxyClient = HttpClient() {
+        // Basic config
     }
 
-    override suspend fun logout() = 
-        repository.logout()
-        
-    // ============= Admin Methods =============
-    override suspend fun getAllUsers(): String = 
-        Json.encodeToString(repository.getAllUsers())
-        
-    override suspend fun createTrainingDay(trainingDayJson: String): Boolean {
-        // Deserialize JSON to DTO then call repo
-        val dto = Json.decodeFromString<TrainingDayDto>(trainingDayJson)
-        return repository.createTrainingDay(dto)
+    override suspend fun proxyRequest(
+        url: String,
+        method: String,
+        headers: Map<String, String>,
+        body: String?
+    ): ProxyResponse {
+        try {
+            val response = proxyClient.request(url) {
+                this.method = io.ktor.http.HttpMethod.parse(method)
+                headers.forEach { (k, v) ->
+                    this.headers.append(k, v)
+                }
+                if (body != null) {
+                    setBody(body)
+                }
+            }
+            
+            val responseBody = response.bodyAsText()
+            val responseHeaders = response.headers.entries().associate { it.key to it.value.joinToString(",") }
+            
+            println("RealGymService: Proxy success: ${response.status} (Body: ${responseBody.length} chars)")
+            
+            return ProxyResponse(
+                status = response.status.value,
+                body = responseBody,
+                headers = responseHeaders
+            )
+        } catch (e: Exception) {
+            println("RealGymService: Proxy request failed: $e")
+            return ProxyResponse(500, "{\"error\": \"${e.message}\"}", emptyMap())
+        }
     }
-        
-    override suspend fun updateMembershipPlan(planJson: String): Boolean {
-        val dto = Json.decodeFromString<MembershipPlanDto>(planJson)
-        return repository.updateMembershipPlan(dto)
-    }
-        
-    override suspend fun checkInUser(userId: String): Boolean =
-         repository.checkInUser(userId)
 
     override fun close() {
-        // HTTP client lifecycle managed externally
+        proxyClient.close()
     }
 }
