@@ -8,12 +8,12 @@ import app.cash.redwood.treehouse.composeui.TreehouseContent
 import app.cash.redwood.treehouse.TreehouseContentSource
 import app.cash.redwood.treehouse.ZiplineTreehouseUi
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 
 /**
  * Caliclan Design Tokens - Premium Dark Theme.
@@ -91,27 +91,62 @@ class SduiContentSource : TreehouseContentSource<SduiAppService> {
  * @param treehouseApp The Treehouse app instance
  */
 @Composable
-fun App(treehouseApp: TreehouseApp<SduiAppService>?) {
+fun App(
+    treehouseApp: TreehouseApp<SduiAppService>?,
+    gymService: GymService? = null
+) {
     MaterialTheme(colorScheme = CaliclanDarkColorScheme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = CaliclanColors.Background
         ) {
-            if (treehouseApp != null) {
-                println("SDUI: App composable - rendering TreehouseContent with Caliclan theme")
-                val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
-                TreehouseContent(
-                    treehouseApp = treehouseApp,
-                    widgetSystem = widgetSystem,
-                    contentSource = SduiContentSource(),
-                    modifier = Modifier.fillMaxSize()
-                )
+            // State
+            var isAuth by remember { mutableStateOf(false) }
+            var isChecking by remember { mutableStateOf(true) }
+            
+            LaunchedEffect(Unit) {
+                if (gymService != null) {
+                    // Check if already logged in (e.g. valid token in repo)
+                    if (gymService.isLoggedIn()) {
+                         isAuth = true
+                    }
+                }
+                isChecking = false
+            }
+
+            if (isChecking) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
-                println("SDUI: App composable - treehouseApp is NULL")
-                androidx.compose.material3.Text(
-                    text = "Redwood not initialized on this platform",
-                    color = CaliclanColors.TextSecondary
-                )
+                if (!isAuth) {
+                    if (gymService != null) {
+                         LoginScreen(
+                             gymService = gymService,
+                             onLoginSuccess = { isAuth = true }
+                         )
+                    } else {
+                        // Fallback purely for preview or error state
+                        Text("GymService not initialized", color = Color.Red)
+                    }
+                } else {
+                    if (treehouseApp != null) {
+                        println("SDUI: App composable - rendering TreehouseContent with Caliclan theme")
+                        val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
+                        TreehouseContent(
+                            treehouseApp = treehouseApp,
+                            widgetSystem = widgetSystem,
+                            contentSource = SduiContentSource(),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        println("SDUI: App composable - treehouseApp is NULL")
+                        androidx.compose.material3.Text(
+                            text = "Redwood not initialized on this platform",
+                            color = CaliclanColors.TextSecondary
+                        )
+                    }
+                }
             }
         }
     }

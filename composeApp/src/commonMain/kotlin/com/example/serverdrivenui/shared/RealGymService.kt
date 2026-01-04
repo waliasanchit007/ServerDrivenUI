@@ -1,333 +1,28 @@
 package com.example.serverdrivenui.shared
 
+import com.example.serverdrivenui.core.data.SupabaseGymRepository
+import com.example.serverdrivenui.core.data.dto.*
 import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 /**
- * RealGymService - Shared implementation connecting to Supabase via Ktor.
- * This same code runs on both Android (OkHttp engine) and iOS (Darwin engine).
+ * RealGymService - Adapter that implements GymService (Zipline)
+ * but delegates logic to Core Data (SupabaseGymRepository).
  */
 class RealGymService(
-    private val httpClient: HttpClient,
-    private val supabaseUrl: String,
-    private val supabaseKey: String
+    private val repository: SupabaseGymRepository
 ) : GymService {
+
+    constructor(httpClient: HttpClient, supabaseUrl: String, supabaseKey: String) : this(
+        SupabaseGymRepository(httpClient, supabaseUrl, supabaseKey)
+    )
     
-    private val restUrl = "$supabaseUrl/rest/v1"
-    private val authUrl = "$supabaseUrl/auth/v1"
-    
-    private var currentUserId: String? = null
-    private var currentAccessToken: String? = null
-    
-    // ============= Profile & Membership =============
-    
-    override suspend fun getProfile(): String {
-        // Use demo user if not logged in
-        val userId = currentUserId ?: demoUserId
-        println("RealGymService: getProfile for userId=$userId")
-        
-        val response = httpClient.get("$restUrl/profiles") {
-            parameter("id", "eq.$userId")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        println("RealGymService: getProfile result=$result")
-        return result
+    // Auth & Utilities
+    override suspend fun showToast(message: String) {
+        toastShower?.invoke(message)
     }
-    
-    // Demo user ID for anonymous access (must be valid UUID for Supabase)
-    private val demoUserId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-    
-    // ============= Training =============
-    
-    override suspend fun getWeeklySchedule(weekStart: String): String {
-        println("RealGymService: getWeeklySchedule called")
-        // Fetch all training schedule (no date filter for demo)
-        val response = httpClient.get("$restUrl/training_schedule") {
-            parameter("order", "date.asc")
-            parameter("limit", "7")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        println("RealGymService: getWeeklySchedule result=$result")
-        return result
-    }
-    
-    override suspend fun getTodaySchedule(): String {
-        val today = "2026-01-01" // TODO: Use actual date
-        val response = httpClient.get("$restUrl/training_schedule") {
-            parameter("date", "eq.$today")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        // Return first item or default
-        if (result.startsWith("[") && result.length > 2) {
-            val items = result.trimStart('[').trimEnd(']')
-            if (items.contains("},")) {
-                return items.split("},")[0] + "}"
-            } else {
-                return items
-            }
-        } else {
-            return """{"focus": "Rest Day", "description": "No training scheduled", "isRestDay": true}"""
-        }
-    }
-    
-    // ============= Attendance & Consistency =============
-    
-    override suspend fun getAttendanceForWeek(weekStart: String): String {
-        val userId = currentUserId ?: return """[]"""
-        
-        val response = httpClient.get("$restUrl/attendance") {
-            parameter("user_id", "eq.$userId")
-            parameter("date", "gte.$weekStart")
-            parameter("select", "date,status")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        return response.bodyAsText()
-    }
-    
-    override suspend fun markAttendance(date: String): Boolean {
-        val userId = currentUserId ?: return false
-        
-        return try {
-            val response = httpClient.post("$restUrl/attendance") {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                    append("Prefer", "return=minimal")
-                }
-                setBody("""{"user_id": "$userId", "date": "$date", "status": "present"}""")
-            }
-            response.status.isSuccess()
-        } catch (e: Exception) {
-            println("Error marking attendance: ${e.message}")
-            false
-        }
-    }
-    
-    override suspend fun getStreak(): Int {
-        val userId = currentUserId ?: return 0
-        
-        return try {
-            val response = httpClient.get("$restUrl/attendance") {
-                parameter("user_id", "eq.$userId")
-                parameter("order", "date.desc")
-                parameter("limit", "30")
-                parameter("select", "date")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
-            }
-            
-            val attendanceJson = response.bodyAsText()
-            val entriesCount = attendanceJson.split("\"date\"").size - 1
-            minOf(entriesCount, 7) // Cap at 7 for demo
-        } catch (e: Exception) {
-            0
-        }
-    }
-    
-    override suspend fun getWeeklyAttendanceStatus(): String {
-        val userId = currentUserId ?: demoUserId
-        
-        return try {
-            val response = httpClient.get("$restUrl/attendance") {
-                parameter("user_id", "eq.$userId")
-                parameter("order", "date.asc")
-                parameter("limit", "7")
-                headers {
-                    append("apikey", supabaseKey)
-                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-                }
-            }
-            val text = response.bodyAsText()
-            // Parse attended dates
-            val attendedDates = mutableSetOf<String>()
-            val regex = """"date":"(\d{4}-\d{2}-\d{2})"""".toRegex()
-            regex.findAll(text).forEach { match ->
-                attendedDates.add(match.groupValues[1])
-            }
-            
-            // Build status array for the week
-            val today = "2026-01-02"
-            val days = listOf(
-                "2025-12-29" to "Mon",
-                "2025-12-30" to "Tue",
-                "2025-12-31" to "Wed",
-                "2026-01-01" to "Thu",
-                "2026-01-02" to "Fri",
-                "2026-01-03" to "Sat",
-                "2026-01-04" to "Sun"
-            )
-            
-            val statuses = days.map { (date, _) ->
-                when {
-                    date == today -> "today"
-                    attendedDates.contains(date) -> "attended"
-                    date > today -> "future"
-                    else -> "missed"
-                }
-            }
-            """["${statuses.joinToString("\",\"")}"]"""
-        } catch (e: Exception) {
-            """["attended","attended","attended","attended","today","future","future"]"""
-        }
-    }
-    
-    // ============= Membership =============
-    
-    override suspend fun getMembershipPlans(): String {
-        println("RealGymService: getMembershipPlans called")
-        println("RealGymService: getMembershipPlans called")
-        val response = httpClient.get("$restUrl/membership_plans") {
-            parameter("order", "sort_order.asc")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        println("RealGymService: getMembershipPlans result=$result")
-        return result
-    }
-    
-    override suspend fun getMembershipHistory(): String {
-        val userId = currentUserId ?: demoUserId
-        println("RealGymService: getMembershipHistory for userId=$userId")
-        
-        val response = httpClient.get("$restUrl/membership_history") {
-            parameter("user_id", "eq.$userId")
-            parameter("order", "start_date.desc")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        println("RealGymService: getMembershipHistory result=$result")
-        return result
-    }
-    
-    override suspend fun getPaymentHistory(): String {
-        val userId = currentUserId ?: demoUserId
-        println("RealGymService: getPaymentHistory for userId=$userId")
-        
-        val response = httpClient.get("$restUrl/payment_history") {
-            parameter("user_id", "eq.$userId")
-            parameter("order", "payment_date.desc")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        val result = response.bodyAsText()
-        println("RealGymService: getPaymentHistory result=$result")
-        return result
-    }
-    
-    // ============= Community =============
-    
-    override suspend fun getCoaches(): String {
-        val response = httpClient.get("$restUrl/coaches") {
-            parameter("order", "sort_order.asc")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        return response.bodyAsText()
-    }
-    
-    override suspend fun getCoach(coachId: String): String {
-        val response = httpClient.get("$restUrl/coaches") {
-            parameter("id", "eq.$coachId")
-            parameter("select", "*")
-            headers {
-                append("apikey", supabaseKey)
-                append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
-            }
-        }
-        return response.bodyAsText()
-    }
-    
-    // ============= Auth =============
-    
-    override suspend fun isLoggedIn(): Boolean {
-        return currentUserId != null
-    }
-    
-    override suspend fun requestOtp(phone: String): Boolean {
-        return try {
-            val response = httpClient.post("$authUrl/otp") {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append("apikey", supabaseKey)
-                }
-                setBody("""{"phone": "$phone"}""")
-            }
-            response.status.isSuccess()
-        } catch (e: Exception) {
-            println("OTP request failed: ${e.message}")
-            false
-        }
-    }
-    
-    override suspend fun verifyOtp(phone: String, otp: String): Boolean {
-        return try {
-            val response = httpClient.post("$authUrl/verify") {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append("apikey", supabaseKey)
-                }
-                setBody("""{"phone": "$phone", "token": "$otp", "type": "sms"}""")
-            }
-            
-            if (response.status.isSuccess()) {
-                val result = response.bodyAsText()
-                // Parse access_token and user.id from response
-                // For now, just mark as logged in
-                currentUserId = "demo-user"
-                currentAccessToken = supabaseKey
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            println("OTP verify failed: ${e.message}")
-            false
-        }
-    }
-    
-    override suspend fun logout() {
-        currentUserId = null
-        currentAccessToken = null
-    }
-    
-    // ============= Native Actions =============
     
     private var urlOpener: ((String) -> Unit)? = null
     private var toastShower: ((String) -> Unit)? = null
@@ -341,13 +36,87 @@ class RealGymService(
     }
     
     override suspend fun openUrl(url: String) {
-        urlOpener?.invoke(url) ?: println("Would open URL: $url")
+        urlOpener?.invoke(url)
     }
-    
-    override suspend fun showToast(message: String) {
-        toastShower?.invoke(message) ?: println("Toast: $message")
+
+    // ============= User Methods =============
+    override suspend fun getProfile(): String = 
+        repository.getProfile()?.let { Json.encodeToString(it) } ?: "null"
+
+    override suspend fun getMembershipPlans(): String = 
+        Json.encodeToString(repository.getMembershipPlans())
+
+    override suspend fun getMembershipHistory(): String = 
+        Json.encodeToString(repository.getMembershipHistory())
+
+    override suspend fun getPaymentHistory(): String = 
+        Json.encodeToString(repository.getPaymentHistory())
+
+    override suspend fun getWeeklySchedule(weekStart: String): String = 
+        Json.encodeToString(repository.getWeeklySchedule(weekStart))
+
+    override suspend fun getTodaySchedule(): String = 
+        repository.getTodaySchedule()?.let { Json.encodeToString(it) } ?: "null"
+
+    override suspend fun getAttendanceForWeek(weekStart: String): String = 
+        Json.encodeToString(repository.getAttendanceForWeek(weekStart))
+
+    override suspend fun getWeeklyAttendanceStatus(): String = 
+        Json.encodeToString(repository.getWeeklyAttendanceStatus())
+
+    override suspend fun markAttendance(date: String): Boolean = 
+        repository.markAttendance(date)
+
+    override suspend fun getStreak(): Int = 
+        repository.getStreak()
+
+    override suspend fun getCoaches(): String = 
+        Json.encodeToString(repository.getCoaches())
+
+    override suspend fun getCoach(coachId: String): String = 
+        repository.getCoach(coachId)?.let { Json.encodeToString(it) } ?: "{}"
+
+    override suspend fun isLoggedIn(): Boolean = 
+        repository.isLoggedIn()
+
+    override suspend fun auth_logout() = 
+        repository.logout()
+
+    override suspend fun requestOtp(email: String): Boolean = 
+        repository.requestOtp(email)
+
+    override suspend fun verifyOtp(email: String, otp: String): Boolean = 
+        repository.verifyOtp(email, otp)
+        
+    override suspend fun updateProfile(name: String, email: String): Boolean {
+        // Todo: Actually update generic profile. Using updateUser for now.
+        // We need to fetch current profile ID first? 
+        // Or assume repository handles it contextually.
+        // For MVP: We assume we are updating the current user.
+        return repository.updateUser(ProfileDto(full_name = name, email = email))
     }
-    
+
+    override suspend fun logout() = 
+        repository.logout()
+        
+    // ============= Admin Methods =============
+    override suspend fun getAllUsers(): String = 
+        Json.encodeToString(repository.getAllUsers())
+        
+    override suspend fun createTrainingDay(trainingDayJson: String): Boolean {
+        // Deserialize JSON to DTO then call repo
+        val dto = Json.decodeFromString<TrainingDayDto>(trainingDayJson)
+        return repository.createTrainingDay(dto)
+    }
+        
+    override suspend fun updateMembershipPlan(planJson: String): Boolean {
+        val dto = Json.decodeFromString<MembershipPlanDto>(planJson)
+        return repository.updateMembershipPlan(dto)
+    }
+        
+    override suspend fun checkInUser(userId: String): Boolean =
+         repository.checkInUser(userId)
+
     override fun close() {
         // HTTP client lifecycle managed externally
     }

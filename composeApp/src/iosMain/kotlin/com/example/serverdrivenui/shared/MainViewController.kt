@@ -43,13 +43,11 @@ import okio.ByteString.Companion.toByteString
 import okio.IOException
 import io.ktor.client.*
 import io.ktor.client.engine.darwin.*
+import com.example.serverdrivenui.core.data.SupabaseConfig
 
 // ============= Supabase Config =============
+// Used from core-data module
 
-private object SupabaseConfig {
-    const val PROJECT_URL = "https://tumdkgcpikspixovmzrw.supabase.co"
-    const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bWRrZ2NwaWtzcGl4b3ZtenJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNDkxNTEsImV4cCI6MjA4MjgyNTE1MX0.Qewg6JqydPboYKSkQ1wxuoHeD2fWMBez9XiO1CTcyA4"
-}
 
 // ============= Zipline HTTP Client (for code loading) =============
 

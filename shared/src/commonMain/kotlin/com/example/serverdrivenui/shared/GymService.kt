@@ -98,18 +98,51 @@ interface GymService : ZiplineService {
     /**
      * Request OTP for phone number.
      */
-    suspend fun requestOtp(phone: String): Boolean
+    /**
+     * Request OTP for email.
+     */
+    suspend fun requestOtp(email: String): Boolean
     
     /**
      * Verify OTP and login.
      */
-    suspend fun verifyOtp(phone: String, otp: String): Boolean
+    suspend fun verifyOtp(email: String, otp: String): Boolean
+    
+    /**
+     * Update user profile (e.g. set Name).
+     */
+    suspend fun updateProfile(name: String, email: String): Boolean
     
     /**
      * Logout user.
      */
     suspend fun logout()
     
+    // ============= Admin Operations =============
+    
+    /**
+     * Get all users.
+     * Returns JSON list of ProfileDto.
+     */
+    suspend fun getAllUsers(): String
+    
+    /**
+     * Create a training day.
+     * @param trainingDayJson JSON string of TrainingDayDto.
+     */
+    suspend fun createTrainingDay(trainingDayJson: String): Boolean
+    
+    /**
+     * Update a membership plan.
+     * @param planJson JSON string of MembershipPlanDto.
+     */
+    suspend fun updateMembershipPlan(planJson: String): Boolean
+    
+    /**
+     * Check in a user manually.
+     */
+    suspend fun checkInUser(userId: String): Boolean
+
     // ============= Native Actions =============
     
     /**

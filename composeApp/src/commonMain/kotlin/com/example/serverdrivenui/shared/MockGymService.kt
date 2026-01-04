@@ -98,14 +98,19 @@ class MockGymService : GymService {
     
     override suspend fun isLoggedIn(): Boolean = true
     
-    override suspend fun requestOtp(phone: String): Boolean {
-        println("MockGymService: OTP requested for $phone")
+    override suspend fun requestOtp(email: String): Boolean {
+        println("MockGymService: OTP requested for $email")
         return true
     }
     
-    override suspend fun verifyOtp(phone: String, otp: String): Boolean {
-        println("MockGymService: OTP $otp verified for $phone")
+    override suspend fun verifyOtp(email: String, otp: String): Boolean {
+        println("MockGymService: OTP $otp verified for $email")
         return otp == "123456" // Demo OTP
+    }
+    
+    override suspend fun updateProfile(name: String, email: String): Boolean {
+         println("MockGymService: Profile updated: $name, $email")
+         return true
     }
     
     override suspend fun logout() {
@@ -119,6 +124,12 @@ class MockGymService : GymService {
     override suspend fun showToast(message: String) {
         println("MockGymService: Toast: $message")
     }
+    
+    // ============= Admin Methods (Mock) =============
+    override suspend fun getAllUsers(): String = "[]" // Mock empty user list
+    override suspend fun createTrainingDay(trainingDayJson: String): Boolean = true
+    override suspend fun updateMembershipPlan(planJson: String): Boolean = true
+    override suspend fun checkInUser(userId: String): Boolean = true
     
     override fun close() {
         // No cleanup needed

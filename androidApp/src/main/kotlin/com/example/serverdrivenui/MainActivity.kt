@@ -179,6 +179,21 @@ class MainActivity : ComponentActivity() {
         // Connect to hot reload WebSocket
         hotReloadManager.connect(DevConfig.hotReloadUrl)
 
+        // Create Host-side GymService for Native Login
+        val repository = com.example.serverdrivenui.core.data.SupabaseGymRepository(
+            httpClient = ktorHttpClient,
+            supabaseUrl = SupabaseConfig.PROJECT_URL,
+            supabaseKey = SupabaseConfig.ANON_KEY
+        )
+        val hostGymService = com.example.serverdrivenui.shared.RealGymService(repository)
+        hostGymService.setUrlOpener { url -> 
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            startActivity(intent)
+        }
+        hostGymService.setToastShower { msg ->
+            android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show()
+        }
+
         setContent {
             // Observe hot reload triggers
             val refreshTrigger by hotReloadManager.refreshTrigger.collectAsState()
@@ -191,7 +206,7 @@ class MainActivity : ComponentActivity() {
             }
             
             // Render the app
-            App(treehouseApp = app)
+            App(treehouseApp = app, gymService = hostGymService)
         }
     }
     
