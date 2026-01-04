@@ -26,12 +26,14 @@ kotlin {
             implementation(libs.redwood.treehouse.guest)
             implementation(libs.zipline)
             implementation(project(":shared"))
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+            implementation(libs.kotlinx.serialization.json)
+            implementation(project(":core-data"))
         }
         val jsMain by getting {
             dependencies {
                 implementation(project(":shared-protocol-guest"))
                 implementation(project(":shared-widget"))
+                implementation(npm("@js-joda/core", "3.2.0"))
             }
         }
     }

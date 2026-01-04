@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import com.example.serverdrivenui.data.dto.*
+import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.presenter.GymServiceProvider
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch

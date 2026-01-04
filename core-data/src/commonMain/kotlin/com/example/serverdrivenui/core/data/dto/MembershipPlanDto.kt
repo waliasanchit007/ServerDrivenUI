@@ -1,4 +1,4 @@
-package com.example.serverdrivenui.data.dto
+package com.example.serverdrivenui.core.data.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

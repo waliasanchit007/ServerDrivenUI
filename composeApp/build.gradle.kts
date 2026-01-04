@@ -58,6 +58,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
+            implementation(project(":core-data"))
             implementation("org.jetbrains.compose.ui:ui-backhandler:1.8.0")  // Cross-platform BackHandler
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.redwood.widget)

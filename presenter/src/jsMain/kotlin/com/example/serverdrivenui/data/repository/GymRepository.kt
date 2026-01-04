@@ -1,6 +1,6 @@
 package com.example.serverdrivenui.data.repository
 
-import com.example.serverdrivenui.data.dto.*
+import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.shared.GymService
 import com.example.serverdrivenui.shared.StorageService
 import kotlinx.serialization.json.Json

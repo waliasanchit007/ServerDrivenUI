@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caliclan Admin</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #ComposeTarget {
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+<!-- Canvas ID match usually required by Compose? Defaults to "ComposeTarget" or passed in window? -->
+<!-- Main.kt: CanvasBasedWindow(title = "Caliclan Admin") { ... } -->
+<!-- CanvasBasedWindow automatically creates canvas? No, in Wasm it usually binds to existing canvas or body. -->
+<!-- Actually CanvasBasedWindow creates canvas. -->
+<!-- But standard Wasm template often has canvas. -->
+<!-- Let's check Main.kt content again. -->
+<!-- Main.kt uses CanvasBasedWindow. -->
+
+<!-- For Compose Wasm, usually: -->
+    <canvas id="ComposeTarget"></canvas>
+    <script src="skiko.js"></script>
+    <script src="admin-web.js"></script>
+</body>
+</html>
