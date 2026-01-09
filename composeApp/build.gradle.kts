@@ -58,7 +58,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
-            api(project(":core-data")) // Exposed in SharedAppSpec
+            implementation(compose.components.uiToolingPreview)
             implementation("org.jetbrains.compose.ui:ui-backhandler:1.8.0")
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.redwood.widget)

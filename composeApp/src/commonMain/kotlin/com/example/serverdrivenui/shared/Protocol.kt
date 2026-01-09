@@ -695,6 +695,7 @@ class CmpCoachCard : CoachCard<@Composable (androidx.compose.ui.Modifier) -> Uni
         Card(
             modifier = modifier
                 .width(140.dp)
+                .height(160.dp)
                 .clickable { onClick() },
             colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface)
         ) {
@@ -1801,10 +1802,12 @@ class CmpProfileInfoCard : ProfileInfoCard<@Composable (androidx.compose.ui.Modi
                     Text("Email", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
                     Text(email, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
                 }
-                Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
-                Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Phone", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
-                    Text(phone, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                if (phone.isNotEmpty()) {
+                    Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                    Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Phone", style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
+                        Text(phone, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextPrimary)
+                    }
                 }
                 Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
                 Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

@@ -22,7 +22,8 @@ sealed class HomeUiState {
         val daysLeft: Int,
         val todayTraining: TrainingDayDto?,
         val streak: Int,
-        val attendanceDays: List<String>
+        val attendanceDays: List<String>,
+        val warningMessage: String?
     ) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }
@@ -61,11 +62,19 @@ suspend fun fetchHomeData(): HomeUiState {
         val streak = repo.getStreak()
         val attendanceDays = repo.getWeeklyAttendanceStatus()
         
+        // Logic for warnings
+        val warningMessage = when {
+            status == "inactive" -> "Your membership is inactive. Join a plan today!"
+            status == "active" && daysLeft <= 5 -> "Your membership expires in $daysLeft days. Renew soon!"
+            else -> null
+        }
+        
         HomeUiState.Success(
             userName = profileName,
             membershipStatus = status,
             membershipExpiry = expiry,
             daysLeft = daysLeft,
+            warningMessage = warningMessage, // New field needed in State
             todayTraining = todayTraining,
             streak = streak,
             attendanceDays = attendanceDays
@@ -75,6 +84,13 @@ suspend fun fetchHomeData(): HomeUiState {
         HomeUiState.Error("Failed to load: ${e.message}")
     }
 }
+
+// Update State sealed class to include warningMessage
+// (Doing this via replace_content below might be tricky if I don't target the class definition again.
+// actually I'll just update the whole file logic block or allow the compiler to guide me?
+// I'll update the class definition in a separate chunk or include it here if contiguous.)
+// I will split this into two chunks/tools or careful editing.
+// This replacement is for the `fetchHomeData` body mostly.
 
 /**
  * Home Screen Content - Real Data
@@ -109,6 +125,17 @@ fun HomeScreenContent(
                 
                 Spacer(width = 0, height = 32)
                 
+                if (state.warningMessage != null) {
+                    SduiCard(onClick = null) { // Could be clickable to Membership
+                        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                            HeaderText(text = "⚠️ Membership Alert", size = "small")
+                            Spacer(width = 0, height = 8)
+                            SecondaryText(text = state.warningMessage)
+                        }
+                    }
+                    Spacer(width = 0, height = 32)
+                }
+                
                 // 2. Membership Status Card
                 StatusCard(
                     status = state.membershipStatus,
@@ -128,7 +155,7 @@ fun HomeScreenContent(
                     label = "Today's Session",
                     focus = focus,
                     goals = goals,
-                    onClick = null // Could navigate to training tab
+                    onClick = null 
                 )
                 
                 Spacer(width = 0, height = 32)
@@ -141,8 +168,8 @@ fun HomeScreenContent(
                 )
                 
                 Spacer(width = 0, height = 32)
-                
-                // 5. Coach Announcement (Static for now, could be dynamic later)
+
+                 // 5. Coach Announcement
                 AnnouncementCard(
                     label = "Coach Update",
                     title = "Advanced Skills Workshop",
@@ -151,7 +178,7 @@ fun HomeScreenContent(
                 
                 Spacer(width = 0, height = 32)
                 
-                // 6. WhatsApp CTA Button
+                // 6. WhatsApp CTA
                 ActionButton(
                     icon = "whatsapp",
                     text = "Contact Gym via WhatsApp",
@@ -166,44 +193,43 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 16)
                 
                 CoachGrid {
-                    // Static list of coaches for now - fetching 6 individual coaches is expensive unless we strictly use getCoaches() list
-                    // For demo visual consistency with previous design, we'll keep hardcoded coach logic here 
-                    // or implement a getCoaches() loop if desired. 
-                    // Keeping static for speed as requested purely for "Home Screen Data" focus.
                      CoachCard(
                         name = "Hemant",
-                        role = "Founder, Master Coach",
+                        role = "Founder",
                         photoUrl = "",
                         onClick = {
-                            onCoachClick(
-                                "Hemant",
-                                "Founder, Master Coach",
-                                "Specializing in statics and front lever mechanics. 8+ years of calisthenics experience.",
-                                "",
-                                "hemant_caliclan"
-                            )
+                            onCoachClick("Hemant", "Founder", "Master Coach", "", "hemant")
                         }
                     )
-                    CoachCard(
+                     CoachCard(
                         name = "Ankit",
                         role = "Head Coach",
                         photoUrl = "",
                         onClick = {
-                            onCoachClick(
-                                "Ankit",
-                                "Head Coach",
-                                "Expert in progressive training and muscle-up progressions.",
-                                "",
-                                "ankit_coach"
-                            )
+                            onCoachClick("Ankit", "Head Coach", "Skills", "", "ankit")
                         }
                     )
-                    // ... (Reduced list for brevity in code, but user can see these)
+                     CoachCard(
+                        name = "Gaurav",
+                        role = "Senior Coach",
+                        photoUrl = "",
+                        onClick = {
+                            onCoachClick("Gaurav", "Senior Coach", "Strength", "", "gaurav")
+                        }
+                    )
+                     CoachCard(
+                        name = "Jatin",
+                        role = "Mobility Coach",
+                        photoUrl = "",
+                        onClick = {
+                            onCoachClick("Jatin", "Mobility", "Flexibility", "", "jatin")
+                        }
+                    )
                 }
             }
         }
         
-        Spacer(width = 0, height = 32)
+        Spacer(width = 0, height = 100) // Extra padding for bottom nav
     }
 }
 

@@ -22,22 +22,7 @@ kotlin {
             implementation(libs.redwood.protocol.host)
             implementation(libs.redwood.protocol.host)
             api(libs.zipline)
-            api(project(":core-data"))
             
-            // Ktor HTTP Client
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
-        }
-        
-        // Android/JVM uses OkHttp engine
-        jvmMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-        }
-        
-        // iOS uses Darwin engine
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

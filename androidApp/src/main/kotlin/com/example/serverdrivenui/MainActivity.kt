@@ -15,7 +15,7 @@ import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
 import com.example.serverdrivenui.shared.SharedAppSpec
-import com.example.serverdrivenui.core.data.dto.HostApiConfig
+import com.example.serverdrivenui.shared.dto.HostApiConfig
 import app.cash.redwood.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient

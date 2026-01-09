@@ -1,7 +1,7 @@
 package com.example.serverdrivenui.shared
 
 import com.example.serverdrivenui.core.data.SupabaseGymRepository
-import com.example.serverdrivenui.core.data.dto.*
+import com.example.serverdrivenui.shared.dto.HostApiConfig
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

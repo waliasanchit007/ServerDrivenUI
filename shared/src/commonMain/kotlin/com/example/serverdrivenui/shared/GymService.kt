@@ -1,7 +1,7 @@
 package com.example.serverdrivenui.shared
 
 import app.cash.zipline.ZiplineService
-import com.example.serverdrivenui.core.data.dto.HostApiConfig
+import com.example.serverdrivenui.shared.dto.HostApiConfig
 
 /**
  * GymService - The Bridge between Host and Guest for Caliclan app.
@@ -63,6 +63,7 @@ interface GymService : ZiplineService {
         headers: Map<String, String>, 
         body: String?
     ): ProxyResponse
+
 }
 
 @kotlinx.serialization.Serializable

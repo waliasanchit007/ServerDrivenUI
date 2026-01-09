@@ -17,7 +17,8 @@ sealed class TrainingUiState {
     object Loading : TrainingUiState()
     data class Success(
         val schedule: List<TrainingDayDto>,
-        val attendanceStatus: List<String>
+        val attendanceStatus: List<String>,
+        val currentDate: String
     ) : TrainingUiState()
     data class Error(val message: String) : TrainingUiState()
 }
@@ -33,9 +34,10 @@ suspend fun fetchTrainingData(): TrainingUiState {
         
         val schedule = repo.getWeeklySchedule(weekStart)
         val attendance = repo.getWeeklyAttendanceStatus()
+        val today = repo.getTodayDate()
         
         if (schedule.isNotEmpty()) {
-            TrainingUiState.Success(schedule, attendance)
+            TrainingUiState.Success(schedule, attendance, today)
         } else {
             TrainingUiState.Error("No training schedule found")
         }
@@ -51,7 +53,7 @@ suspend fun fetchTrainingData(): TrainingUiState {
 fun TrainingScreenContent(
     uiState: TrainingUiState
 ) {
-    val today = "2026-01-02"
+    // val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
     
     ScrollableColumn(padding = 24) {
         // Header
@@ -80,7 +82,7 @@ fun TrainingScreenContent(
             is TrainingUiState.Success -> {
                 // Render each day from live data
                 state.schedule.forEachIndexed { index, day ->
-                    val isToday = day.date == today
+                    val isToday = day.date == state.currentDate
                     val attended = index < state.attendanceStatus.size && state.attendanceStatus[index] == "attended"
                     val dateDisplay = formatDateDisplay(day.date)
                     

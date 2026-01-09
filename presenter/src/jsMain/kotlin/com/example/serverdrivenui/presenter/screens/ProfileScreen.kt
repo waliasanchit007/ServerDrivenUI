@@ -84,7 +84,7 @@ fun ProfileScreenContent(
                 ProfileInfoCard(
                     name = state.profile.fullName,
                     email = state.profile.email ?: "",
-                    phone = state.profile.phone ?: "",
+                    phone = "", // Phone removed from UI
                     batch = state.profile.batch ?: "",
                     memberSince = state.profile.createdAt?.let { formatDateDisplay(it) } ?: ""
                 )
@@ -92,12 +92,10 @@ fun ProfileScreenContent(
                 Spacer(width = 0, height = 32)
                 
                 // Membership History
-                HeaderText(text = "📅 Membership History", size = "medium")
-                Spacer(width = 0, height = 16)
-                
-                if (state.membershipHistory.isEmpty()) {
-                    SecondaryText(text = "No membership history")
-                } else {
+                if (state.membershipHistory.isNotEmpty()) {
+                    HeaderText(text = "📅 Membership History", size = "medium")
+                    Spacer(width = 0, height = 16)
+                    
                     state.membershipHistory.forEachIndexed { index, item ->
                         HistoryItem(
                             title = item.planName,
@@ -109,17 +107,14 @@ fun ProfileScreenContent(
                             Spacer(width = 0, height = 12)
                         }
                     }
+                    Spacer(width = 0, height = 32)
                 }
                 
-                Spacer(width = 0, height = 32)
-                
                 // Payment History
-                HeaderText(text = "💳 Payment History", size = "medium")
-                Spacer(width = 0, height = 16)
-                
-                if (state.paymentHistory.isEmpty()) {
-                    SecondaryText(text = "No payment history")
-                } else {
+                if (state.paymentHistory.isNotEmpty()) {
+                    HeaderText(text = "💳 Payment History", size = "medium")
+                    Spacer(width = 0, height = 16)
+                    
                     state.paymentHistory.forEachIndexed { index, item ->
                         HistoryItem(
                             title = item.amount,

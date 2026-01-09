@@ -44,6 +44,7 @@ import okio.IOException
 import io.ktor.client.*
 import io.ktor.client.engine.darwin.*
 import com.example.serverdrivenui.core.data.SupabaseConfig
+import com.example.serverdrivenui.shared.dto.HostApiConfig
 
 // ============= Supabase Config =============
 // Used from core-data module

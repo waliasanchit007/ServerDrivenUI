@@ -78,7 +78,7 @@ class SupabaseGymRepository(
     }
     
     suspend fun getTodaySchedule(): TrainingDayDto? {
-        val today = "2026-01-01" // TODO: Use actual date logic
+        val today = PlatformDateProvider.today()
         return try {
             val response = httpClient.get("$restUrl/training_schedule") {
                 parameter("date", "eq.$today")
@@ -200,7 +200,73 @@ class SupabaseGymRepository(
                 }
             }.body()
         } catch (e: Exception) {
+            println("Error fetching membership plans: ${e.message}")
             emptyList()
+        }
+    }
+    
+    suspend fun assignMembership(userId: String, planId: String): Boolean {
+        println("Repo: assignMembership($userId, $planId)")
+        val plan = getMembershipPlans().find { it.id == planId } ?: return false
+        
+        val startDate = PlatformDateProvider.today()
+        
+        val duration = plan.duration.lowercase()
+        val endDate = when {
+            duration.contains("session") -> startDate
+            duration.contains("1 month") -> PlatformDateProvider.addMonths(startDate, 1)
+            duration.contains("3 months") -> PlatformDateProvider.addMonths(startDate, 3)
+            duration.contains("6 months") -> PlatformDateProvider.addMonths(startDate, 6)
+            duration.contains("year") -> PlatformDateProvider.addMonths(startDate, 12)
+            else -> PlatformDateProvider.addMonths(startDate, 1)
+        }
+        
+        return try {
+            val response = httpClient.post("$restUrl/membership_history") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                    append("Prefer", "return=minimal")
+                }
+                setBody("""{
+                    "user_id": "$userId",
+                    "plan_name": "${plan.name}",
+                    "start_date": "$startDate",
+                    "end_date": "$endDate",
+                    "status": "active"
+                }""")
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Assign Membership Failed: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun recordPayment(userId: String, amount: String, planId: String): Boolean {
+        println("Repo: recordPayment($userId, $amount, $planId)")
+        val now = PlatformDateProvider.now()
+        return try {
+            val response = httpClient.post("$restUrl/payment_history") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                    append("Prefer", "return=minimal")
+                }
+                setBody("""{
+                    "user_id": "$userId",
+                    "amount": "$amount",
+                    "payment_date": "$now",
+                    "method": "UPI",
+                    "status": "completed"
+                }""")
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Record Payment Failed: ${e.message}")
+            false
         }
     }
     
@@ -362,7 +428,7 @@ class SupabaseGymRepository(
                 // Extract user.id
                 val userId = jsonElement.jsonObject["user"]?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
                     ?: jsonElement.jsonObject["id"]?.jsonPrimitive?.contentOrNull 
-
+                
                 if (userId != null) {
                     currentUserId = userId
                     currentAccessToken = supabaseKey 
@@ -549,7 +615,7 @@ class SupabaseGymRepository(
     }
     
     suspend fun checkInUser(userId: String): Boolean {
-        val today = "2026-01-02" 
+        val today = PlatformDateProvider.today() 
         return try {
             val response = httpClient.post("$restUrl/attendance") {
                 contentType(ContentType.Application.Json)
@@ -600,5 +666,11 @@ class SupabaseGymRepository(
         }
     }
     
+
     // Native Actions are UI specific, so removed from Core Data
+
+    fun getTodayDate(): String {
+        return PlatformDateProvider.today()
+    }
 }
+

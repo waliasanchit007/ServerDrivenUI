@@ -4,7 +4,7 @@ import app.cash.redwood.treehouse.TreehouseApp
 import app.cash.zipline.Zipline
 import io.ktor.client.*
 import kotlinx.coroutines.flow.Flow
-import com.example.serverdrivenui.core.data.dto.HostApiConfig
+import com.example.serverdrivenui.shared.dto.HostApiConfig
 
 /**
  * SharedAppSpec - Platform-agnostic TreehouseApp.Spec implementation.

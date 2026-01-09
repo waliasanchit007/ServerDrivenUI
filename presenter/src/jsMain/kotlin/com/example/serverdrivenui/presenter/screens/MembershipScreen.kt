@@ -51,6 +51,10 @@ fun MembershipScreenContent(
     uiState: MembershipUiState
 ) {
     ScrollableColumn(padding = 24) {
+        // Payment State
+        var selectedPlanForPayment by remember { mutableStateOf<MembershipPlanDto?>(null) }
+        val scope = rememberCoroutineScope()
+        
         // Header
         HeaderText(text = "Membership", size = "large")
         Spacer(width = 0, height = 8)
@@ -107,7 +111,7 @@ fun MembershipScreenContent(
                         isCurrent = false,
                         isRecommended = plan.isRecommended,
                         billingDate = "",
-                        onSelect = { /* Select plan */ }
+                        onSelect = { selectedPlanForPayment = plan }
                     )
                     
                     if (index < state.plans.size - 2) {
@@ -125,5 +129,99 @@ fun MembershipScreenContent(
         }
         
         Spacer(width = 0, height = 32)
+        if (selectedPlanForPayment != null) {
+            val plan = selectedPlanForPayment!!
+            PaymentSheet(
+                isVisible = true,
+                plan = plan,
+                onDismiss = { selectedPlanForPayment = null },
+                onSuccess = {
+                    scope.launch {
+                        val service = GymServiceProvider.getService() ?: return@launch
+                        val repo = GymServiceProvider.getRepository() ?: return@launch
+                        val userId = service.getSessionUserId() ?: return@launch
+                        
+                        // 1. Record Payment
+                        repo.recordPayment(userId, plan.price, plan.id)
+                        
+                        // 2. Assign Membership
+                        repo.assignMembership(userId, plan.id)
+                        
+                        // 3. Show Success & Close
+                        service.showToast("Membership Activated! Welcome to the clan.")
+                        selectedPlanForPayment = null
+                    }
+                },
+                onFailure = {
+                    scope.launch {
+                        val service = GymServiceProvider.getService()
+                        service?.showToast("Payment Failed. Please try again.")
+                        selectedPlanForPayment = null
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun PaymentSheet(
+    isVisible: Boolean,
+    plan: MembershipPlanDto,
+    onSuccess: () -> Unit,
+    onFailure: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var isProcessing by remember { mutableStateOf(false) }
+    
+    BottomSheet(
+        isVisible = isVisible,
+        onDismiss = onDismiss
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center") {
+             HeaderText(text = "Complete Payment", size = "medium")
+             Spacer(width = 0, height = 16)
+             
+             SduiCard(onClick = null) {
+                 FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                     SecondaryText(text = "Membership Plan")
+                     HeaderText(text = plan.name, size = "small")
+                     Spacer(width = 0, height = 8)
+                     // Use FlexRow for layout
+                     FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
+                        SecondaryText(text = "Amount to Pay")
+                        HeaderText(text = plan.priceLabel, size = "medium")
+                     }
+                 }
+             }
+             
+             Spacer(width = 0, height = 24)
+             
+             if (isProcessing) {
+                 SecondaryText(text = "Processing Payment...")
+                 Spacer(width = 0, height = 16)
+             } else {
+                 ActionButton(
+                     variant = "primary",
+                     text = "Simulate Success (UPI)",
+                     icon = "check",
+                     onClick = {
+                         isProcessing = true
+                         onSuccess()
+                     }
+                 )
+                 
+                 Spacer(width = 0, height = 12)
+                 
+                 ActionButton(
+                     variant = "secondary",
+                     text = "Simulate Failure",
+                     icon = "close",
+                     onClick = {
+                         onFailure()
+                     }
+                 )
+             }
+        }
     }
 }
