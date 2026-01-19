@@ -39,7 +39,6 @@ class SharedAppSpec(
         
         // Bind GymService for Supabase data access
         val gymService = RealGymService(
-            httpClient = httpClient,
             supabaseUrl = hostApi.supabaseUrl,
             supabaseKey = hostApi.supabaseKey,
             storage = storage,

@@ -1,71 +1,58 @@
 package com.example.serverdrivenui.shared
 
-import com.example.serverdrivenui.core.data.SupabaseGymRepository
 import com.example.serverdrivenui.shared.dto.HostApiConfig
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 
 /**
- * RealGymService - Adapter that implements GymService (Zipline)
- * but delegates logic to Core Data (SupabaseGymRepository).
- */
-/**
- * RealGymService - Adapter that implements GymService (Zipline)
- * but delegates logic to Core Data (SupabaseGymRepository) or Storage.
+ * RealGymService - "Dumb" Host adapter that implements GymService (Zipline).
+ * 
+ * This class has NO knowledge of SupabaseGymRepository or any business logic.
+ * It only provides:
+ * - Config values (URL, Key as strings)
+ * - Storage access
+ * - Native capabilities (toast, URL opening)
+ * - Network proxy
+ * 
+ * All actual API logic lives in the Guest (presenter module via Zipline).
  */
 class RealGymService(
-    private val repository: SupabaseGymRepository,
-    private val storage: StorageService?, // Optional for backward compat, but needed for proper persistence
+    private val supabaseUrl: String,
+    private val supabaseKey: String,
+    private val storage: StorageService,
     private val toastShower: ((String) -> Unit)? = null,
     private val urlOpener: ((String) -> Unit)? = null
 ) : GymService {
-
-    constructor(
-        httpClient: HttpClient, 
-        supabaseUrl: String, 
-        supabaseKey: String,
-        storage: StorageService?,
-        toastShower: ((String) -> Unit)? = null,
-        urlOpener: ((String) -> Unit)? = null
-    ) : this(
-        SupabaseGymRepository(httpClient, supabaseUrl, supabaseKey),
-        storage,
-        toastShower,
-        urlOpener
-    )
     
-    // Auth & Utilities
+    // ============= Config =============
     
     override suspend fun getHostConfig(): HostApiConfig {
-        return HostApiConfig(repository.supabaseUrl, repository.supabaseKey)
+        return HostApiConfig(supabaseUrl, supabaseKey)
     }
 
+    // ============= Session (Storage Only) =============
+
     override suspend fun getSessionToken(): String? {
-        // Prefer storage, fallback to repo memory
-        return storage?.getString("auth_token") ?: repository.currentAccessToken
+        return storage.getString("auth_token")?.takeIf { it.isNotEmpty() }
     }
 
     override suspend fun getSessionUserId(): String? {
-        return storage?.getString("user_id") ?: repository.currentUserId
+        return storage.getString("user_id")?.takeIf { it.isNotEmpty() }
     }
 
     override suspend fun saveSession(userId: String, accessToken: String) {
-        storage?.setString("user_id", userId)
-        storage?.setString("auth_token", accessToken)
-        // Also update local repo just in case (though Guest has its own repo)
-        repository.setSession(userId, accessToken)
+        storage.setString("user_id", userId)
+        storage.setString("auth_token", accessToken)
     }
 
     override suspend fun clearSession() {
-        storage?.setString("user_id", "")
-        storage?.setString("auth_token", "")
-        repository.setSession(null, null)
+        storage.setString("user_id", "")
+        storage.setString("auth_token", "")
     }
+
+    // ============= Native Actions =============
 
     override suspend fun showToast(message: String) {
         toastShower?.invoke(message)
@@ -77,9 +64,7 @@ class RealGymService(
 
     // ============= Network Proxy =============
     
-    private val proxyClient = HttpClient() {
-        // Basic config
-    }
+    private val proxyClient = HttpClient()
 
     override suspend fun proxyRequest(
         url: String,
@@ -89,7 +74,7 @@ class RealGymService(
     ): ProxyResponse {
         try {
             val response = proxyClient.request(url) {
-                this.method = io.ktor.http.HttpMethod.parse(method)
+                this.method = HttpMethod.parse(method)
                 headers.forEach { (k, v) ->
                     this.headers.append(k, v)
                 }
@@ -100,8 +85,6 @@ class RealGymService(
             
             val responseBody = response.bodyAsText()
             val responseHeaders = response.headers.entries().associate { it.key to it.value.joinToString(",") }
-            
-            println("RealGymService: Proxy success: ${response.status} (Body: ${responseBody.length} chars)")
             
             return ProxyResponse(
                 status = response.status.value,
@@ -118,3 +101,4 @@ class RealGymService(
         proxyClient.close()
     }
 }
+
