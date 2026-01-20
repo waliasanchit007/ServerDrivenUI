@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.presenter.GymServiceProvider
+import com.example.serverdrivenui.presenter.components.ProfileInfoCardComposable
+import com.example.serverdrivenui.presenter.components.HistoryItemComposable
 import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
@@ -81,7 +83,7 @@ fun ProfileScreenContent(
             }
             is ProfileUiState.Success -> {
                 // Member Info Card
-                ProfileInfoCard(
+                ProfileInfoCardComposable(
                     name = state.profile.fullName,
                     email = state.profile.email ?: "",
                     phone = "", // Phone removed from UI
@@ -97,7 +99,7 @@ fun ProfileScreenContent(
                     Spacer(width = 0, height = 16)
                     
                     state.membershipHistory.forEachIndexed { index, item ->
-                        HistoryItem(
+                        HistoryItemComposable(
                             title = item.planName,
                             subtitle = "${formatDateDisplay(item.startDate)} - ${formatDateDisplay(item.endDate)}",
                             status = item.status,
@@ -116,7 +118,7 @@ fun ProfileScreenContent(
                     Spacer(width = 0, height = 16)
                     
                     state.paymentHistory.forEachIndexed { index, item ->
-                        HistoryItem(
+                        HistoryItemComposable(
                             title = item.amount,
                             subtitle = "${formatDateDisplay(item.paymentDate)} • ${item.method}",
                             status = item.status,

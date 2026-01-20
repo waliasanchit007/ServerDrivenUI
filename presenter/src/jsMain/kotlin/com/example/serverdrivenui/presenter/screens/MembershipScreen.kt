@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.presenter.GymServiceProvider
+import com.example.serverdrivenui.presenter.components.MembershipPlanCardComposable
 import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
@@ -81,7 +82,7 @@ fun MembershipScreenContent(
                 // Current Plan (first plan)
                 val currentPlan = state.plans.firstOrNull()
                 if (currentPlan != null) {
-                    MembershipPlanCard(
+                    MembershipPlanCardComposable(
                         name = currentPlan.name,
                         duration = currentPlan.duration,
                         price = currentPlan.price,
@@ -102,7 +103,7 @@ fun MembershipScreenContent(
                 
                 // Show upgrade plans (skip first/current)
                 state.plans.drop(1).forEachIndexed { index, plan ->
-                    MembershipPlanCard(
+                    MembershipPlanCardComposable(
                         name = plan.name,
                         duration = plan.duration,
                         price = plan.price,

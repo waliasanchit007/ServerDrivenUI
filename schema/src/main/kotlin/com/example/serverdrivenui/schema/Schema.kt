@@ -8,6 +8,7 @@ import kotlin.Unit
 
 @Schema(
     members = [
+        // Core primitives
         MyText::class,
         MyButton::class,
         MyColumn::class,
@@ -15,47 +16,35 @@ import kotlin.Unit
         FlexColumn::class,
         Box::class,
         Spacer::class,
+        // Input widgets
         SduiTextField::class,
         SduiSwitch::class,
+        // Display widgets
         SduiImage::class,
         SduiCard::class,
+        AsyncImage::class,
         // Navigation widgets
         ScreenStack::class,
         BackHandler::class,
-        // Caliclan widgets
+        // Layout containers
         LazyList::class,
-        AsyncImage::class,
-        StatusCard::class,
-        ConsistencyStrip::class,
-        CoachCard::class,
-        ScheduleItem::class,
-        // Premium UI widgets
-        BottomNavigationBar::class,
         BottomSheet::class,
         ScrollableColumn::class,
+        AppScaffold::class,
+        CoachGrid::class,
+        // Text variants
         HeaderText::class,
         SecondaryText::class,
+        // Interactive elements
         IconButton::class,
         Chip::class,
-        // Layout widgets
-        AppScaffold::class,
-        // New Home screen widgets
-        GreetingHeader::class,
-        TrainingSessionCard::class,
-        AnnouncementCard::class,
         ActionButton::class,
-        CoachGrid::class,
-        WeeklyAttendance::class,
-        // Pixel-perfect screen widgets
-        TrainingDayCard::class,
-        MembershipPlanCard::class,
-        ProfileInfoCard::class,
-        HistoryItem::class,
     ],
 )
 interface SduiSchema
 
-// Existing widgets
+// ============= Core Primitives =============
+
 @Widget(1)
 data class MyText(
     @Property(1) val text: String,
@@ -72,7 +61,6 @@ data class MyColumn(
     @Children(1) val children: () -> Unit,
 )
 
-// Layout widgets
 @Widget(4)
 data class FlexRow(
     @Property(1) val horizontalArrangement: String, // "Start", "Center", "End", "SpaceBetween", "SpaceAround", "SpaceEvenly"
@@ -98,7 +86,8 @@ data class Spacer(
     @Property(2) val height: Int,
 )
 
-// Input widgets
+// ============= Input Widgets =============
+
 @Widget(8)
 data class SduiTextField(
     @Property(1) val value: String,
@@ -113,7 +102,8 @@ data class SduiSwitch(
     @Property(2) val onCheckedChange: (Boolean) -> Unit,
 )
 
-// Display widgets
+// ============= Display Widgets =============
+
 @Widget(10)
 data class SduiImage(
     @Property(1) val url: String,
@@ -126,114 +116,34 @@ data class SduiCard(
     @Children(1) val children: () -> Unit,
 )
 
+@Widget(15)
+data class AsyncImage(
+    @Property(1) val url: String,
+    @Property(2) val contentDescription: String,
+    @Property(3) val size: Int,
+    @Property(4) val circular: Boolean,
+)
+
 // ============= Navigation Widgets =============
 
-/**
- * Container for screen content with transition support.
- */
 @Widget(12)
 data class ScreenStack(
     @Children(1) val children: () -> Unit,
 )
 
-/**
- * Back press interceptor widget.
- */
 @Widget(13)
 data class BackHandler(
     @Property(1) val enabled: Boolean,
     @Property(2) val onBack: () -> Unit,
 )
 
-// ============= Caliclan Widgets =============
+// ============= Layout Containers =============
 
-/**
- * Scrollable vertical list for performance with many items.
- */
 @Widget(14)
 data class LazyList(
     @Children(1) val children: () -> Unit,
 )
 
-/**
- * Image loaded from URL with placeholder support.
- */
-@Widget(15)
-data class AsyncImage(
-    @Property(1) val url: String,
-    @Property(2) val contentDescription: String,
-    @Property(3) val size: Int, // Size in dp (square)
-    @Property(4) val circular: Boolean, // Clip to circle
-)
-
-/**
- * Membership status card with colored border.
- * status: "active", "expiring", "expired"
- */
-@Widget(16)
-data class StatusCard(
-    @Property(1) val status: String,
-    @Property(2) val title: String,
-    @Property(3) val subtitle: String,
-    @Property(4) val daysLeft: Int,
-    @Property(5) val onClick: (() -> Unit)?,
-)
-
-/**
- * Weekly attendance strip (Mon-Sun indicators).
- * Each day status: "future", "today", "attended", "missed", "rest"
- */
-@Widget(17)
-data class ConsistencyStrip(
-    @Property(1) val monday: String,
-    @Property(2) val tuesday: String,
-    @Property(3) val wednesday: String,
-    @Property(4) val thursday: String,
-    @Property(5) val friday: String,
-    @Property(6) val saturday: String,
-    @Property(7) val sunday: String,
-)
-
-/**
- * Coach preview card with photo, name, role.
- */
-@Widget(18)
-data class CoachCard(
-    @Property(1) val name: String,
-    @Property(2) val role: String,
-    @Property(3) val photoUrl: String,
-    @Property(4) val onClick: () -> Unit,
-)
-
-/**
- * Training schedule day row.
- */
-@Widget(19)
-data class ScheduleItem(
-    @Property(1) val dayName: String,
-    @Property(2) val date: String,
-    @Property(3) val focus: String,
-    @Property(4) val isToday: Boolean,
-    @Property(5) val isAttended: Boolean,
-    @Property(6) val isRestDay: Boolean,
-    @Property(7) val onClick: () -> Unit,
-)
-
-// ============= Premium UI Widgets =============
-
-/**
- * Bottom navigation bar with 3 tabs.
- * selectedTab: "home", "training", "membership"
- */
-@Widget(20)
-data class BottomNavigationBar(
-    @Property(1) val selectedTab: String,
-    @Property(2) val onTabSelected: (String) -> Unit,
-)
-
-/**
- * Modal bottom sheet overlay.
- */
 @Widget(21)
 data class BottomSheet(
     @Property(1) val isVisible: Boolean,
@@ -241,56 +151,12 @@ data class BottomSheet(
     @Children(1) val content: () -> Unit,
 )
 
-/**
- * Scrollable vertical column with padding.
- */
 @Widget(22)
 data class ScrollableColumn(
     @Property(1) val padding: Int,
     @Children(1) val children: () -> Unit,
 )
 
-/**
- * Large header text with size variants.
- * size: "large" (28sp), "medium" (20sp), "small" (16sp)
- */
-@Widget(23)
-data class HeaderText(
-    @Property(1) val text: String,
-    @Property(2) val size: String,
-)
-
-/**
- * Secondary/caption text in grey.
- */
-@Widget(24)
-data class SecondaryText(
-    @Property(1) val text: String,
-)
-
-/**
- * Icon button with optional badge.
- * icon: "home", "calendar", "card", "arrow_back", "close"
- */
-@Widget(25)
-data class IconButton(
-    @Property(1) val icon: String,
-    @Property(2) val onClick: () -> Unit,
-    @Property(3) val isSelected: Boolean,
-)
-
-/**
- * Compact chip/tag for categories.
- */
-@Widget(26)
-data class Chip(
-    @Property(1) val label: String,
-)
-
-/**
- * AppScaffold - Layout with fixed bottom bar and scrollable content area.
- * Uses Compose Scaffold internally for proper layout.
- */
 @Widget(27)
 data class AppScaffold(
     @Property(1) val showBottomBar: Boolean,
@@ -299,115 +165,42 @@ data class AppScaffold(
     @Children(1) val content: () -> Unit,
 )
 
-/**
- * GreetingHeader - Two-line greeting: "Welcome back," + name
- */
-@Widget(28)
-data class GreetingHeader(
-    @Property(1) val subtitle: String,  // "Welcome back,"
-    @Property(2) val title: String,     // user name
-)
-
-/**
- * TrainingSessionCard - Today's session with focus + goal chips
- */
-@Widget(29)
-data class TrainingSessionCard(
-    @Property(1) val label: String,           // "Today's Session"
-    @Property(2) val focus: String,           // "Legs & Core"
-    @Property(3) val goals: List<String>,     // ["Pistol Squats", "L-Sits"]
-    @Property(4) val onClick: (() -> Unit)?,
-)
-
-/**
- * AnnouncementCard - Amber-bordered coach update
- */
-@Widget(30)
-data class AnnouncementCard(
-    @Property(1) val label: String,           // "Coach Update"
-    @Property(2) val title: String,           // "Advanced Skills Workshop"
-    @Property(3) val message: String,         // description
-)
-
-/**
- * ActionButton - Full-width button with icon
- */
-@Widget(31)
-data class ActionButton(
-    @Property(1) val icon: String,            // "whatsapp", "arrow_right"
-    @Property(2) val text: String,
-    @Property(3) val variant: String,         // "primary", "secondary", "ghost"
-    @Property(4) val onClick: () -> Unit,
-)
-
-/**
- * CoachGrid - 2-column grid of coach cards
- */
 @Widget(32)
 data class CoachGrid(
     @Children(1) val children: () -> Unit,
 )
 
-/**
- * WeeklyAttendance - 7-day visual strip (replaces ConsistencyStrip)
- * More detailed with day labels and proper styling
- */
-@Widget(33)
-data class WeeklyAttendance(
-    @Property(1) val streak: Int,
-    @Property(2) val days: List<String>,      // ["attended", "attended", "today", "future", ...]
-    @Property(3) val summary: String,         // "Trained 2 days this week"
+// ============= Text Variants =============
+
+@Widget(23)
+data class HeaderText(
+    @Property(1) val text: String,
+    @Property(2) val size: String, // "large", "medium", "small"
 )
 
-/**
- * TrainingDayCard - Full training day card with goals & supporting (matches web app exactly)
- */
-@Widget(34)
-data class TrainingDayCard(
-    @Property(1) val day: String,             // "Monday"
-    @Property(2) val date: String,            // "Dec 30"
-    @Property(3) val focus: String,           // "Pull Strength & Skills"
-    @Property(4) val goals: List<String>,     // ["Muscle-ups", "Front Lever Progressions"]
-    @Property(5) val supporting: List<String>,// ["Core Stability", "Shoulder Mobility"]
-    @Property(6) val isToday: Boolean,
-    @Property(7) val attended: Boolean,
+@Widget(24)
+data class SecondaryText(
+    @Property(1) val text: String,
 )
 
-/**
- * MembershipPlanCard - Plan card with features & CTA (matches web app exactly)
- */
-@Widget(35)
-data class MembershipPlanCard(
-    @Property(1) val name: String,            // "Monthly Unlimited"
-    @Property(2) val duration: String,        // "1 Month"
-    @Property(3) val price: String,           // "₹2,500"
-    @Property(4) val priceLabel: String,      // "per month" or "total"
-    @Property(5) val features: List<String>,
-    @Property(6) val isCurrent: Boolean,
-    @Property(7) val isRecommended: Boolean,
-    @Property(8) val billingDate: String,     // only for current plan
-    @Property(9) val onSelect: (() -> Unit)?,
+// ============= Interactive Elements =============
+
+@Widget(25)
+data class IconButton(
+    @Property(1) val icon: String,
+    @Property(2) val onClick: () -> Unit,
+    @Property(3) val isSelected: Boolean,
 )
 
-/**
- * ProfileInfoCard - Member info display (matches web app exactly)
- */
-@Widget(36)
-data class ProfileInfoCard(
-    @Property(1) val name: String,
-    @Property(2) val email: String,
-    @Property(3) val phone: String,
-    @Property(4) val batch: String,
-    @Property(5) val memberSince: String,
+@Widget(26)
+data class Chip(
+    @Property(1) val label: String,
 )
 
-/**
- * HistoryItem - Payment/Membership history item
- */
-@Widget(37)
-data class HistoryItem(
-    @Property(1) val title: String,
-    @Property(2) val subtitle: String,
-    @Property(3) val status: String,          // "active", "completed", "pending"
-    @Property(4) val amount: String,
+@Widget(31)
+data class ActionButton(
+    @Property(1) val icon: String,
+    @Property(2) val text: String,
+    @Property(3) val variant: String, // "primary", "secondary", "ghost"
+    @Property(4) val onClick: () -> Unit,
 )

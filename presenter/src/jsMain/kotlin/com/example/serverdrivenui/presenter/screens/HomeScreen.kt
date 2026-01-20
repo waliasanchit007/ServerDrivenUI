@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.presenter.GymServiceProvider
+import com.example.serverdrivenui.presenter.components.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
@@ -103,14 +104,14 @@ fun HomeScreenContent(
     ScrollableColumn(padding = 24) {
         when (val state = uiState) {
             is HomeUiState.Loading -> {
-                GreetingHeader(subtitle = "Welcome back,", title = "Loading...")
+                GreetingHeaderComposable(subtitle = "Welcome back,", title = "Loading...")
                 Spacer(width = 0, height = 32)
                 SduiCard(onClick = null) {
                    SecondaryText(text = "Loading your dashboard...")
                 }
             }
             is HomeUiState.Error -> {
-                GreetingHeader(subtitle = "Welcome back,", title = "Member")
+                GreetingHeaderComposable(subtitle = "Welcome back,", title = "Member")
                 Spacer(width = 0, height = 32)
                 SduiCard(onClick = null) {
                     SecondaryText(text = "⚠️ ${state.message}")
@@ -118,7 +119,7 @@ fun HomeScreenContent(
             }
             is HomeUiState.Success -> {
                 // 1. Greeting
-                GreetingHeader(
+                GreetingHeaderComposable(
                     subtitle = "Welcome back,",
                     title = state.userName
                 )
@@ -137,7 +138,7 @@ fun HomeScreenContent(
                 }
                 
                 // 2. Membership Status Card
-                StatusCard(
+                StatusCardComposable(
                     status = state.membershipStatus,
                     title = state.membershipStatus.replaceFirstChar { it.uppercase() },
                     subtitle = state.membershipExpiry?.let { "Expires on $it" } ?: "No active plan",
@@ -151,7 +152,7 @@ fun HomeScreenContent(
                 val focus = state.todayTraining?.focus ?: "Rest Day"
                 val goals = state.todayTraining?.goals ?: listOf("Rest", "Recover", "Hydrate")
                 
-                TrainingSessionCard(
+                TrainingSessionCardComposable(
                     label = "Today's Session",
                     focus = focus,
                     goals = goals,
@@ -161,7 +162,7 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 32)
                 
                 // 4. Training Consistency
-                WeeklyAttendance(
+                WeeklyAttendanceComposable(
                     streak = state.streak,
                     days = state.attendanceDays,
                     summary = "Trained ${state.streak} days this week"
@@ -170,7 +171,7 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 32)
 
                  // 5. Coach Announcement
-                AnnouncementCard(
+                AnnouncementCardComposable(
                     label = "Coach Update",
                     title = "Advanced Skills Workshop",
                     message = "Join us this Saturday at 10 AM for a special muscle-up workshop."
@@ -193,7 +194,7 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 16)
                 
                 CoachGrid {
-                     CoachCard(
+                     CoachCardComposable(
                         name = "Hemant",
                         role = "Founder",
                         photoUrl = "",
@@ -201,7 +202,7 @@ fun HomeScreenContent(
                             onCoachClick("Hemant", "Founder", "Master Coach", "", "hemant")
                         }
                     )
-                     CoachCard(
+                     CoachCardComposable(
                         name = "Ankit",
                         role = "Head Coach",
                         photoUrl = "",
@@ -209,7 +210,7 @@ fun HomeScreenContent(
                             onCoachClick("Ankit", "Head Coach", "Skills", "", "ankit")
                         }
                     )
-                     CoachCard(
+                     CoachCardComposable(
                         name = "Gaurav",
                         role = "Senior Coach",
                         photoUrl = "",
@@ -217,7 +218,7 @@ fun HomeScreenContent(
                             onCoachClick("Gaurav", "Senior Coach", "Strength", "", "gaurav")
                         }
                     )
-                     CoachCard(
+                     CoachCardComposable(
                         name = "Jatin",
                         role = "Mobility Coach",
                         photoUrl = "",

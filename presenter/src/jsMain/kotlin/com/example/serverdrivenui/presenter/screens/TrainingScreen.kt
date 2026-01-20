@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.serverdrivenui.presenter.GymServiceProvider
+import com.example.serverdrivenui.presenter.components.TrainingDayCardComposable
 import com.example.serverdrivenui.core.data.dto.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
@@ -86,7 +87,7 @@ fun TrainingScreenContent(
                     val attended = index < state.attendanceStatus.size && state.attendanceStatus[index] == "attended"
                     val dateDisplay = formatDateDisplay(day.date)
                     
-                    TrainingDayCard(
+                    TrainingDayCardComposable(
                         day = day.dayName,
                         date = dateDisplay,
                         focus = day.focus,
