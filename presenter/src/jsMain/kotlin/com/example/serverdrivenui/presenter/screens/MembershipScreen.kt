@@ -186,12 +186,10 @@ fun PaymentSheet(
                  FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
                      SecondaryText(text = "Membership Plan")
                      HeaderText(text = plan.name, size = "small")
-                     Spacer(width = 0, height = 8)
-                     // Use FlexRow for layout
-                     FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
-                        SecondaryText(text = "Amount to Pay")
-                        HeaderText(text = plan.priceLabel, size = "medium")
-                     }
+                     Spacer(width = 0, height = 12)
+                     SecondaryText(text = "Amount to Pay")
+                     Spacer(width = 0, height = 4)
+                     HeaderText(text = plan.priceLabel, size = "large")
                  }
              }
              

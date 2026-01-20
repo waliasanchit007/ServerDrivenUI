@@ -1667,13 +1667,26 @@ class CmpMembershipPlanCard : MembershipPlanCard<@Composable (androidx.compose.u
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    Column {
-                        Text(name, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                    Column(
+                        modifier = androidx.compose.ui.Modifier.weight(1f)
+                    ) {
+                        Text(
+                            name, 
+                            style = MaterialTheme.typography.titleMedium, 
+                            color = CaliclanTheme.TextPrimary,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                         Spacer(modifier = androidx.compose.ui.Modifier.height(4.dp))
                         Text(duration, style = MaterialTheme.typography.bodyMedium, color = CaliclanTheme.TextSecondary)
                     }
+                    Spacer(modifier = androidx.compose.ui.Modifier.width(16.dp))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(price, style = MaterialTheme.typography.titleLarge, color = CaliclanTheme.TextPrimary)
+                        Text(
+                            price, 
+                            style = MaterialTheme.typography.titleMedium, 
+                            color = CaliclanTheme.TextPrimary
+                        )
                         Text(priceLabel, style = MaterialTheme.typography.bodySmall, color = CaliclanTheme.TextSecondary)
                     }
                 }
