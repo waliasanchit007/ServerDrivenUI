@@ -23,6 +23,12 @@ import kotlinx.coroutines.flow.flowOf
 import coil3.compose.AsyncImage
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Person
+
 
 // ============= Existing Widgets =============
 
@@ -881,7 +887,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                     ) {
                         // Home tab
                         NavigationBarItem(
-                            icon = { Text("🏠", style = MaterialTheme.typography.titleMedium) },
+                            icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
                             label = { 
                                 Text(
                                     "Home", 
@@ -899,7 +905,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Training tab
                         NavigationBarItem(
-                            icon = { Text("📅", style = MaterialTheme.typography.titleMedium) },
+                            icon = { Icon(Icons.Filled.DateRange, contentDescription = "Training") },
                             label = { 
                                 Text(
                                     "Training", 
@@ -917,7 +923,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Membership tab
                         NavigationBarItem(
-                            icon = { Text("💳", style = MaterialTheme.typography.titleMedium) },
+                            icon = { Icon(Icons.Filled.AccountBox, contentDescription = "Membership") },
                             label = { 
                                 Text(
                                     "Membership", 
@@ -935,7 +941,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Profile tab
                         NavigationBarItem(
-                            icon = { Text("👤", style = MaterialTheme.typography.titleMedium) },
+                            icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
                             label = { 
                                 Text(
                                     "Profile", 

@@ -120,12 +120,21 @@ fun TrainingScreenContent(
 }
 
 /**
- * Format date string from ISO to display format (e.g., "Jan 2")
+ * Format date string from ISO to display format (e.g., "Jan 2" or "Jan 04, 2025")
+ * Handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:MM:SS..." formats
  */
 internal fun formatDateDisplay(isoDate: String): String {
     return try {
-        val parts = isoDate.split("-")
+        // Handle ISO timestamp format (2025-01-04T13:54:51.726373+00:00)
+        val datePart = if (isoDate.contains("T")) {
+            isoDate.substringBefore("T")
+        } else {
+            isoDate
+        }
+        
+        val parts = datePart.split("-")
         if (parts.size == 3) {
+            val year = parts[0]
             val month = when (parts[1]) {
                 "01" -> "Jan"
                 "02" -> "Feb"
@@ -141,8 +150,13 @@ internal fun formatDateDisplay(isoDate: String): String {
                 "12" -> "Dec"
                 else -> parts[1]
             }
-            val day = parts[2].toIntOrNull() ?: parts[2]
-            "$month $day"
+            val day = parts[2].toIntOrNull() ?: parts[2].toInt()
+            // If it's a full timestamp, include year for clarity
+            if (isoDate.contains("T")) {
+                "$month $day, $year"
+            } else {
+                "$month $day"
+            }
         } else {
             isoDate
         }

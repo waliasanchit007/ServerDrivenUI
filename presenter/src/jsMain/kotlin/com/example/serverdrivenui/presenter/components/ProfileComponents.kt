@@ -31,7 +31,9 @@ fun ProfileInfoCardComposable(
                 }
                 FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
                     StyledText(text = name, style = "titleMedium", color = "primary", fontWeight = "semibold", letterSpacing = 0)
-                    StyledText(text = "Member since $memberSince", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                    if (memberSince.isNotEmpty()) {
+                        StyledText(text = "Member since $memberSince", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                    }
                 }
             }
             
@@ -39,24 +41,29 @@ fun ProfileInfoCardComposable(
             Divider(color = "border")
             Spacer(width = 0, height = 16)
             
-            // Info rows
+            // Email row
             FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
                 StyledText(text = "Email", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
-                StyledText(text = email, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
+                StyledText(
+                    text = if (email.isNotEmpty()) email else "Not set", 
+                    style = "bodySmall", 
+                    color = if (email.isNotEmpty()) "primary" else "muted", 
+                    fontWeight = "normal", 
+                    letterSpacing = 0
+                )
             }
             
-            if (phone.isNotEmpty()) {
-                Spacer(width = 0, height = 12)
-                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
-                    StyledText(text = "Phone", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
-                    StyledText(text = phone, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
-                }
-            }
-            
+            // Batch row
             Spacer(width = 0, height = 12)
             FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
                 StyledText(text = "Batch", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
-                StyledText(text = batch, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
+                StyledText(
+                    text = if (batch.isNotEmpty()) batch else "Not assigned", 
+                    style = "bodySmall", 
+                    color = if (batch.isNotEmpty()) "primary" else "muted", 
+                    fontWeight = "normal", 
+                    letterSpacing = 0
+                )
             }
         }
     }
