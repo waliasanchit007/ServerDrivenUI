@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import com.example.serverdrivenui.schema.compose.*
 
 /**
- * ProfileInfoCardComposable - Built from primitives (Server-Driven UI compliant)
+ * ProfileInfoCardComposable - Built from styled primitives
  */
 @Composable
 fun ProfileInfoCardComposable(
@@ -14,47 +14,56 @@ fun ProfileInfoCardComposable(
     batch: String,
     memberSince: String
 ) {
-    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+    SduiCard(
+        onClick = null, 
+        backgroundColor = "surface", 
+        borderColor = "border", 
+        borderWidth = 1, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
         FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             // Avatar + Name row
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                // Avatar (using initials chip)
-                Chip(label = name.take(2).uppercase())
-                Spacer(width = 16, height = 0)
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-                    HeaderText(text = name, size = "medium")
-                    Spacer(width = 0, height = 4)
-                    SecondaryText(text = "Member since $memberSince")
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 16, padding = 0) {
+                // Avatar (circular with initials)
+                StyledBox(backgroundColor = "accent", borderRadius = 24, padding = 0, paddingHorizontal = 0, paddingVertical = 0, width = 48, height = 48, contentAlignment = "Center") {
+                    StyledText(text = name.take(2).uppercase(), style = "titleMedium", color = "surface", fontWeight = "bold", letterSpacing = 0)
+                }
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+                    StyledText(text = name, style = "titleMedium", color = "primary", fontWeight = "semibold", letterSpacing = 0)
+                    StyledText(text = "Member since $memberSince", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                 }
             }
             
             Spacer(width = 0, height = 24)
+            Divider(color = "border")
+            Spacer(width = 0, height = 16)
             
             // Info rows
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                SecondaryText(text = "Email")
-                SecondaryText(text = email)
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+                StyledText(text = "Email", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                StyledText(text = email, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
             }
             
             if (phone.isNotEmpty()) {
                 Spacer(width = 0, height = 12)
-                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                    SecondaryText(text = "Phone")
-                    SecondaryText(text = phone)
+                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+                    StyledText(text = "Phone", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                    StyledText(text = phone, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
                 }
             }
             
             Spacer(width = 0, height = 12)
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                SecondaryText(text = "Batch")
-                SecondaryText(text = batch)
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+                StyledText(text = "Batch", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                StyledText(text = batch, style = "bodySmall", color = "primary", fontWeight = "normal", letterSpacing = 0)
             }
         }
     }
 }
 
 /**
- * HistoryItemComposable - Built from primitives (Server-Driven UI compliant)
+ * HistoryItemComposable - Built from styled primitives
  */
 @Composable
 fun HistoryItemComposable(
@@ -63,18 +72,37 @@ fun HistoryItemComposable(
     status: String,
     amount: String
 ) {
-    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-                HeaderText(text = title, size = "small")
-                Spacer(width = 0, height = 4)
-                SecondaryText(text = subtitle)
+    // Status colors
+    val statusColor = when (status.lowercase()) {
+        "active" -> "success"
+        "completed" -> "success"
+        else -> "secondary"
+    }
+    val statusBgColor = when (status.lowercase()) {
+        "active" -> "successbg"
+        else -> "surfacevariant"
+    }
+    
+    SduiCard(
+        onClick = null, 
+        backgroundColor = "surface", 
+        borderColor = "border", 
+        borderWidth = 1, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+                StyledText(text = title, style = "body", color = "primary", fontWeight = "medium", letterSpacing = 0)
+                StyledText(text = subtitle, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
             }
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 4, padding = 0) {
                 if (amount.isNotEmpty()) {
-                    HeaderText(text = amount, size = "small")
+                    StyledText(text = amount, style = "body", color = "primary", fontWeight = "medium", letterSpacing = 0)
                 }
-                Chip(label = status.replaceFirstChar { it.uppercase() })
+                StyledBox(backgroundColor = statusBgColor, borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                    StyledText(text = status.replaceFirstChar { it.uppercase() }, style = "labelSmall", color = statusColor, fontWeight = "semibold", letterSpacing = 0)
+                }
             }
         }
     }

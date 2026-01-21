@@ -4,11 +4,9 @@ import androidx.compose.runtime.Composable
 import com.example.serverdrivenui.schema.compose.*
 
 /**
- * TrainingDayCard - Composable built from primitives (Server-Driven UI compliant)
+ * TrainingDayCard - Composable built from styled primitives
  * 
- * This card is built entirely using schema primitives (SduiCard, FlexColumn, FlexRow, 
- * HeaderText, SecondaryText, Chip, etc.) so the layout can be updated via Zipline
- * without requiring an app release.
+ * Uses StyledText, StyledBox with CaliclanTheme semantic colors for proper UI.
  */
 @Composable
 fun TrainingDayCardComposable(
@@ -20,61 +18,68 @@ fun TrainingDayCardComposable(
     isToday: Boolean,
     attended: Boolean
 ) {
-    // Card with conditional styling based on isToday
-    // Since SduiCard doesn't support dynamic styling, we use the default card
-    // The Host will handle the border/background based on content context
-    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
+    // Card with conditional border styling
+    val borderColor = if (isToday) "accent" else "border"
+    val borderWidth = if (isToday) 2 else 1
+    
+    SduiCard(
+        onClick = null, 
+        backgroundColor = "surface", 
+        borderColor = borderColor, 
+        borderWidth = borderWidth, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
             // Day Header Row
             FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
                     // Day name with optional badges
-                    FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
+                    FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 8, padding = 0) {
                         if (isToday) {
-                            // Highlighted day for today
-                            HeaderText(text = day, size = "small")
-                            Spacer(width = 8, height = 0)
-                            Chip(label = "TODAY")
+                            // Highlighted day for today - accent color
+                            StyledText(text = day, style = "titleSmall", color = "accent", fontWeight = "semibold", letterSpacing = 0)
+                            StyledBox(backgroundColor = "accent", borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                                StyledText(text = "TODAY", style = "labelSmall", color = "surface", fontWeight = "bold", letterSpacing = 0)
+                            }
                         } else if (attended) {
-                            SecondaryText(text = day)
-                            Spacer(width = 8, height = 0)
-                            Chip(label = "✓")
+                            StyledText(text = day, style = "titleSmall", color = "secondary", fontWeight = "medium", letterSpacing = 0)
+                            StyledBox(backgroundColor = "successbg", borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                                StyledText(text = "✓", style = "labelSmall", color = "success", fontWeight = "bold", letterSpacing = 0)
+                            }
                         } else {
-                            SecondaryText(text = day)
+                            StyledText(text = day, style = "titleSmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                         }
                     }
-                    Spacer(width = 0, height = 4)
-                    HeaderText(text = focus, size = "medium")
+                    // Focus title
+                    StyledText(text = focus, style = "titleMedium", color = "primary", fontWeight = "semibold", letterSpacing = 0)
                 }
-                SecondaryText(text = date)
+                // Date on the right
+                StyledText(text = date, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
             }
-            
-            Spacer(width = 0, height = 16)
             
             // Primary Goals Section
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                SecondaryText(text = "🎯 Primary Goals")
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 4, padding = 0) {
+                StyledText(text = "🎯", style = "body", color = "primary", fontWeight = "normal", letterSpacing = 0)
+                StyledText(text = "Primary Goals", style = "bodySmall", color = "secondary", fontWeight = "medium", letterSpacing = 0)
             }
-            Spacer(width = 0, height = 8)
             
             // Goals as chips
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                goals.forEachIndexed { index, goal ->
-                    Chip(label = goal)
-                    if (index < goals.size - 1) {
-                        Spacer(width = 8, height = 0)
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 8, padding = 0) {
+                goals.forEach { goal ->
+                    StyledBox(backgroundColor = "surfacevariant", borderRadius = 16, padding = 0, paddingHorizontal = 12, paddingVertical = 6, width = -1, height = -1, contentAlignment = "Center") {
+                        StyledText(text = goal, style = "labelSmall", color = "primary", fontWeight = "medium", letterSpacing = 0)
                     }
                 }
             }
             
             // Supporting Section (if not empty)
             if (supporting.isNotEmpty()) {
-                Spacer(width = 0, height = 16)
-                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                    SecondaryText(text = "🕐 Supporting")
+                FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 4, padding = 0) {
+                    StyledText(text = "🕐", style = "body", color = "primary", fontWeight = "normal", letterSpacing = 0)
+                    StyledText(text = "Supporting", style = "bodySmall", color = "secondary", fontWeight = "medium", letterSpacing = 0)
                 }
-                Spacer(width = 0, height = 4)
-                SecondaryText(text = supporting.joinToString(" • "))
+                StyledText(text = supporting.joinToString(" • "), style = "bodySmall", color = "muted", fontWeight = "normal", letterSpacing = 0)
             }
         }
     }

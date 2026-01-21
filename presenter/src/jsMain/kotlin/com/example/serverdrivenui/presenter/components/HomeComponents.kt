@@ -4,17 +4,16 @@ import androidx.compose.runtime.Composable
 import com.example.serverdrivenui.schema.compose.*
 
 /**
- * GreetingHeaderComposable - Built from primitives (Server-Driven UI compliant)
+ * GreetingHeaderComposable - Welcome header with user name
  */
 @Composable
 fun GreetingHeaderComposable(
     subtitle: String,
     title: String
 ) {
-    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-        SecondaryText(text = subtitle)
-        Spacer(width = 0, height = 4)
-        HeaderText(text = title, size = "large")
+    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+        StyledText(text = subtitle, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+        StyledText(text = title, style = "headline", color = "primary", fontWeight = "bold", letterSpacing = 0)
     }
 }
 
@@ -28,28 +27,35 @@ fun TrainingSessionCardComposable(
     goals: List<String>,
     onClick: (() -> Unit)?
 ) {
-    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
+    SduiCard(
+        onClick = onClick, 
+        backgroundColor = "surface", 
+        borderColor = "accent", 
+        borderWidth = 2, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
             // Header
             FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-                    Chip(label = label.uppercase())
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+                    StyledBox(backgroundColor = "accentmuted", borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                        StyledText(text = label.uppercase(), style = "labelSmall", color = "accent", fontWeight = "bold", letterSpacing = 1)
+                    }
                     Spacer(width = 0, height = 4)
-                    HeaderText(text = focus, size = "medium")
+                    StyledText(text = focus, style = "titleMedium", color = "primary", fontWeight = "semibold", letterSpacing = 0)
                 }
-                SecondaryText(text = "›")
+                StyledText(text = "›", style = "title", color = "secondary", fontWeight = "normal", letterSpacing = 0)
             }
             
             // Goals
             if (goals.isNotEmpty()) {
-                Spacer(width = 0, height = 16)
-                SecondaryText(text = "Focus Areas")
-                Spacer(width = 0, height = 8)
-                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                    goals.forEachIndexed { index, goal ->
-                        Chip(label = goal)
-                        if (index < goals.size - 1) {
-                            Spacer(width = 8, height = 0)
+                Divider(color = "border")
+                StyledText(text = "Focus Areas", style = "bodySmall", color = "secondary", fontWeight = "medium", letterSpacing = 0)
+                FlexRow(horizontalArrangement = "Start", verticalAlignment = "CenterVertically", spacing = 8, padding = 0) {
+                    goals.forEach { goal ->
+                        StyledBox(backgroundColor = "surfacevariant", borderRadius = 16, padding = 0, paddingHorizontal = 12, paddingVertical = 6, width = -1, height = -1, contentAlignment = "Center") {
+                            StyledText(text = goal, style = "labelSmall", color = "primary", fontWeight = "medium", letterSpacing = 0)
                         }
                     }
                 }
@@ -67,13 +73,20 @@ fun AnnouncementCardComposable(
     title: String,
     message: String
 ) {
-    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-            Chip(label = label.uppercase())
-            Spacer(width = 0, height = 8)
-            HeaderText(text = title, size = "small")
-            Spacer(width = 0, height = 8)
-            SecondaryText(text = message)
+    SduiCard(
+        onClick = null, 
+        backgroundColor = "surface", 
+        borderColor = "accent", 
+        borderWidth = 1, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 8, padding = 0) {
+            StyledBox(backgroundColor = "accentmuted", borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                StyledText(text = label.uppercase(), style = "labelSmall", color = "accent", fontWeight = "bold", letterSpacing = 1)
+            }
+            StyledText(text = title, style = "titleSmall", color = "primary", fontWeight = "semibold", letterSpacing = 0)
+            StyledText(text = message, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
         }
     }
 }
@@ -89,21 +102,45 @@ fun StatusCardComposable(
     daysLeft: Int,
     onClick: (() -> Unit)?
 ) {
-    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-                    HeaderText(text = title, size = "small")
-                    Spacer(width = 0, height = 4)
-                    SecondaryText(text = subtitle)
+    // Status-based styling
+    val borderColor = when (status.lowercase()) {
+        "active" -> "success"
+        "expiring" -> "accent"
+        else -> "error"
+    }
+    val statusBgColor = when (status.lowercase()) {
+        "active" -> "successbg"
+        "expiring" -> "accentmuted"
+        else -> "surfacevariant"
+    }
+    val statusTextColor = when (status.lowercase()) {
+        "active" -> "success"
+        "expiring" -> "accent"
+        else -> "error"
+    }
+    
+    SduiCard(
+        onClick = onClick, 
+        backgroundColor = "surface", 
+        borderColor = borderColor, 
+        borderWidth = 2, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 8, padding = 0) {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+                    StyledText(text = title, style = "titleSmall", color = "primary", fontWeight = "semibold", letterSpacing = 0)
+                    StyledText(text = subtitle, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                 }
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
-                    HeaderText(text = "$daysLeft", size = "medium")
-                    SecondaryText(text = "days left")
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 2, padding = 0) {
+                    StyledText(text = "$daysLeft", style = "headlineMedium", color = statusTextColor, fontWeight = "bold", letterSpacing = 0)
+                    StyledText(text = "days left", style = "labelSmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                 }
             }
-            Spacer(width = 0, height = 8)
-            Chip(label = status.uppercase())
+            StyledBox(backgroundColor = statusBgColor, borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
+                StyledText(text = status.uppercase(), style = "labelSmall", color = statusTextColor, fontWeight = "bold", letterSpacing = 1)
+            }
         }
     }
 }
@@ -117,31 +154,40 @@ fun WeeklyAttendanceComposable(
     days: List<String>,
     summary: String
 ) {
-    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
-                SecondaryText(text = "This Week")
-                HeaderText(text = "🔥 $streak", size = "small")
+    SduiCard(
+        onClick = null, 
+        backgroundColor = "surface", 
+        borderColor = "border", 
+        borderWidth = 1, 
+        borderRadius = 12, 
+        padding = 16
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+                StyledText(text = "This Week", style = "bodySmall", color = "secondary", fontWeight = "medium", letterSpacing = 0)
+                FlexRow(horizontalArrangement = "End", verticalAlignment = "CenterVertically", spacing = 4, padding = 0) {
+                    StyledText(text = "🔥", style = "body", color = "primary", fontWeight = "normal", letterSpacing = 0)
+                    StyledText(text = "$streak", style = "titleSmall", color = "accent", fontWeight = "bold", letterSpacing = 0)
+                }
             }
-            Spacer(width = 0, height = 12)
-            FlexRow(horizontalArrangement = "SpaceEvenly", verticalAlignment = "Center", spacing = 0, padding = 0) {
+            
+            FlexRow(horizontalArrangement = "SpaceEvenly", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
                 val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
                 days.forEachIndexed { index, status ->
-                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center", spacing = 0, padding = 0) {
-                        SecondaryText(text = dayLabels.getOrElse(index) { "?" })
-                        Spacer(width = 0, height = 4)
-                        val icon = when (status) {
-                            "attended" -> "✓"
-                            "today" -> "●"
-                            "missed" -> "✗"
-                            else -> "○"
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "CenterHorizontally", spacing = 4, padding = 0) {
+                        StyledText(text = dayLabels.getOrElse(index) { "?" }, style = "labelSmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                        val (icon, color) = when (status) {
+                            "attended" -> "✓" to "success"
+                            "today" -> "●" to "accent"
+                            "missed" -> "✗" to "error"
+                            else -> "○" to "muted"
                         }
-                        SecondaryText(text = icon)
+                        StyledText(text = icon, style = "body", color = color, fontWeight = "bold", letterSpacing = 0)
                     }
                 }
             }
-            Spacer(width = 0, height = 12)
-            SecondaryText(text = summary)
+            
+            StyledText(text = summary, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
         }
     }
 }
@@ -156,12 +202,18 @@ fun CoachCardComposable(
     photoUrl: String,
     onClick: () -> Unit
 ) {
-    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center", spacing = 0, padding = 0) {
+    SduiCard(
+        onClick = onClick, 
+        backgroundColor = "surface", 
+        borderColor = "border", 
+        borderWidth = 1, 
+        borderRadius = 12, 
+        padding = 12
+    ) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "CenterHorizontally", spacing = 8, padding = 0) {
             AsyncImage(url = photoUrl, contentDescription = name, size = 64, circular = true)
-            Spacer(width = 0, height = 8)
-            HeaderText(text = name, size = "small")
-            SecondaryText(text = role)
+            StyledText(text = name, style = "titleSmall", color = "primary", fontWeight = "semibold", letterSpacing = 0)
+            StyledText(text = role, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
         }
     }
 }
