@@ -106,14 +106,14 @@ fun HomeScreenContent(
             is HomeUiState.Loading -> {
                 GreetingHeaderComposable(subtitle = "Welcome back,", title = "Loading...")
                 Spacer(width = 0, height = 32)
-                SduiCard(onClick = null) {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
                    SecondaryText(text = "Loading your dashboard...")
                 }
             }
             is HomeUiState.Error -> {
                 GreetingHeaderComposable(subtitle = "Welcome back,", title = "Member")
                 Spacer(width = 0, height = 32)
-                SduiCard(onClick = null) {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
                     SecondaryText(text = "⚠️ ${state.message}")
                 }
             }
@@ -127,8 +127,8 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 32)
                 
                 if (state.warningMessage != null) {
-                    SduiCard(onClick = null) { // Could be clickable to Membership
-                        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) { // Could be clickable to Membership
+                        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                             HeaderText(text = "⚠️ Membership Alert", size = "small")
                             Spacer(width = 0, height = 8)
                             SecondaryText(text = state.warningMessage)

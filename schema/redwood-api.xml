@@ -12,11 +12,15 @@
   <widget tag="4" type="com.example.serverdrivenui.schema.FlexRow">
     <property tag="1" name="horizontalArrangement" type="kotlin.String" />
     <property tag="2" name="verticalAlignment" type="kotlin.String" />
+    <property tag="3" name="spacing" type="kotlin.Int" />
+    <property tag="4" name="padding" type="kotlin.Int" />
     <children tag="1" name="children" />
   </widget>
   <widget tag="5" type="com.example.serverdrivenui.schema.FlexColumn">
     <property tag="1" name="verticalArrangement" type="kotlin.String" />
     <property tag="2" name="horizontalAlignment" type="kotlin.String" />
+    <property tag="3" name="spacing" type="kotlin.Int" />
+    <property tag="4" name="padding" type="kotlin.Int" />
     <children tag="1" name="children" />
   </widget>
   <widget tag="6" type="com.example.serverdrivenui.schema.Box">
@@ -41,6 +45,11 @@
     <property tag="2" name="contentDescription" type="kotlin.String" />
   </widget>
   <widget tag="11" type="com.example.serverdrivenui.schema.SduiCard">
+    <property tag="2" name="backgroundColor" type="kotlin.String" />
+    <property tag="3" name="borderColor" type="kotlin.String" />
+    <property tag="4" name="borderWidth" type="kotlin.Int" />
+    <property tag="5" name="borderRadius" type="kotlin.Int" />
+    <property tag="6" name="padding" type="kotlin.Int" />
     <event tag="1" name="onClick" nullable="true" />
     <children tag="1" name="children" />
   </widget>
@@ -60,35 +69,64 @@
     <property tag="3" name="size" type="kotlin.Int" />
     <property tag="4" name="circular" type="kotlin.Boolean" />
   </widget>
-  <widget tag="16" type="com.example.serverdrivenui.schema.StatusCard">
-    <property tag="1" name="status" type="kotlin.String" />
-    <property tag="2" name="title" type="kotlin.String" />
-    <property tag="3" name="subtitle" type="kotlin.String" />
-    <property tag="4" name="daysLeft" type="kotlin.Int" />
-    <event tag="5" name="onClick" nullable="true" />
+  <widget tag="21" type="com.example.serverdrivenui.schema.BottomSheet">
+    <property tag="1" name="isVisible" type="kotlin.Boolean" />
+    <event tag="2" name="onDismiss" />
+    <children tag="1" name="content" />
   </widget>
-  <widget tag="17" type="com.example.serverdrivenui.schema.ConsistencyStrip">
-    <property tag="1" name="monday" type="kotlin.String" />
-    <property tag="2" name="tuesday" type="kotlin.String" />
-    <property tag="3" name="wednesday" type="kotlin.String" />
-    <property tag="4" name="thursday" type="kotlin.String" />
-    <property tag="5" name="friday" type="kotlin.String" />
-    <property tag="6" name="saturday" type="kotlin.String" />
-    <property tag="7" name="sunday" type="kotlin.String" />
+  <widget tag="22" type="com.example.serverdrivenui.schema.ScrollableColumn">
+    <property tag="1" name="padding" type="kotlin.Int" />
+    <children tag="1" name="children" />
   </widget>
-  <widget tag="18" type="com.example.serverdrivenui.schema.CoachCard">
-    <property tag="1" name="name" type="kotlin.String" />
-    <property tag="2" name="role" type="kotlin.String" />
-    <property tag="3" name="photoUrl" type="kotlin.String" />
+  <widget tag="23" type="com.example.serverdrivenui.schema.HeaderText">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="size" type="kotlin.String" />
+  </widget>
+  <widget tag="24" type="com.example.serverdrivenui.schema.SecondaryText">
+    <property tag="1" name="text" type="kotlin.String" />
+  </widget>
+  <widget tag="25" type="com.example.serverdrivenui.schema.IconButton">
+    <property tag="1" name="icon" type="kotlin.String" />
+    <property tag="3" name="isSelected" type="kotlin.Boolean" />
+    <event tag="2" name="onClick" />
+  </widget>
+  <widget tag="26" type="com.example.serverdrivenui.schema.Chip">
+    <property tag="1" name="label" type="kotlin.String" />
+  </widget>
+  <widget tag="27" type="com.example.serverdrivenui.schema.AppScaffold">
+    <property tag="1" name="showBottomBar" type="kotlin.Boolean" />
+    <property tag="2" name="selectedTab" type="kotlin.String" />
+    <event tag="3" name="onTabSelected" params="kotlin.String" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="31" type="com.example.serverdrivenui.schema.ActionButton">
+    <property tag="1" name="icon" type="kotlin.String" />
+    <property tag="2" name="text" type="kotlin.String" />
+    <property tag="3" name="variant" type="kotlin.String" />
     <event tag="4" name="onClick" />
   </widget>
-  <widget tag="19" type="com.example.serverdrivenui.schema.ScheduleItem">
-    <property tag="1" name="dayName" type="kotlin.String" />
-    <property tag="2" name="date" type="kotlin.String" />
-    <property tag="3" name="focus" type="kotlin.String" />
-    <property tag="4" name="isToday" type="kotlin.Boolean" />
-    <property tag="5" name="isAttended" type="kotlin.Boolean" />
-    <property tag="6" name="isRestDay" type="kotlin.Boolean" />
-    <event tag="7" name="onClick" />
+  <widget tag="32" type="com.example.serverdrivenui.schema.CoachGrid">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="38" type="com.example.serverdrivenui.schema.StyledText">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="style" type="kotlin.String" />
+    <property tag="3" name="color" type="kotlin.String" />
+    <property tag="4" name="fontWeight" type="kotlin.String" />
+    <property tag="5" name="letterSpacing" type="kotlin.Int" />
+  </widget>
+  <widget tag="39" type="com.example.serverdrivenui.schema.StyledBox">
+    <property tag="1" name="backgroundColor" type="kotlin.String" />
+    <property tag="2" name="borderRadius" type="kotlin.Int" />
+    <property tag="3" name="padding" type="kotlin.Int" />
+    <property tag="4" name="paddingHorizontal" type="kotlin.Int" />
+    <property tag="5" name="paddingVertical" type="kotlin.Int" />
+    <property tag="6" name="width" type="kotlin.Int" />
+    <property tag="7" name="height" type="kotlin.Int" />
+    <property tag="8" name="contentAlignment" type="kotlin.String" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="40" type="com.example.serverdrivenui.schema.Divider">
+    <property tag="1" name="color" type="kotlin.String" />
   </widget>
 </schema>

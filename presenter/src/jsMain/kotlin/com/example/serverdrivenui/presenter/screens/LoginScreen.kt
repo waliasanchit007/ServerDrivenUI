@@ -22,7 +22,9 @@ fun LoginScreenContent(onLoginSuccess: () -> Unit) {
     // Using FlexColumn for layout
     FlexColumn(
         verticalArrangement = "Center",
-        horizontalAlignment = "CenterHorizontally"
+        horizontalAlignment = "CenterHorizontally",
+        spacing = 0,
+        padding = 0
     ) {
         
         HeaderText(text = "Welcome to Caliclan", size = "large")

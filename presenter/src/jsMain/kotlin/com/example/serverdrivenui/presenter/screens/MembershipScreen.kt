@@ -65,13 +65,13 @@ fun MembershipScreenContent(
         
         when (val state = uiState) {
             is MembershipUiState.Loading -> {
-                SduiCard(onClick = null) {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
                     SecondaryText(text = "Loading membership plans...")
                 }
             }
             is MembershipUiState.Error -> {
-                SduiCard(onClick = null) {
-                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                         SecondaryText(text = "⚠️ Error")
                         Spacer(width = 0, height = 8)
                         SecondaryText(text = state.message)
@@ -125,7 +125,7 @@ fun MembershipScreenContent(
         Spacer(width = 0, height = 24)
         
         // Contact Note (always show)
-        SduiCard(onClick = null) {
+        SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
             SecondaryText(text = "Need a custom plan or have questions? Contact us via WhatsApp.")
         }
         
@@ -179,12 +179,12 @@ fun PaymentSheet(
         isVisible = isVisible,
         onDismiss = onDismiss
     ) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center") {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center", spacing = 0, padding = 0) {
              HeaderText(text = "Complete Payment", size = "medium")
              Spacer(width = 0, height = 16)
              
-             SduiCard(onClick = null) {
-                 FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+             SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+                 FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                      SecondaryText(text = "Membership Plan")
                      HeaderText(text = plan.name, size = "small")
                      Spacer(width = 0, height = 12)

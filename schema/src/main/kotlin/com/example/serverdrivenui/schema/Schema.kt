@@ -39,6 +39,10 @@ import kotlin.Unit
         IconButton::class,
         Chip::class,
         ActionButton::class,
+        // Enhanced styling primitives
+        StyledText::class,
+        StyledBox::class,
+        Divider::class,
     ],
 )
 interface SduiSchema
@@ -65,6 +69,8 @@ data class MyColumn(
 data class FlexRow(
     @Property(1) val horizontalArrangement: String, // "Start", "Center", "End", "SpaceBetween", "SpaceAround", "SpaceEvenly"
     @Property(2) val verticalAlignment: String, // "Top", "CenterVertically", "Bottom"
+    @Property(3) val spacing: Int,  // dp between children, 0 = no spacing
+    @Property(4) val padding: Int,  // dp padding around content, 0 = no padding
     @Children(1) val children: () -> Unit,
 )
 
@@ -72,6 +78,8 @@ data class FlexRow(
 data class FlexColumn(
     @Property(1) val verticalArrangement: String, // "Top", "Center", "Bottom", "SpaceBetween", "SpaceAround", "SpaceEvenly"
     @Property(2) val horizontalAlignment: String, // "Start", "CenterHorizontally", "End"
+    @Property(3) val spacing: Int,  // dp between children, 0 = no spacing
+    @Property(4) val padding: Int,  // dp padding around content, 0 = no padding
     @Children(1) val children: () -> Unit,
 )
 
@@ -113,6 +121,11 @@ data class SduiImage(
 @Widget(11)
 data class SduiCard(
     @Property(1) val onClick: (() -> Unit)?,
+    @Property(2) val backgroundColor: String,  // hex "#171717" or semantic "surface", "" = default
+    @Property(3) val borderColor: String,      // hex or semantic, "" = no border
+    @Property(4) val borderWidth: Int,         // dp, 0 = no border
+    @Property(5) val borderRadius: Int,        // dp, 0 = default (12dp)
+    @Property(6) val padding: Int,             // dp, 0 = default (16dp)
     @Children(1) val children: () -> Unit,
 )
 
@@ -203,4 +216,48 @@ data class ActionButton(
     @Property(2) val text: String,
     @Property(3) val variant: String, // "primary", "secondary", "ghost"
     @Property(4) val onClick: () -> Unit,
+)
+
+// ============= Enhanced Styling Primitives =============
+
+/**
+ * Text with full styling control.
+ * style: "headline", "title", "titleMedium", "body", "bodySmall", "label", "labelSmall"
+ * color: hex "#FAFAFA" OR semantic "primary", "secondary", "muted", "accent", "success", "error"
+ * fontWeight: "normal", "medium", "semibold", "bold"
+ */
+@Widget(38)
+data class StyledText(
+    @Property(1) val text: String,
+    @Property(2) val style: String,      // typography style
+    @Property(3) val color: String,      // hex or semantic
+    @Property(4) val fontWeight: String, // weight override
+    @Property(5) val letterSpacing: Int, // sp, 0 = default
+)
+
+/**
+ * Container with full styling control.
+ * backgroundColor: hex OR semantic color token
+ * width/height: dp value, -1 = wrap_content, -2 = match_parent
+ */
+@Widget(39)
+data class StyledBox(
+    @Property(1) val backgroundColor: String,  // hex or semantic
+    @Property(2) val borderRadius: Int,        // dp
+    @Property(3) val padding: Int,             // dp
+    @Property(4) val paddingHorizontal: Int,   // dp, overrides padding if > 0
+    @Property(5) val paddingVertical: Int,     // dp, overrides padding if > 0
+    @Property(6) val width: Int,               // dp, -1 = wrap, -2 = fill
+    @Property(7) val height: Int,              // dp, -1 = wrap, -2 = fill
+    @Property(8) val contentAlignment: String, // "TopStart", "Center", "BottomEnd", etc
+    @Children(1) val children: () -> Unit,
+)
+
+/**
+ * Horizontal divider line.
+ * color: hex OR semantic color token
+ */
+@Widget(40)
+data class Divider(
+    @Property(1) val color: String,  // hex or semantic
 )

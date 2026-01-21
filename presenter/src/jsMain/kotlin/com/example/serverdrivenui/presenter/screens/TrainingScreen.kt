@@ -67,13 +67,13 @@ fun TrainingScreenContent(
         // Render based on UI state
         when (val state = uiState) {
             is TrainingUiState.Loading -> {
-                SduiCard(onClick = null) {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
                     SecondaryText(text = "Loading training schedule...")
                 }
             }
             is TrainingUiState.Error -> {
-                SduiCard(onClick = null) {
-                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                         SecondaryText(text = "⚠️ Error")
                         Spacer(width = 0, height = 8)
                         SecondaryText(text = state.message)
@@ -107,8 +107,8 @@ fun TrainingScreenContent(
         Spacer(width = 0, height = 24)
         
         // Program Notes (always show)
-        SduiCard(onClick = null) {
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+        SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                 SecondaryText(text = "PROGRAM NOTES")
                 Spacer(width = 0, height = 8)
                 SecondaryText(text = "This module focuses on building foundational strength and mastering key calisthenics skills.")

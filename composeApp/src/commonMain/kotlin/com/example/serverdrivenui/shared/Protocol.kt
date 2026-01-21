@@ -23,11 +23,6 @@ import kotlinx.coroutines.flow.flowOf
 import coil3.compose.AsyncImage
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Person
 
 // ============= Existing Widgets =============
 
@@ -117,14 +112,21 @@ class CmpMyColumn : MyColumn<@Composable (androidx.compose.ui.Modifier) -> Unit>
 class CmpFlexRow : FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private var horizontalArrangement by mutableStateOf("Start")
     private var verticalAlignment by mutableStateOf("Top")
+    private var spacing by mutableStateOf(0)
+    private var padding by mutableStateOf(0)
     
     override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
         CmpChildren()
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val arrangement = if (spacing > 0) {
+            Arrangement.spacedBy(spacing.dp)
+        } else {
+            parseHorizontalArrangement(horizontalArrangement)
+        }
         Row(
-            modifier = modifier,
-            horizontalArrangement = parseHorizontalArrangement(horizontalArrangement),
+            modifier = if (padding > 0) modifier.padding(padding.dp) else modifier,
+            horizontalArrangement = arrangement,
             verticalAlignment = parseVerticalAlignment(verticalAlignment)
         ) {
             (children as CmpChildren).render()
@@ -140,21 +142,34 @@ class CmpFlexRow : FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     override fun verticalAlignment(verticalAlignment: String) {
         this.verticalAlignment = verticalAlignment
     }
+
+    override fun spacing(spacing: Int) {
+        this.spacing = spacing
+    }
+
+    override fun padding(padding: Int) {
+        this.padding = padding
+    }
 }
 
 class CmpFlexColumn : FlexColumn<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private var verticalArrangement by mutableStateOf("Top")
     private var horizontalAlignment by mutableStateOf("Start")
+    private var spacing by mutableStateOf(0)
+    private var padding by mutableStateOf(0)
     
     override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
         CmpChildren()
 
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val arrangement = if (spacing > 0) {
+            Arrangement.spacedBy(spacing.dp)
+        } else {
+            parseVerticalArrangement2(verticalArrangement)
+        }
         Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = parseVerticalArrangement2(verticalArrangement),
+            modifier = if (padding > 0) modifier.padding(padding.dp) else modifier,
+            verticalArrangement = arrangement,
             horizontalAlignment = parseHorizontalAlignment(horizontalAlignment)
         ) {
             (children as CmpChildren).render()
@@ -169,6 +184,14 @@ class CmpFlexColumn : FlexColumn<@Composable (androidx.compose.ui.Modifier) -> U
 
     override fun horizontalAlignment(horizontalAlignment: String) {
         this.horizontalAlignment = horizontalAlignment
+    }
+
+    override fun spacing(spacing: Int) {
+        this.spacing = spacing
+    }
+
+    override fun padding(padding: Int) {
+        this.padding = padding
     }
 }
 
@@ -303,6 +326,11 @@ class CmpSduiImage : SduiImage<@Composable (androidx.compose.ui.Modifier) -> Uni
 
 class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     private var onClick: (() -> Unit)? = null
+    private var backgroundColor by mutableStateOf("")
+    private var borderColor by mutableStateOf("")
+    private var borderWidth by mutableStateOf(0)
+    private var borderRadius by mutableStateOf(0)
+    private var cardPadding by mutableStateOf(0)
     
     override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
         CmpChildren()
@@ -312,13 +340,21 @@ class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit>
             modifier.fillMaxWidth().clickable { it() } 
         } ?: modifier.fillMaxWidth()
         
+        val bgColor = parseColor(backgroundColor, CaliclanTheme.Surface)
+        val radius = if (borderRadius > 0) borderRadius.dp else 12.dp
+        val border = if (borderWidth > 0 && borderColor.isNotEmpty()) {
+            androidx.compose.foundation.BorderStroke(borderWidth.dp, parseColor(borderColor, CaliclanTheme.Border))
+        } else null
+        val padding = if (cardPadding > 0) cardPadding.dp else 16.dp
+        
         Card(
             modifier = cardModifier,
-            colors = CardDefaults.cardColors(containerColor = CaliclanTheme.Surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(radius),
+            border = border
         ) {
             Column(
-                modifier = androidx.compose.ui.Modifier.padding(16.dp)
+                modifier = androidx.compose.ui.Modifier.padding(padding)
             ) {
                 (children as CmpChildren).render()
             }
@@ -329,6 +365,26 @@ class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit>
 
     override fun onClick(onClick: (() -> Unit)?) {
         this.onClick = onClick
+    }
+
+    override fun backgroundColor(backgroundColor: String) {
+        this.backgroundColor = backgroundColor
+    }
+
+    override fun borderColor(borderColor: String) {
+        this.borderColor = borderColor
+    }
+
+    override fun borderWidth(borderWidth: Int) {
+        this.borderWidth = borderWidth
+    }
+
+    override fun borderRadius(borderRadius: Int) {
+        this.borderRadius = borderRadius
+    }
+
+    override fun padding(padding: Int) {
+        this.cardPadding = padding
     }
 }
 
@@ -366,6 +422,60 @@ private fun parseHorizontalAlignment(value: String): Alignment.Horizontal = when
     "CenterHorizontally" -> Alignment.CenterHorizontally
     "End" -> Alignment.End
     else -> Alignment.Start
+}
+
+/**
+ * Parse color from hex string "#RRGGBB" or semantic name.
+ * Semantic colors match CaliclanTheme tokens.
+ */
+private fun parseColor(value: String, default: androidx.compose.ui.graphics.Color): androidx.compose.ui.graphics.Color {
+    if (value.isEmpty()) return default
+    
+    // Hex color
+    if (value.startsWith("#")) {
+        return try {
+            val colorLong = value.removePrefix("#").toLong(16)
+            if (value.length == 7) { // #RRGGBB
+                androidx.compose.ui.graphics.Color(0xFF000000 or colorLong)
+            } else { // #AARRGGBB
+                androidx.compose.ui.graphics.Color(colorLong)
+            }
+        } catch (e: Exception) {
+            default
+        }
+    }
+    
+    // Semantic color tokens
+    return when (value.lowercase()) {
+        "primary" -> CaliclanTheme.TextPrimary
+        "secondary" -> CaliclanTheme.TextSecondary
+        "muted" -> CaliclanTheme.TextMuted
+        "accent" -> CaliclanTheme.Accent
+        "accentdark" -> CaliclanTheme.AccentDark
+        "accentmuted" -> CaliclanTheme.AccentMuted
+        "success" -> CaliclanTheme.Success
+        "successbg" -> CaliclanTheme.SuccessBg
+        "error" -> CaliclanTheme.Error
+        "surface" -> CaliclanTheme.Surface
+        "surfacevariant" -> CaliclanTheme.SurfaceVariant
+        "background" -> CaliclanTheme.Background
+        "border" -> CaliclanTheme.Border
+        "borderlight" -> CaliclanTheme.BorderLight
+        else -> default
+    }
+}
+
+private fun parseContentAlignment(value: String): Alignment = when (value) {
+    "TopStart" -> Alignment.TopStart
+    "TopCenter" -> Alignment.TopCenter
+    "TopEnd" -> Alignment.TopEnd
+    "CenterStart" -> Alignment.CenterStart
+    "Center" -> Alignment.Center
+    "CenterEnd" -> Alignment.CenterEnd
+    "BottomStart" -> Alignment.BottomStart
+    "BottomCenter" -> Alignment.BottomCenter
+    "BottomEnd" -> Alignment.BottomEnd
+    else -> Alignment.TopStart
 }
 
 // ============= Children Container =============
@@ -771,7 +881,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                     ) {
                         // Home tab
                         NavigationBarItem(
-                            icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                            icon = { Text("🏠", style = MaterialTheme.typography.titleMedium) },
                             label = { 
                                 Text(
                                     "Home", 
@@ -789,7 +899,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Training tab
                         NavigationBarItem(
-                            icon = { Icon(Icons.Filled.DateRange, contentDescription = "Training") },
+                            icon = { Text("📅", style = MaterialTheme.typography.titleMedium) },
                             label = { 
                                 Text(
                                     "Training", 
@@ -807,7 +917,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Membership tab
                         NavigationBarItem(
-                            icon = { Icon(Icons.Filled.AccountBox, contentDescription = "Membership") },
+                            icon = { Text("💳", style = MaterialTheme.typography.titleMedium) },
                             label = { 
                                 Text(
                                     "Membership", 
@@ -825,7 +935,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Profile tab
                         NavigationBarItem(
-                            icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                            icon = { Text("👤", style = MaterialTheme.typography.titleMedium) },
                             label = { 
                                 Text(
                                     "Profile", 
@@ -937,6 +1047,152 @@ class CmpCoachGrid : CoachGrid<@Composable (androidx.compose.ui.Modifier) -> Uni
     override var modifier: Modifier = Modifier
 }
 
+// ============= Enhanced Styling Primitives =============
+
+/**
+ * StyledText - Text with full styling control
+ */
+class CmpStyledText : StyledText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var text by mutableStateOf("")
+    private var style by mutableStateOf("body")
+    private var color by mutableStateOf("")
+    private var fontWeight by mutableStateOf("")
+    private var letterSpacing by mutableStateOf(0)
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val typography = when (style) {
+            "headline" -> MaterialTheme.typography.headlineLarge
+            "headlineMedium" -> MaterialTheme.typography.headlineMedium
+            "title" -> MaterialTheme.typography.titleLarge
+            "titleMedium" -> MaterialTheme.typography.titleMedium
+            "titleSmall" -> MaterialTheme.typography.titleSmall
+            "body" -> MaterialTheme.typography.bodyMedium
+            "bodySmall" -> MaterialTheme.typography.bodySmall
+            "label" -> MaterialTheme.typography.labelMedium
+            "labelSmall" -> MaterialTheme.typography.labelSmall
+            else -> MaterialTheme.typography.bodyMedium
+        }
+        
+        val weight = when (fontWeight) {
+            "bold" -> androidx.compose.ui.text.font.FontWeight.Bold
+            "semibold" -> androidx.compose.ui.text.font.FontWeight.SemiBold
+            "medium" -> androidx.compose.ui.text.font.FontWeight.Medium
+            "normal" -> androidx.compose.ui.text.font.FontWeight.Normal
+            else -> null
+        }
+        
+        val textColor = parseColor(color, CaliclanTheme.TextPrimary)
+        val finalStyle = if (weight != null) typography.copy(fontWeight = weight) else typography
+        val styledFinal = if (letterSpacing > 0) finalStyle.copy(letterSpacing = letterSpacing.sp) else finalStyle
+        
+        Text(
+            text = text,
+            modifier = modifier,
+            style = styledFinal,
+            color = textColor
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun text(text: String) { this.text = text }
+    override fun style(style: String) { this.style = style }
+    override fun color(color: String) { this.color = color }
+    override fun fontWeight(fontWeight: String) { this.fontWeight = fontWeight }
+    override fun letterSpacing(letterSpacing: Int) { this.letterSpacing = letterSpacing }
+}
+
+/**
+ * StyledBox - Container with full styling control
+ */
+class CmpStyledBox : StyledBox<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var backgroundColor by mutableStateOf("")
+    private var borderRadius by mutableStateOf(0)
+    private var padding by mutableStateOf(0)
+    private var paddingHorizontal by mutableStateOf(0)
+    private var paddingVertical by mutableStateOf(0)
+    private var width by mutableStateOf(-1)
+    private var height by mutableStateOf(-1)
+    private var contentAlignment by mutableStateOf("")
+    
+    override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
+        CmpChildren()
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        var boxModifier = modifier
+        
+        // Size
+        boxModifier = when (width) {
+            -1 -> boxModifier // wrap
+            -2 -> boxModifier.fillMaxWidth() // fill
+            else -> boxModifier.width(width.dp)
+        }
+        boxModifier = when (height) {
+            -1 -> boxModifier // wrap
+            -2 -> boxModifier.fillMaxHeight() // fill
+            else -> boxModifier.height(height.dp)
+        }
+        
+        // Background
+        if (backgroundColor.isNotEmpty()) {
+            val bgColor = parseColor(backgroundColor, CaliclanTheme.Surface)
+            val shape = if (borderRadius > 0) {
+                androidx.compose.foundation.shape.RoundedCornerShape(borderRadius.dp)
+            } else {
+                androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+            }
+            boxModifier = boxModifier.background(bgColor, shape)
+        }
+        
+        // Padding
+        boxModifier = when {
+            paddingHorizontal > 0 || paddingVertical > 0 -> 
+                boxModifier.padding(horizontal = paddingHorizontal.dp, vertical = paddingVertical.dp)
+            padding > 0 -> boxModifier.padding(padding.dp)
+            else -> boxModifier
+        }
+        
+        val alignment = parseContentAlignment(contentAlignment)
+        
+        androidx.compose.foundation.layout.Box(
+            modifier = boxModifier,
+            contentAlignment = alignment
+        ) {
+            (children as CmpChildren).render()
+        }
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun backgroundColor(backgroundColor: String) { this.backgroundColor = backgroundColor }
+    override fun borderRadius(borderRadius: Int) { this.borderRadius = borderRadius }
+    override fun padding(padding: Int) { this.padding = padding }
+    override fun paddingHorizontal(paddingHorizontal: Int) { this.paddingHorizontal = paddingHorizontal }
+    override fun paddingVertical(paddingVertical: Int) { this.paddingVertical = paddingVertical }
+    override fun width(width: Int) { this.width = width }
+    override fun height(height: Int) { this.height = height }
+    override fun contentAlignment(contentAlignment: String) { this.contentAlignment = contentAlignment }
+}
+
+/**
+ * Divider - Horizontal line separator
+ */
+class CmpDivider : Divider<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+    private var color by mutableStateOf("")
+
+    override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
+        val dividerColor = parseColor(color, CaliclanTheme.Border)
+        HorizontalDivider(
+            modifier = modifier,
+            color = dividerColor
+        )
+    }
+
+    override var modifier: Modifier = Modifier
+
+    override fun color(color: String) { this.color = color }
+}
+
 // ============= Widget Factory =============
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.ui.Modifier) -> Unit> {
@@ -1026,6 +1282,16 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<@Composable (androidx.compose.
     }
     override fun CoachGrid(): CoachGrid<@Composable (androidx.compose.ui.Modifier) -> Unit> {
         return CmpCoachGrid()
+    }
+    // Enhanced styling primitives
+    override fun StyledText(): StyledText<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpStyledText()
+    }
+    override fun StyledBox(): StyledBox<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpStyledBox()
+    }
+    override fun Divider(): Divider<@Composable (androidx.compose.ui.Modifier) -> Unit> {
+        return CmpDivider()
     }
 }
 

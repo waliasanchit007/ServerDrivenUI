@@ -11,7 +11,7 @@ fun GreetingHeaderComposable(
     subtitle: String,
     title: String
 ) {
-    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
         SecondaryText(text = subtitle)
         Spacer(width = 0, height = 4)
         HeaderText(text = title, size = "large")
@@ -28,11 +28,11 @@ fun TrainingSessionCardComposable(
     goals: List<String>,
     onClick: (() -> Unit)?
 ) {
-    SduiCard(onClick = onClick) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             // Header
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top") {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                     Chip(label = label.uppercase())
                     Spacer(width = 0, height = 4)
                     HeaderText(text = focus, size = "medium")
@@ -45,7 +45,7 @@ fun TrainingSessionCardComposable(
                 Spacer(width = 0, height = 16)
                 SecondaryText(text = "Focus Areas")
                 Spacer(width = 0, height = 8)
-                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                     goals.forEachIndexed { index, goal ->
                         Chip(label = goal)
                         if (index < goals.size - 1) {
@@ -67,8 +67,8 @@ fun AnnouncementCardComposable(
     title: String,
     message: String
 ) {
-    SduiCard(onClick = null) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             Chip(label = label.uppercase())
             Spacer(width = 0, height = 8)
             HeaderText(text = title, size = "small")
@@ -89,15 +89,15 @@ fun StatusCardComposable(
     daysLeft: Int,
     onClick: (() -> Unit)?
 ) {
-    SduiCard(onClick = onClick) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                     HeaderText(text = title, size = "small")
                     Spacer(width = 0, height = 4)
                     SecondaryText(text = subtitle)
                 }
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End") {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
                     HeaderText(text = "$daysLeft", size = "medium")
                     SecondaryText(text = "days left")
                 }
@@ -117,17 +117,17 @@ fun WeeklyAttendanceComposable(
     days: List<String>,
     summary: String
 ) {
-    SduiCard(onClick = null) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 SecondaryText(text = "This Week")
                 HeaderText(text = "🔥 $streak", size = "small")
             }
             Spacer(width = 0, height = 12)
-            FlexRow(horizontalArrangement = "SpaceEvenly", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "SpaceEvenly", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
                 days.forEachIndexed { index, status ->
-                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center") {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center", spacing = 0, padding = 0) {
                         SecondaryText(text = dayLabels.getOrElse(index) { "?" })
                         Spacer(width = 0, height = 4)
                         val icon = when (status) {
@@ -156,8 +156,8 @@ fun CoachCardComposable(
     photoUrl: String,
     onClick: () -> Unit
 ) {
-    SduiCard(onClick = onClick) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center") {
+    SduiCard(onClick = onClick, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Center", spacing = 0, padding = 0) {
             AsyncImage(url = photoUrl, contentDescription = name, size = 64, circular = true)
             Spacer(width = 0, height = 8)
             HeaderText(text = name, size = "small")

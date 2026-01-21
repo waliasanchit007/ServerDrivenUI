@@ -21,8 +21,8 @@ fun MembershipPlanCardComposable(
     billingDate: String,
     onSelect: (() -> Unit)?
 ) {
-    SduiCard(onClick = null) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             // Label badge
             if (isCurrent) {
                 Chip(label = "CURRENT PLAN")
@@ -34,13 +34,13 @@ fun MembershipPlanCardComposable(
             }
             
             // Header: Name/Duration + Price
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top") {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                     HeaderText(text = name, size = "small")
                     Spacer(width = 0, height = 4)
                     SecondaryText(text = duration)
                 }
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End") {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
                     HeaderText(text = price, size = "small")
                     SecondaryText(text = priceLabel)
                 }
@@ -50,7 +50,7 @@ fun MembershipPlanCardComposable(
             
             // Features list
             features.forEach { feature ->
-                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Top") {
+                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Top", spacing = 0, padding = 0) {
                     SecondaryText(text = "✓")
                     Spacer(width = 8, height = 0)
                     SecondaryText(text = feature)

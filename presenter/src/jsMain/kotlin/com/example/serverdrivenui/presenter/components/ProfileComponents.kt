@@ -14,14 +14,14 @@ fun ProfileInfoCardComposable(
     batch: String,
     memberSince: String
 ) {
-    SduiCard(onClick = null) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             // Avatar + Name row
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 // Avatar (using initials chip)
                 Chip(label = name.take(2).uppercase())
                 Spacer(width = 16, height = 0)
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                     HeaderText(text = name, size = "medium")
                     Spacer(width = 0, height = 4)
                     SecondaryText(text = "Member since $memberSince")
@@ -31,21 +31,21 @@ fun ProfileInfoCardComposable(
             Spacer(width = 0, height = 24)
             
             // Info rows
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 SecondaryText(text = "Email")
                 SecondaryText(text = email)
             }
             
             if (phone.isNotEmpty()) {
                 Spacer(width = 0, height = 12)
-                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
+                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
                     SecondaryText(text = "Phone")
                     SecondaryText(text = phone)
                 }
             }
             
             Spacer(width = 0, height = 12)
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 SecondaryText(text = "Batch")
                 SecondaryText(text = batch)
             }
@@ -63,14 +63,14 @@ fun HistoryItemComposable(
     status: String,
     amount: String
 ) {
-    SduiCard(onClick = null) {
-        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center") {
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Center", spacing = 0, padding = 0) {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                 HeaderText(text = title, size = "small")
                 Spacer(width = 0, height = 4)
                 SecondaryText(text = subtitle)
             }
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End") {
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
                 if (amount.isNotEmpty()) {
                     HeaderText(text = amount, size = "small")
                 }

@@ -68,13 +68,13 @@ fun ProfileScreenContent(
         
         when (val state = uiState) {
             is ProfileUiState.Loading -> {
-                SduiCard(onClick = null) {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
                     SecondaryText(text = "Loading profile...")
                 }
             }
             is ProfileUiState.Error -> {
-                SduiCard(onClick = null) {
-                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+                SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+                    FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                         SecondaryText(text = "⚠️ Error")
                         Spacer(width = 0, height = 8)
                         SecondaryText(text = state.message)

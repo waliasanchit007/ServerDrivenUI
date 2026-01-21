@@ -83,7 +83,7 @@ class MainNavigationShell : Screen {
         println("MainNavigationShell: Recompose. isChecking=$isChecking, isLoggedIn=$isLoggedIn")
         
         if (isChecking) {
-             FlexColumn(verticalArrangement = "Center", horizontalAlignment = "CenterHorizontally") {
+             FlexColumn(verticalArrangement = "Center", horizontalAlignment = "CenterHorizontally", spacing = 0, padding = 0) {
                  SecondaryText(text = "Loading...")
              }
         } else if (!isLoggedIn) {
@@ -164,7 +164,9 @@ private fun CoachProfileSheetContent(
 ) {
     FlexColumn(
         verticalArrangement = "Top",
-        horizontalAlignment = "CenterHorizontally"
+        horizontalAlignment = "CenterHorizontally",
+        spacing = 0,
+        padding = 0
     ) {
         // Coach Photo
         AsyncImage(
@@ -191,7 +193,9 @@ private fun CoachProfileSheetContent(
         // Instagram
         FlexRow(
             horizontalArrangement = "Center",
-            verticalAlignment = "CenterVertically"
+            verticalAlignment = "CenterVertically",
+            spacing = 0,
+            padding = 0
         ) {
             IconButton(
                 icon = "instagram",

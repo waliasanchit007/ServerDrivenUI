@@ -23,13 +23,13 @@ fun TrainingDayCardComposable(
     // Card with conditional styling based on isToday
     // Since SduiCard doesn't support dynamic styling, we use the default card
     // The Host will handle the border/background based on content context
-    SduiCard(onClick = null) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
             // Day Header Row
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top") {
-                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start") {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
+                FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                     // Day name with optional badges
-                    FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+                    FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                         if (isToday) {
                             // Highlighted day for today
                             HeaderText(text = day, size = "small")
@@ -52,13 +52,13 @@ fun TrainingDayCardComposable(
             Spacer(width = 0, height = 16)
             
             // Primary Goals Section
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 SecondaryText(text = "🎯 Primary Goals")
             }
             Spacer(width = 0, height = 8)
             
             // Goals as chips
-            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+            FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                 goals.forEachIndexed { index, goal ->
                     Chip(label = goal)
                     if (index < goals.size - 1) {
@@ -70,7 +70,7 @@ fun TrainingDayCardComposable(
             // Supporting Section (if not empty)
             if (supporting.isNotEmpty()) {
                 Spacer(width = 0, height = 16)
-                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center") {
+                FlexRow(horizontalArrangement = "Start", verticalAlignment = "Center", spacing = 0, padding = 0) {
                     SecondaryText(text = "🕐 Supporting")
                 }
                 Spacer(width = 0, height = 4)
