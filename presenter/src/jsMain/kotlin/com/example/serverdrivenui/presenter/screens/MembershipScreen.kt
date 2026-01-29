@@ -83,7 +83,7 @@ fun MembershipScreenContent(
                 val currentPlan = state.plans.firstOrNull()
                 if (currentPlan != null) {
                     MembershipPlanCardComposable(
-                        name = currentPlan.name,
+                        name = cleanPlanName(currentPlan.name),
                         duration = currentPlan.duration,
                         price = currentPlan.price,
                         priceLabel = currentPlan.priceLabel,
@@ -104,7 +104,7 @@ fun MembershipScreenContent(
                 // Show upgrade plans (skip first/current)
                 state.plans.drop(1).forEachIndexed { index, plan ->
                     MembershipPlanCardComposable(
-                        name = plan.name,
+                        name = cleanPlanName(plan.name),
                         duration = plan.duration,
                         price = plan.price,
                         priceLabel = plan.priceLabel,
@@ -222,5 +222,25 @@ fun PaymentSheet(
                  )
              }
         }
+    }
+}
+
+/**
+ * Clean plan name by removing price suffix (e.g., "Adult Group Membership - 1M 5250" -> "Adult Group Membership")
+ */
+private fun cleanPlanName(name: String): String {
+    // Pattern: "Name - duration price" -> strip after last hyphen if it contains only digits/duration
+    val parts = name.split(" - ")
+    return if (parts.size > 1) {
+        // Check if last part looks like "1M 5250" pattern
+        val lastPart = parts.last()
+        val looksLikePricePattern = lastPart.matches(Regex("^\\d+[DMWY]\\s+\\d+$")) // e.g., "1M 5250"
+        if (looksLikePricePattern) {
+            parts.dropLast(1).joinToString(" - ")
+        } else {
+            name
+        }
+    } else {
+        name
     }
 }

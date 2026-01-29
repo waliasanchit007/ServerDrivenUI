@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Person
 
 
@@ -923,7 +923,7 @@ class CmpAppScaffold : AppScaffold<@Composable (androidx.compose.ui.Modifier) ->
                         )
                         // Membership tab
                         NavigationBarItem(
-                            icon = { Icon(Icons.Filled.AccountBox, contentDescription = "Membership") },
+                            icon = { Icon(Icons.Filled.Star, contentDescription = "Membership") },
                             label = { 
                                 Text(
                                     "Membership", 

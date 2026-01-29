@@ -41,29 +41,33 @@ fun ProfileInfoCardComposable(
             Divider(color = "border")
             Spacer(width = 0, height = 16)
             
-            // Email row
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
-                StyledText(text = "Email", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
-                StyledText(
-                    text = if (email.isNotEmpty()) email else "Not set", 
-                    style = "bodySmall", 
-                    color = if (email.isNotEmpty()) "primary" else "muted", 
-                    fontWeight = "normal", 
-                    letterSpacing = 0
-                )
-            }
-            
-            // Batch row
-            Spacer(width = 0, height = 12)
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
-                StyledText(text = "Batch", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
-                StyledText(
-                    text = if (batch.isNotEmpty()) batch else "Not assigned", 
-                    style = "bodySmall", 
-                    color = if (batch.isNotEmpty()) "primary" else "muted", 
-                    fontWeight = "normal", 
-                    letterSpacing = 0
-                )
+            // Info rows with proper spacing using FlexColumn for label-value pairs
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
+                // Email row
+                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 16, padding = 0) {
+                    StyledText(text = "Email", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                    Spacer(width = 8, height = 0)
+                    StyledText(
+                        text = if (email.isNotEmpty()) email else "Not set", 
+                        style = "bodySmall", 
+                        color = if (email.isNotEmpty()) "primary" else "muted", 
+                        fontWeight = "normal", 
+                        letterSpacing = 0
+                    )
+                }
+                
+                // Batch row  
+                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 16, padding = 0) {
+                    StyledText(text = "Batch", style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
+                    Spacer(width = 8, height = 0)
+                    StyledText(
+                        text = if (batch.isNotEmpty()) batch else "Not assigned", 
+                        style = "bodySmall", 
+                        color = if (batch.isNotEmpty()) "primary" else "muted", 
+                        fontWeight = "normal", 
+                        letterSpacing = 0
+                    )
+                }
             }
         }
     }
@@ -98,7 +102,7 @@ fun HistoryItemComposable(
         borderRadius = 12, 
         padding = 16
     ) {
-        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
+        FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 16, padding = 0) {
             FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 4, padding = 0) {
                 StyledText(text = title, style = "body", color = "primary", fontWeight = "medium", letterSpacing = 0)
                 StyledText(text = subtitle, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
