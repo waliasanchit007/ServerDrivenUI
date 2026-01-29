@@ -122,7 +122,7 @@ fun StatusCardComposable(
         borderRadius = 12, 
         padding = 16
     ) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 8, padding = 0) {
             // Main content row with proper alignment
             FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 16, padding = 0) {
                 // Left side: Title and subtitle
@@ -130,7 +130,7 @@ fun StatusCardComposable(
                     StyledText(text = title, style = "titleSmall", color = "primary", fontWeight = "semibold", letterSpacing = 0)
                     StyledText(text = subtitle, style = "bodySmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                 }
-                // Right side: Days left with proper alignment (stacked vertically, right-aligned)
+                // Right side: Days left with status color (stacked vertically, right-aligned)
                 FlexColumn(verticalArrangement = "Top", horizontalAlignment = "End", spacing = 0, padding = 0) {
                     FlexRow(horizontalArrangement = "End", verticalAlignment = "Bottom", spacing = 4, padding = 0) {
                         StyledText(text = "$daysLeft", style = "headlineMedium", color = statusTextColor, fontWeight = "bold", letterSpacing = 0)
@@ -138,10 +138,7 @@ fun StatusCardComposable(
                     StyledText(text = "days left", style = "labelSmall", color = "secondary", fontWeight = "normal", letterSpacing = 0)
                 }
             }
-            // Status badge (only one, not redundant with title)
-            StyledBox(backgroundColor = "surfacevariant", borderRadius = 4, padding = 0, paddingHorizontal = 8, paddingVertical = 4, width = -1, height = -1, contentAlignment = "Center") {
-                StyledText(text = status.uppercase(), style = "labelSmall", color = statusTextColor, fontWeight = "bold", letterSpacing = 1)
-            }
+            // Status is now conveyed by the border color and days count - no separate badge needed
         }
     }
 }

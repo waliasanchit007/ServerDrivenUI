@@ -227,20 +227,27 @@ fun PaymentSheet(
 
 /**
  * Clean plan name by removing price suffix (e.g., "Adult Group Membership - 1M 5250" -> "Adult Group Membership")
+ * Also handles: "Book Trial Class 525" -> "Book Trial Class"
  */
 private fun cleanPlanName(name: String): String {
-    // Pattern: "Name - duration price" -> strip after last hyphen if it contains only digits/duration
-    val parts = name.split(" - ")
-    return if (parts.size > 1) {
-        // Check if last part looks like "1M 5250" pattern
-        val lastPart = parts.last()
-        val looksLikePricePattern = lastPart.matches(Regex("^\\d+[DMWY]\\s+\\d+$")) // e.g., "1M 5250"
-        if (looksLikePricePattern) {
-            parts.dropLast(1).joinToString(" - ")
-        } else {
-            name
+    // Pattern 1: "Name - duration price" -> strip after last hyphen if it contains duration+price
+    if (name.contains(" - ")) {
+        val parts = name.split(" - ")
+        if (parts.size > 1) {
+            val lastPart = parts.last()
+            // Check if last part looks like "1M 5250" or "3M 15000" pattern
+            val looksLikeDurationPrice = lastPart.matches(Regex("^\\d+[DMWY]\\s+\\d+$"))
+            if (looksLikeDurationPrice) {
+                return parts.dropLast(1).joinToString(" - ")
+            }
         }
-    } else {
-        name
     }
+    
+    // Pattern 2: "Name 525" -> strip trailing price at end of string
+    val trailingPricePattern = Regex("\\s+\\d{3,}$") // 3+ digits at end
+    if (trailingPricePattern.containsMatchIn(name)) {
+        return name.replace(trailingPricePattern, "").trim()
+    }
+    
+    return name
 }

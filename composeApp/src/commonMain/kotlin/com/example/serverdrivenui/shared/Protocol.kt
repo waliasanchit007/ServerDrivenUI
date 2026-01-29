@@ -1127,14 +1127,14 @@ class CmpStyledBox : StyledBox<@Composable (androidx.compose.ui.Modifier) -> Uni
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
         var boxModifier = modifier
         
-        // Size
+        // Size - wrap content explicitly to prevent vertical text rendering
         boxModifier = when (width) {
-            -1 -> boxModifier // wrap
+            -1 -> boxModifier.wrapContentWidth() // wrap content explicitly
             -2 -> boxModifier.fillMaxWidth() // fill
             else -> boxModifier.width(width.dp)
         }
         boxModifier = when (height) {
-            -1 -> boxModifier // wrap
+            -1 -> boxModifier.wrapContentHeight() // wrap content explicitly
             -2 -> boxModifier.fillMaxHeight() // fill
             else -> boxModifier.height(height.dp)
         }

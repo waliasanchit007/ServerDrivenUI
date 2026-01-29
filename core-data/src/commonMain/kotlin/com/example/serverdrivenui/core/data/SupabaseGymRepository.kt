@@ -167,23 +167,36 @@ class SupabaseGymRepository(
     }
 
     suspend fun getWeeklyAttendanceStatus(): List<String> {
-        // Todo: Map to DTO or simple object
         val userId = currentUserId ?: demoUserId
         
         return try {
             val response = httpClient.get("$restUrl/attendance") {
                 parameter("user_id", "eq.$userId")
-                parameter("order", "date.asc")
+                parameter("order", "date.desc")
                 parameter("limit", "7")
+                parameter("select", "date,status")
                 headers {
                     append("apikey", supabaseKey)
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            // Mock logic: return dummy list to satisfy UI
-            listOf("attended", "attended", "today", "future", "future", "future", "future")
+            val attendanceJson = response.bodyAsText()
+            // Parse response - count how many attendance records exist
+            val attendedCount = attendanceJson.count { it == '{' } // Simple count of JSON objects
+            
+            // Build status list based on actual attendance count
+            val statuses = mutableListOf<String>()
+            for (i in 0 until minOf(attendedCount, 7)) {
+                statuses.add("attended")
+            }
+            // Fill remaining with future
+            while (statuses.size < 7) {
+                statuses.add("future")
+            }
+            statuses
         } catch (e: Exception) {
-            emptyList()
+            // Return all future if no data
+            listOf("future", "future", "future", "future", "future", "future", "future")
         }
     }
     
@@ -237,7 +250,23 @@ class SupabaseGymRepository(
                     "status": "active"
                 }""")
             }
-            response.status.isSuccess()
+            
+            if (response.status.isSuccess()) {
+                // Also update the profiles table with membership status and expiry
+                val profileUpdate = httpClient.patch("$restUrl/profiles") {
+                    parameter("id", "eq.$userId")
+                    contentType(ContentType.Application.Json)
+                    headers {
+                        append("apikey", supabaseKey)
+                        append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                    }
+                    setBody("""{"membership_status": "active", "membership_expiry": "$endDate"}""")
+                }
+                println("Repo: Profile update status: ${profileUpdate.status}")
+                true
+            } else {
+                false
+            }
         } catch (e: Exception) {
             println("Assign Membership Failed: ${e.message}")
             false
@@ -463,7 +492,8 @@ class SupabaseGymRepository(
                 if (userId != null) {
                     currentUserId = userId
                     currentAccessToken = supabaseKey
-                    updateUser(ProfileDto(fullName = name, email = email))
+                    // Update profile with full name for existing user
+                    updateUser(ProfileDto(id = userId, fullName = name, email = email))
                     println("Repo: Sign In Success! UserID: $userId. Returning true.")
                     return true
                 } else {
