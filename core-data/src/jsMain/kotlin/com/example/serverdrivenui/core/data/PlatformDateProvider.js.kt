@@ -16,4 +16,9 @@ actual object PlatformDateProvider {
         val newDate = Date(d.getFullYear(), d.getMonth() + months, d.getDate())
         return newDate.toISOString().split("T")[0]
     }
+    
+    actual fun getDayOfWeek(dateStr: String): Int {
+        // Returns 0=Sunday, 1=Monday, ..., 6=Saturday
+        return Date(dateStr).getDay()
+    }
 }

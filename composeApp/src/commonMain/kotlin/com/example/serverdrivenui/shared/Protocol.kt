@@ -138,13 +138,24 @@ class CmpFlexRow : FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
                 (children as CmpChildren).render()
             }
         } else {
-            val arrangement = if (spacing > 0) {
+            // For SpaceBetween, SpaceEvenly, SpaceAround - use that arrangement, not spacedBy
+            // spacing parameter is for items, but main arrangement should still work
+            val isSpaceArrangement = horizontalArrangement in listOf("SpaceBetween", "SpaceEvenly", "SpaceAround")
+            val arrangement = if (isSpaceArrangement) {
+                parseHorizontalArrangement(horizontalArrangement)
+            } else if (spacing > 0) {
                 Arrangement.spacedBy(spacing.dp)
             } else {
                 parseHorizontalArrangement(horizontalArrangement)
             }
+            // Use fillMaxWidth for space-based arrangements to work properly
+            val rowMod = if (isSpaceArrangement) {
+                baseMod.fillMaxWidth()
+            } else {
+                baseMod
+            }
             Row(
-                modifier = baseMod,
+                modifier = rowMod,
                 horizontalArrangement = arrangement,
                 verticalAlignment = parseVerticalAlignment(verticalAlignment)
             ) {
@@ -187,10 +198,18 @@ class CmpFlexColumn : FlexColumn<@Composable (androidx.compose.ui.Modifier) -> U
         } else {
             parseVerticalArrangement2(verticalArrangement)
         }
+        // When horizontalAlignment is "Stretch", use fillMaxWidth and Start alignment
+        val (colMod, hAlign) = if (horizontalAlignment == "Stretch") {
+            val baseMod = if (padding > 0) modifier.padding(padding.dp) else modifier
+            baseMod.fillMaxWidth() to Alignment.Start
+        } else {
+            val baseMod = if (padding > 0) modifier.padding(padding.dp) else modifier
+            baseMod to parseHorizontalAlignment(horizontalAlignment)
+        }
         Column(
-            modifier = if (padding > 0) modifier.padding(padding.dp) else modifier,
+            modifier = colMod,
             verticalArrangement = arrangement,
-            horizontalAlignment = parseHorizontalAlignment(horizontalAlignment)
+            horizontalAlignment = hAlign
         ) {
             (children as CmpChildren).render()
         }
@@ -374,7 +393,9 @@ class CmpSduiCard : SduiCard<@Composable (androidx.compose.ui.Modifier) -> Unit>
             border = border
         ) {
             Column(
-                modifier = androidx.compose.ui.Modifier.padding(padding)
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxWidth()
+                    .padding(padding)
             ) {
                 (children as CmpChildren).render()
             }
@@ -715,7 +736,8 @@ class CmpBottomSheet : BottomSheet<@Composable (androidx.compose.ui.Modifier) ->
                 Column(
                     modifier = androidx.compose.ui.Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 24.dp, vertical = 0.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     (content as CmpChildren).render()
                 }

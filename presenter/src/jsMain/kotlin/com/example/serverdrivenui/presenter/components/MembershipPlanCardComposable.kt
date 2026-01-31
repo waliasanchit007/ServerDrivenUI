@@ -64,7 +64,7 @@ fun MembershipPlanCardComposable(
         borderRadius = 16, 
         padding = 20
     ) {
-        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 16, padding = 0) {
+        FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Stretch", spacing = 16, padding = 0) {
             // Label badge
             if (isCurrent) {
                 StyledText(text = "CURRENT PLAN", style = "labelSmall", color = "accent", fontWeight = "medium", letterSpacing = 1)

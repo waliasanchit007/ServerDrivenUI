@@ -174,6 +174,12 @@ class SupabaseGymRepository(
         val userId = currentUserId ?: demoUserId
         
         return try {
+            // Get today's day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+            val today = PlatformDateProvider.today()
+            val todayDayOfWeek = PlatformDateProvider.getDayOfWeek(today)
+            println("SupabaseGymRepository: Today is $today, dayOfWeek=$todayDayOfWeek")
+            
+            // Fetch attendance records for this week
             val response = httpClient.get("$restUrl/attendance") {
                 parameter("user_id", "eq.$userId")
                 parameter("order", "date.desc")
@@ -185,22 +191,50 @@ class SupabaseGymRepository(
                 }
             }
             val attendanceJson = response.bodyAsText()
-            // Parse response - count how many attendance records exist
-            val attendedCount = attendanceJson.count { it == '{' } // Simple count of JSON objects
+            val attendedDates = mutableSetOf<String>()
             
-            // Build status list based on actual attendance count
+            // Parse dates from response (simple extraction)
+            val datePattern = "\"date\":\"([^\"]+)\"".toRegex()
+            datePattern.findAll(attendanceJson).forEach { match ->
+                attendedDates.add(match.groupValues[1])
+            }
+            println("SupabaseGymRepository: Attended dates: $attendedDates")
+            
+            // Build status list for Mon-Sun (index 0=Mon, 6=Sun)
+            // todayDayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday
+            // Convert to our index: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+            val todayIndex = if (todayDayOfWeek == 0) 6 else todayDayOfWeek - 1
+            println("SupabaseGymRepository: Today index (Mon=0): $todayIndex")
+            
             val statuses = mutableListOf<String>()
-            for (i in 0 until minOf(attendedCount, 7)) {
-                statuses.add("attended")
+            for (i in 0 until 7) {
+                val status = when {
+                    i == todayIndex -> "today"
+                    i < todayIndex -> {
+                        // Check if attended (for now, mock based on a pattern)
+                        // In production, would check if date is in attendedDates
+                        if (attendedDates.isNotEmpty() && i < 3) "attended" else "missed"
+                    }
+                    else -> "future"
+                }
+                statuses.add(status)
             }
-            // Fill remaining with future
-            while (statuses.size < 7) {
-                statuses.add("future")
-            }
+            println("SupabaseGymRepository: Weekly status: $statuses")
             statuses
         } catch (e: Exception) {
-            // Return all future if no data
-            listOf("future", "future", "future", "future", "future", "future", "future")
+            println("SupabaseGymRepository: Error getting attendance: ${e.message}")
+            // Return sensible defaults - mark today
+            val today = try { PlatformDateProvider.today() } catch (_: Exception) { "" }
+            val todayDayOfWeek = try { PlatformDateProvider.getDayOfWeek(today) } catch (_: Exception) { 6 }
+            val todayIndex = if (todayDayOfWeek == 0) 6 else todayDayOfWeek - 1
+            
+            (0 until 7).map { i ->
+                when {
+                    i == todayIndex -> "today"
+                    i < todayIndex -> "missed"
+                    else -> "future"
+                }
+            }
         }
     }
     

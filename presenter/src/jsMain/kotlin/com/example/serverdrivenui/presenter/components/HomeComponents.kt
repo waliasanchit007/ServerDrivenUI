@@ -168,20 +168,20 @@ fun WeeklyAttendanceComposable(
                 StyledText(text = "$streak-day streak", style = "titleMedium", color = "primary", fontWeight = "semibold", letterSpacing = 0)
             }
             
-            // Weekly attendance grid - box-based indicators
-            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 12, padding = 0) {
-                FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "Top", spacing = 0, padding = 0) {
+            // Weekly attendance grid - box-based indicators, needs full width
+            FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Stretch", spacing = 12, padding = 0) {
+                FlexRow(horizontalArrangement = "SpaceEvenly", verticalAlignment = "Top", spacing = 0, padding = 0) {
                     val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
                     days.forEachIndexed { index, status ->
                         FlexColumn(verticalArrangement = "Top", horizontalAlignment = "CenterHorizontally", spacing = 6, padding = 0) {
                             // Day label
                             StyledText(text = dayLabels.getOrElse(index) { "?" }, style = "labelSmall", color = "muted", fontWeight = "normal", letterSpacing = 0)
-                            // Box indicator
-                            val (bgColor, dotColor) = when (status) {
-                                "attended" -> "successmuted" to "success"
-                                "today" -> "accent" to "background"
-                                "missed" -> "surfacevariant" to "transparent"
-                                else -> "surfacevariant" to "transparent"
+                            // Box indicator with visible content for all states
+                            val bgColor = when (status) {
+                                "attended" -> "successmuted"
+                                "today" -> "accent"
+                                "missed" -> "surfacevariant"
+                                else -> "surfacevariant"  // future
                             }
                             StyledBox(
                                 backgroundColor = bgColor, 
@@ -193,10 +193,12 @@ fun WeeklyAttendanceComposable(
                                 height = 32, 
                                 contentAlignment = "Center"
                             ) {
-                                if (status == "attended") {
-                                    StyledText(text = "●", style = "labelSmall", color = dotColor, fontWeight = "bold", letterSpacing = 0)
-                                } else if (status == "today") {
-                                    StyledText(text = "●", style = "labelSmall", color = "background", fontWeight = "bold", letterSpacing = 0)
+                                // Show indicator for each state
+                                when (status) {
+                                    "attended" -> StyledText(text = "✓", style = "labelMedium", color = "success", fontWeight = "bold", letterSpacing = 0)
+                                    "today" -> StyledText(text = "●", style = "labelSmall", color = "background", fontWeight = "bold", letterSpacing = 0)
+                                    "missed" -> StyledText(text = "✕", style = "labelSmall", color = "muted", fontWeight = "normal", letterSpacing = 0)
+                                    else -> StyledText(text = "○", style = "labelSmall", color = "muted", fontWeight = "normal", letterSpacing = 0)  // future - empty circle
                                 }
                             }
                         }
