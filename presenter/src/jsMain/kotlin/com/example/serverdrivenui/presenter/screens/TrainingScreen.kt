@@ -25,7 +25,6 @@ sealed class TrainingUiState {
 }
 
 suspend fun fetchTrainingData(): TrainingUiState {
-    val weekStart = "2026-01-01" 
     return try {
         val repo = GymServiceProvider.getRepository()
         
@@ -33,9 +32,10 @@ suspend fun fetchTrainingData(): TrainingUiState {
             return TrainingUiState.Error("GymService not available")
         }
         
-        val schedule = repo.getWeeklySchedule(weekStart)
-        val attendance = repo.getWeeklyAttendanceStatus()
+        // Get today's date and use it to fetch current week's schedule
         val today = repo.getTodayDate()
+        val schedule = repo.getWeeklySchedule(today)  // Use today's date to get current week
+        val attendance = repo.getWeeklyAttendanceStatus()
         
         if (schedule.isNotEmpty()) {
             TrainingUiState.Success(schedule, attendance, today)

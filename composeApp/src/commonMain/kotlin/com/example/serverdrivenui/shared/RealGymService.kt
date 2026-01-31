@@ -75,11 +75,27 @@ class RealGymService(
         try {
             val response = proxyClient.request(url) {
                 this.method = HttpMethod.parse(method)
-                headers.forEach { (k, v) ->
-                    this.headers.append(k, v)
+                
+                // Get Content-Type from headers (default to text/plain if not specified)
+                val contentTypeHeader = headers.entries.find { 
+                    it.key.equals("Content-Type", ignoreCase = true) 
+                }?.value ?: "text/plain"
+                val contentType = try {
+                    ContentType.parse(contentTypeHeader)
+                } catch (e: Exception) {
+                    ContentType.Text.Plain
                 }
+                
+                // Add all headers except Content-Type (we'll set it via TextContent)
+                headers.forEach { (k, v) ->
+                    if (!k.equals("Content-Type", ignoreCase = true)) {
+                        this.headers.append(k, v)
+                    }
+                }
+                
+                // Set body with explicit Content-Type
                 if (body != null) {
-                    setBody(body)
+                    setBody(io.ktor.http.content.TextContent(body, contentType))
                 }
             }
             

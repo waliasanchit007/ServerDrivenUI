@@ -5,6 +5,7 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.TextContent
 import com.example.serverdrivenui.core.data.dto.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -61,9 +62,11 @@ class SupabaseGymRepository(
     
     // ============= Training =============
     
-    suspend fun getWeeklySchedule(weekStart: String): List<TrainingDayDto> {
-        println("GymRepo: getWeeklySchedule called")
+    suspend fun getWeeklySchedule(referenceDate: String): List<TrainingDayDto> {
+        println("GymRepo: getWeeklySchedule called with date: $referenceDate")
         return try {
+            // Fetch all 7 days of the training schedule (Mon-Sun)
+            // The database should have exactly 7 days for the current week
             httpClient.get("$restUrl/training_schedule") {
                 parameter("order", "date.asc")
                 parameter("limit", "7")
@@ -73,7 +76,8 @@ class SupabaseGymRepository(
                 }
             }.body()
         } catch (e: Exception) {
-             emptyList()
+            println("GymRepo: getWeeklySchedule error: ${e.message}")
+            emptyList()
         }
     }
     
@@ -236,31 +240,31 @@ class SupabaseGymRepository(
         
         return try {
             val response = httpClient.post("$restUrl/membership_history") {
-                contentType(ContentType.Application.Json)
                 headers {
                     append("apikey", supabaseKey)
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                     append("Prefer", "return=minimal")
+                    append("Content-Type", "application/json")
                 }
-                setBody("""{
-                    "user_id": "$userId",
-                    "plan_name": "${plan.name}",
-                    "start_date": "$startDate",
-                    "end_date": "$endDate",
-                    "status": "active"
-                }""")
+                setBody(TextContent(
+                    """{"user_id":"$userId","plan_name":"${plan.name}","start_date":"$startDate","end_date":"$endDate","status":"active"}""",
+                    ContentType.Application.Json
+                ))
             }
             
             if (response.status.isSuccess()) {
                 // Also update the profiles table with membership status and expiry
                 val profileUpdate = httpClient.patch("$restUrl/profiles") {
                     parameter("id", "eq.$userId")
-                    contentType(ContentType.Application.Json)
                     headers {
                         append("apikey", supabaseKey)
                         append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                        append("Content-Type", "application/json")
                     }
-                    setBody("""{"membership_status": "active", "membership_expiry": "$endDate"}""")
+                    setBody(TextContent(
+                        """{"membership_status":"active","membership_expiry":"$endDate"}""",
+                        ContentType.Application.Json
+                    ))
                 }
                 println("Repo: Profile update status: ${profileUpdate.status}")
                 true
@@ -278,19 +282,16 @@ class SupabaseGymRepository(
         val now = PlatformDateProvider.now()
         return try {
             val response = httpClient.post("$restUrl/payment_history") {
-                contentType(ContentType.Application.Json)
                 headers {
                     append("apikey", supabaseKey)
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                     append("Prefer", "return=minimal")
+                    append("Content-Type", "application/json")
                 }
-                setBody("""{
-                    "user_id": "$userId",
-                    "amount": "$amount",
-                    "payment_date": "$now",
-                    "method": "UPI",
-                    "status": "completed"
-                }""")
+                setBody(TextContent(
+                    """{"user_id":"$userId","amount":"$amount","payment_date":"$now","method":"UPI","status":"completed"}""",
+                    ContentType.Application.Json
+                ))
             }
             response.status.isSuccess()
         } catch (e: Exception) {
@@ -444,9 +445,14 @@ class SupabaseGymRepository(
         try {
             println("Repo: Attempting Sign Up...")
             val response = httpClient.post("$authUrl/signup") {
-                contentType(ContentType.Application.Json)
-                headers { append("apikey", supabaseKey) }
-                setBody("""{"email": "$email", "password": "$defaultPassword", "data": {"full_name": "$name"}}""")
+                headers { 
+                    append("apikey", supabaseKey)
+                    append("Content-Type", "application/json")
+                }
+                setBody(TextContent(
+                    """{"email": "$email", "password": "$defaultPassword", "data": {"full_name": "$name"}}""",
+                    ContentType.Application.Json
+                ))
             }
             
             println("Repo: Sign Up status: ${response.status}")
@@ -477,9 +483,14 @@ class SupabaseGymRepository(
         try {
              println("Repo: Attempting Sign In...")
              val response = httpClient.post("$authUrl/token?grant_type=password") {
-                contentType(ContentType.Application.Json)
-                headers { append("apikey", supabaseKey) }
-                setBody("""{"email": "$email", "password": "$defaultPassword"}""")
+                headers { 
+                    append("apikey", supabaseKey)
+                    append("Content-Type", "application/json")
+                }
+                setBody(TextContent(
+                    """{"email": "$email", "password": "$defaultPassword"}""",
+                    ContentType.Application.Json
+                ))
             }
             
             println("Repo: Sign In status: ${response.status}")

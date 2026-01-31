@@ -29,19 +29,21 @@ class ZiplineProxyEngine(
             // 1. Convert Ktor Request to ProxyRequest args
             val url = data.url.toString()
             val method = data.method.value
-            val headersMap = data.headers.entries().associate { it.key to it.value.joinToString(",") }
+            val headersMap = data.headers.entries().associate { it.key to it.value.joinToString(",") }.toMutableMap()
             
             var bodyString: String? = null
             val content = data.body
             if (content is io.ktor.http.content.TextContent) {
                 bodyString = content.text
+                // IMPORTANT: Extract Content-Type from TextContent and add to headers
+                headersMap["Content-Type"] = content.contentType.toString()
             } else if (content is io.ktor.http.content.OutgoingContent.ByteArrayContent) {
                 // Convert to string assuming it's JSON/Text (limitations apply)
                 bodyString = content.bytes().decodeToString()
             }
 
             // 2. Call GymService (Host)
-            println("ZiplineProxyEngine: Proxying $method $url")
+            println("ZiplineProxyEngine: Proxying $method $url with Content-Type: ${headersMap["Content-Type"]}")
             val response = gymService.proxyRequest(url, method, headersMap, bodyString)
             println("ZiplineProxyEngine: Received response ${response.status} from Host")
 

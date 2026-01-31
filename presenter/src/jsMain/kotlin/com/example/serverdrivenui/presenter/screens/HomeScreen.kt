@@ -13,6 +13,79 @@ import com.example.serverdrivenui.presenter.components.*
 import com.example.serverdrivenui.schema.compose.*
 import kotlinx.coroutines.launch
 
+// Helper function to format date for display (e.g., "2026-02-15" -> "February 15, 2026")
+fun formatDateForDisplay(dateStr: String): String {
+    return try {
+        val parts = dateStr.split("-")
+        if (parts.size == 3) {
+            val year = parts[0]
+            val month = when (parts[1]) {
+                "01" -> "January"
+                "02" -> "February"
+                "03" -> "March"
+                "04" -> "April"
+                "05" -> "May"
+                "06" -> "June"
+                "07" -> "July"
+                "08" -> "August"
+                "09" -> "September"
+                "10" -> "October"
+                "11" -> "November"
+                "12" -> "December"
+                else -> parts[1]
+            }
+            val day = parts[2].toIntOrNull() ?: parts[2]
+            "$month $day, $year"
+        } else {
+            dateStr
+        }
+    } catch (e: Exception) {
+        dateStr
+    }
+}
+
+// Calculate days left until expiry date
+fun calculateDaysLeft(expiryDateStr: String?): Int {
+    if (expiryDateStr == null) return 0
+    return try {
+        val parts = expiryDateStr.split("-")
+        if (parts.size != 3) {
+            println("HomeScreen: Invalid expiry format: $expiryDateStr")
+            return 0
+        }
+        
+        val expiryYear = parts[0].toIntOrNull() ?: return 0
+        val expiryMonth = parts[1].toIntOrNull() ?: return 0
+        val expiryDay = parts[2].toIntOrNull() ?: return 0
+        
+        // Use today() which returns YYYY-MM-DD format
+        val today = com.example.serverdrivenui.core.data.PlatformDateProvider.today()
+        println("HomeScreen: Today is $today, Expiry is $expiryDateStr")
+        
+        val todayParts = today.split("-")
+        if (todayParts.size != 3) {
+            println("HomeScreen: Invalid today format: $today")
+            return 0
+        }
+        
+        val todayYear = todayParts[0].toIntOrNull() ?: return 0
+        val todayMonth = todayParts[1].toIntOrNull() ?: return 0
+        val todayDay = todayParts[2].toIntOrNull() ?: return 0
+        
+        // Calculate approximate difference in days
+        // More accurate formula considering months
+        val expiryTotalDays = expiryYear * 365 + expiryMonth * 30 + expiryDay
+        val todayTotalDays = todayYear * 365 + todayMonth * 30 + todayDay
+        val diff = expiryTotalDays - todayTotalDays
+        
+        println("HomeScreen: Days left = $diff")
+        if (diff < 0) 0 else diff
+    } catch (e: Exception) {
+        println("HomeScreen: Error calculating days left: ${e.message}")
+        0
+    }
+}
+
 // Sealed class for UI state
 sealed class HomeUiState {
     object Loading : HomeUiState()
@@ -49,12 +122,16 @@ suspend fun fetchHomeData(): HomeUiState {
         println("HomeScreen: Profile Fetched: ${profile.fullName}")
         val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
         
-        // Membership
+        // Membership - check history first, then fall back to profile status
         val membershipHistory = repo.getMembershipHistory()
         val activePlan = membershipHistory.firstOrNull { it.status == "active" }
-        val status = activePlan?.status ?: "inactive"
-        val expiry = activePlan?.endDate 
-        val daysLeft = if (status == "active") 30 else 0 
+        
+        // Use profile's membership_status as fallback if no history
+        val status = activePlan?.status 
+            ?: profile.membershipStatus?.takeIf { it.isNotEmpty() } 
+            ?: "inactive"
+        val expiry = activePlan?.endDate ?: profile.membershipExpiry
+        val daysLeft = if (status == "active") calculateDaysLeft(expiry) else 0 
         
         // Training
         val todayTraining = repo.getTodaySchedule()
@@ -137,13 +214,12 @@ fun HomeScreenContent(
                     Spacer(width = 0, height = 32)
                 }
                 
-                // 2. Membership Status Card
+                // 2. Membership Status Card - uses new unified design
                 StatusCardComposable(
                     status = state.membershipStatus,
-                    title = state.membershipStatus.replaceFirstChar { it.uppercase() },
-                    subtitle = state.membershipExpiry?.let { "Expires on $it" } ?: "No active plan",
+                    expiryDate = state.membershipExpiry?.let { formatDateForDisplay(it) },
                     daysLeft = state.daysLeft,
-                    onClick = null
+                    onClick = null // Could navigate to Membership screen
                 )
                 
                 Spacer(width = 0, height = 32)
@@ -161,11 +237,12 @@ fun HomeScreenContent(
                 
                 Spacer(width = 0, height = 32)
                 
-                // 4. Training Consistency
+                // 4. Training Consistency - derive count from attendance data for consistency
+                val trainingCount = state.attendanceDays.count { it == "attended" }
                 WeeklyAttendanceComposable(
-                    streak = state.streak,
+                    streak = trainingCount,  // Use derived count, not separate streak
                     days = state.attendanceDays,
-                    summary = "Trained ${state.streak} days this week"
+                    summary = "Trained $trainingCount days this week"
                 )
                 
                 Spacer(width = 0, height = 32)

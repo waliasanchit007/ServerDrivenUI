@@ -124,18 +124,32 @@ class CmpFlexRow : FlexRow<@Composable (androidx.compose.ui.Modifier) -> Unit> {
     override val children: Widget.Children<@Composable (androidx.compose.ui.Modifier) -> Unit> = 
         CmpChildren()
 
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     override val value: @Composable (androidx.compose.ui.Modifier) -> Unit = { modifier ->
-        val arrangement = if (spacing > 0) {
-            Arrangement.spacedBy(spacing.dp)
+        val baseMod = if (padding > 0) modifier.padding(padding.dp) else modifier
+        
+        // Use FlowRow for "Wrap" arrangement to allow chip wrapping
+        if (horizontalArrangement == "Wrap") {
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = baseMod,
+                horizontalArrangement = Arrangement.spacedBy(spacing.dp),
+                verticalArrangement = Arrangement.spacedBy(spacing.dp)
+            ) {
+                (children as CmpChildren).render()
+            }
         } else {
-            parseHorizontalArrangement(horizontalArrangement)
-        }
-        Row(
-            modifier = if (padding > 0) modifier.padding(padding.dp) else modifier,
-            horizontalArrangement = arrangement,
-            verticalAlignment = parseVerticalAlignment(verticalAlignment)
-        ) {
-            (children as CmpChildren).render()
+            val arrangement = if (spacing > 0) {
+                Arrangement.spacedBy(spacing.dp)
+            } else {
+                parseHorizontalArrangement(horizontalArrangement)
+            }
+            Row(
+                modifier = baseMod,
+                horizontalArrangement = arrangement,
+                verticalAlignment = parseVerticalAlignment(verticalAlignment)
+            ) {
+                (children as CmpChildren).render()
+            }
         }
     }
 
