@@ -109,13 +109,22 @@ class MainNavigationShell : Screen {
                             selectedCoachPhotoUrl = photoUrl
                             selectedCoachInstagram = instagram
                             showingCoachSheet = true
+                        },
+                        onNavigateToMembership = {
+                            currentTab = "membership"
                         }
                     )
                     "training" -> TrainingScreenContent(
                         uiState = trainingUiState.value
                     )
                     "membership" -> MembershipScreenContent(
-                        uiState = membershipUiState.value
+                        uiState = membershipUiState.value,
+                        onMembershipUpdate = {
+                            // Invalidate ALL tabs to ensure fresh data
+                            membershipUiState.value = MembershipUiState.Loading // Re-fetch immediately
+                            homeUiState.value = HomeUiState.Loading     // Re-fetch next visit
+                            profileUiState.value = ProfileUiState.Loading  // Re-fetch next visit
+                        }
                     )
                     "profile" -> ProfileScreenContent(
                         uiState = profileUiState.value,

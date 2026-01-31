@@ -93,7 +93,7 @@ class SupabaseGymRepository(
                 id = userId,
                 email = email,
                 fullName = fullName,
-                membershipStatus = "active", // Default to active for new users to avoid confusion
+                membershipStatus = "inactive", // Default to inactive until a plan is purchased
                 membershipExpiry = null,
                 avatarUrl = null
             )

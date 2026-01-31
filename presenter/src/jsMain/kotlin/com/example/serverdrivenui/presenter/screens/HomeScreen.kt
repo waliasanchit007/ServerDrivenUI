@@ -123,15 +123,26 @@ suspend fun fetchHomeData(): HomeUiState {
         val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
         
         // Membership - check history first, then fall back to profile status
+        // Membership - check history first, then fall back to profile status
         val membershipHistory = repo.getMembershipHistory()
         val activePlan = membershipHistory.firstOrNull { it.status == "active" }
         
-        // Use profile's membership_status as fallback if no history
-        val status = activePlan?.status 
-            ?: profile.membershipStatus?.takeIf { it.isNotEmpty() } 
-            ?: "inactive"
-        val expiry = activePlan?.endDate ?: profile.membershipExpiry
-        val daysLeft = if (status == "active") calculateDaysLeft(expiry) else 0 
+        // Robust Status Logic:
+        // 1. Trust 'activePlan' from history if present.
+        // 2. Fallback to profile status ONLY if expiry is in the future.
+        val rawStatus = activePlan?.status ?: profile.membershipStatus
+        val rawExpiry = activePlan?.endDate ?: profile.membershipExpiry
+        
+        val daysLeft = calculateDaysLeft(rawExpiry)
+        
+        val status = if (rawStatus == "active") {
+            if (activePlan != null) "active" // Trust history entry
+            else if (daysLeft > 0) "active"  // Trust profile only if valid date
+            else "expired"
+        } else {
+            "inactive"
+        }
+        val expiry = rawExpiry 
         
         // Training
         val todayTraining = repo.getTodaySchedule()
@@ -176,7 +187,8 @@ suspend fun fetchHomeData(): HomeUiState {
 @Composable
 fun HomeScreenContent(
     uiState: HomeUiState,
-    onCoachClick: (String, String, String, String, String) -> Unit
+    onCoachClick: (String, String, String, String, String) -> Unit,
+    onNavigateToMembership: () -> Unit
 ) {
     ScrollableColumn(padding = 24) {
         when (val state = uiState) {
@@ -204,7 +216,7 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 32)
                 
                 if (state.warningMessage != null) {
-                    SduiCard(onClick = null, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) { // Could be clickable to Membership
+                    SduiCard(onClick = onNavigateToMembership, backgroundColor = "", borderColor = "", borderWidth = 0, borderRadius = 0, padding = 0) { // Clickable to Membership
                         FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
                             HeaderText(text = "⚠️ Membership Alert", size = "small")
                             Spacer(width = 0, height = 8)
@@ -219,7 +231,7 @@ fun HomeScreenContent(
                     status = state.membershipStatus,
                     expiryDate = state.membershipExpiry?.let { formatDateForDisplay(it) },
                     daysLeft = state.daysLeft,
-                    onClick = null // Could navigate to Membership screen
+                    onClick = onNavigateToMembership 
                 )
                 
                 Spacer(width = 0, height = 32)

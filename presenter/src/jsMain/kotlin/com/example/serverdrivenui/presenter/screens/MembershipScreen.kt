@@ -59,28 +59,12 @@ suspend fun fetchMembershipData(): MembershipUiState {
  */
 @Composable
 fun MembershipScreenContent(
-    uiState: MembershipUiState
+    uiState: MembershipUiState,
+    onMembershipUpdate: () -> Unit
 ) {
     // Payment State
     var selectedPlanForPayment by remember { mutableStateOf<MembershipPlanDto?>(null) }
-    var refreshTrigger by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
-    
-    // Mutable UI state for refresh after payment
-    var currentState by remember { mutableStateOf(uiState) }
-    
-    // Refresh when trigger changes
-    LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger > 0) {
-            currentState = MembershipUiState.Loading
-            currentState = fetchMembershipData()
-        }
-    }
-    
-    // Update current state when initial uiState changes
-    LaunchedEffect(uiState) {
-        currentState = uiState
-    }
     
     // Main content
     ScrollableColumn(padding = 24) {
@@ -91,7 +75,7 @@ fun MembershipScreenContent(
         
         Spacer(width = 0, height = 32)
         
-        when (val state = currentState) {
+        when (val state = uiState) {
             is MembershipUiState.Loading -> {
                 SduiCard(onClick = null, backgroundColor = "surface", borderColor = "border", borderWidth = 1, borderRadius = 16, padding = 20) {
                     SecondaryText(text = "Loading membership plans...")
@@ -200,8 +184,8 @@ fun MembershipScreenContent(
                     service.showToast("Membership Activated! Welcome to the clan.")
                     selectedPlanForPayment = null
                     
-                    // 4. Trigger refresh to update UI with new plan
-                    refreshTrigger++
+                    // 4. Notify Parent to Refresh
+                    onMembershipUpdate()
                 }
             },
             onFailure = {
