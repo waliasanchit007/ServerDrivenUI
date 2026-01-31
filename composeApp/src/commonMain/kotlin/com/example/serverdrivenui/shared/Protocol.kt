@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Person
+import com.example.serverdrivenui.common.theme.CaliclanTheme
 
 
 // ============= Existing Widgets =============
@@ -611,33 +612,7 @@ class CmpBackHandler : BackHandler<@Composable (androidx.compose.ui.Modifier) ->
 
 // ============= Caliclan Widgets =============
 
-// Caliclan Design Tokens - matches web app neutral-950 palette
-private object CaliclanTheme {
-    // Backgrounds (from web tailwind neutral scale)
-    val Background = androidx.compose.ui.graphics.Color(0xFF0A0A0A)  // neutral-950
-    val Surface = androidx.compose.ui.graphics.Color(0xFF171717)     // neutral-900
-    val SurfaceVariant = androidx.compose.ui.graphics.Color(0xFF262626)  // neutral-800
-    val SurfaceElevated = androidx.compose.ui.graphics.Color(0xFF262626) // neutral-800
-    
-    // Accent colors (amber scale)
-    val Accent = androidx.compose.ui.graphics.Color(0xFFF59E0B)      // amber-500
-    val AccentDark = androidx.compose.ui.graphics.Color(0xFF92400E)  // amber-900/50 approx
-    val AccentMuted = androidx.compose.ui.graphics.Color(0xFF78350F) // amber-950/40 approx
-    
-    // Status colors
-    val Success = androidx.compose.ui.graphics.Color(0xFF059669)     // emerald-600
-    val SuccessBg = androidx.compose.ui.graphics.Color(0xFF064E3B)   // emerald-950/40 approx
-    val Error = androidx.compose.ui.graphics.Color(0xFFDC2626)       // red-600
-    
-    // Text
-    val TextPrimary = androidx.compose.ui.graphics.Color(0xFFFAFAFA)   // neutral-50
-    val TextSecondary = androidx.compose.ui.graphics.Color(0xFFA3A3A3) // neutral-400
-    val TextMuted = androidx.compose.ui.graphics.Color(0xFF737373)     // neutral-500
-    
-    // Borders
-    val Border = androidx.compose.ui.graphics.Color(0xFF262626)        // neutral-800
-    val BorderLight = androidx.compose.ui.graphics.Color(0xFF404040)   // neutral-700
-}
+// CaliclanTheme is now imported from com.example.serverdrivenui.common.theme.CaliclanTheme
 
 /**
  * LazyList - Scrollable vertical list

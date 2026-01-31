@@ -49,6 +49,14 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            
+            // CameraX for QR scanning
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
+            
+            // ML Kit for barcode detection
+            implementation(libs.mlkit.barcode)
         }
 
         commonMain.dependencies {
@@ -75,6 +83,8 @@ kotlin {
             implementation(libs.coil.compose)
             // Ktor HTTP Client core
             implementation(libs.ktor.client.core)
+            // DateTime for native attendance feature
+            implementation(libs.kotlinx.datetime)
         }
         
         iosMain.dependencies {

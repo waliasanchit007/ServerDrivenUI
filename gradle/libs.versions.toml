@@ -55,6 +55,14 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.8.0" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.0" }
 
+# CameraX for QR scanning
+camerax-camera2 = { module = "androidx.camera:camera-camera2", version = "1.4.2" }
+camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version = "1.4.2" }
+camerax-view = { module = "androidx.camera:camera-view", version = "1.4.2" }
+
+# ML Kit for barcode detection
+mlkit-barcode = { module = "com.google.mlkit:barcode-scanning", version = "17.3.0" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }

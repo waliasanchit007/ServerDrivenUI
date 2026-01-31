@@ -23,6 +23,17 @@ class SharedAppSpec(
     
     override val name: String = "sdui"
     
+    // Expose GymService so Host Activity can observe session changes
+    val gymService: GymService by lazy {
+        RealGymService(
+            supabaseUrl = hostApi.supabaseUrl,
+            supabaseKey = hostApi.supabaseKey,
+            storage = storage,
+            toastShower = { msg -> println("HOST TOAST: $msg") },
+            urlOpener = { url -> println("HOST OPEN URL: $url") }
+        )
+    }
+
     override suspend fun bindServices(
         treehouseApp: TreehouseApp<SduiAppService>,
         zipline: Zipline
@@ -38,13 +49,6 @@ class SharedAppSpec(
         println("SharedAppSpec: storage bound")
         
         // Bind GymService for Supabase data access
-        val gymService = RealGymService(
-            supabaseUrl = hostApi.supabaseUrl,
-            supabaseKey = hostApi.supabaseKey,
-            storage = storage,
-            toastShower = { msg -> println("HOST TOAST: $msg") },
-            urlOpener = { url -> println("HOST OPEN URL: $url") }
-        )
         zipline.bind<GymService>("gym", gymService)
         println("SharedAppSpec: gym service bound")
     }

@@ -31,6 +31,20 @@ actual object PlatformDateProvider {
         )
         return formatter.stringFromDate(newDate ?: nsDate)
     }
+
+    actual fun addDays(date: String, days: Int): String {
+        val formatter = NSDateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        val nsDate = formatter.dateFromString(date) ?: NSDate()
+        val calendar = NSCalendar.currentCalendar
+        val newDate = calendar.dateByAddingUnit(
+            unit = platform.Foundation.NSCalendarUnitDay,
+            value = days.toLong(),
+            toDate = nsDate,
+            options = 0u
+        )
+        return formatter.stringFromDate(newDate ?: nsDate)
+    }
     
     actual fun getDayOfWeek(dateStr: String): Int {
         // Returns 0=Sunday, 1=Monday, ..., 6=Saturday to match JS convention

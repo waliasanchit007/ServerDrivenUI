@@ -17,6 +17,10 @@ actual object PlatformDateProvider {
         return LocalDate.parse(date).plusMonths(months.toLong()).toString()
     }
     
+    actual fun addDays(date: String, days: Int): String {
+        return LocalDate.parse(date).plusDays(days.toLong()).toString()
+    }
+    
     actual fun getDayOfWeek(dateStr: String): Int {
         // Returns 0=Sunday, 1=Monday, ..., 6=Saturday to match JS convention
         val dayOfWeek = LocalDate.parse(dateStr).dayOfWeek

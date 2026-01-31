@@ -48,10 +48,13 @@ object GymServiceProvider {
         try {
             println("GymServiceProvider: Fetching Host Config...")
             val config = service.getHostConfig()
+            println("GymServiceProvider: Config received: ${config.supabaseUrl}")
+            
             val token = service.getSessionToken()
             val userId = service.getSessionUserId()
+            println("GymServiceProvider: Host session - userId=$userId, hasToken=${token != null}")
             
-            println("GymServiceProvider: Creating Local Repository with ${config.supabaseUrl}")
+            println("GymServiceProvider: Creating Local Repository...")
             
             // USE PROXY ENGINE
             val engine = ZiplineProxyEngine(service)
@@ -75,12 +78,14 @@ object GymServiceProvider {
                 println("GymServiceProvider: Restoring Session (User: $userId)")
                 repo.setSession(userId, token) 
             } else {
-                println("GymServiceProvider: No persisted session found.")
+                println("GymServiceProvider: WARNING - No persisted session found! userId=$userId, hasToken=${token != null}")
             }
             
             _repository = repo
+            println("GymServiceProvider: Repository initialized successfully")
         } catch (e: Exception) {
             println("GymServiceProvider: Repo Init Failed: ${e.message}")
+            e.printStackTrace()
             _repository = null
         }
     }
