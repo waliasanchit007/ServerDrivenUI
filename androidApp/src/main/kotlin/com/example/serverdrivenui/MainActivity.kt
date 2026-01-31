@@ -30,12 +30,22 @@ import app.cash.zipline.ZiplineManifest
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 
 import androidx.lifecycle.lifecycleScope
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+// Native overlay imports
+import com.example.serverdrivenui.native.screens.AppWithNativeOverlay
+import com.example.serverdrivenui.native.camera.QrScannerView
 
 // ============= Host Console =============
 
@@ -163,10 +173,19 @@ class MainActivity : ComponentActivity() {
             storage = AndroidStorageService(applicationContext) 
         )
 
+        val isZiplineLoaded = MutableStateFlow(false)
+
         val app = treehouseAppFactory.create(
             appScope = lifecycleScope,
             spec = spec,
-            eventListenerFactory = SDUIZiplineEventListenerFactory
+            eventListenerFactory = object : EventListener.Factory {
+                override fun create(app: app.cash.redwood.treehouse.TreehouseApp<*>, manifestUrl: String?): EventListener {
+                    return SDUIZiplineEventListener {
+                        isZiplineLoaded.value = true
+                    }
+                }
+                override fun close() {}
+            }
         )
         
         // Connect to hot reload WebSocket
@@ -183,8 +202,68 @@ class MainActivity : ComponentActivity() {
                 }
             }
             
-            // Render the app
-            App(treehouseApp = app, gymService = null)
+            // Load session from storage for native QR attendance
+            val storage = remember { AndroidStorageService(applicationContext) }
+            
+            // State to hold current session
+            var userId by remember { mutableStateOf<String?>(null) }
+            var accessToken by remember { mutableStateOf<String?>(null) }
+            val isZiplineReady by isZiplineLoaded.collectAsState()
+            
+            // CRITICAL: Load initial session from storage on cold start
+            // (sessionFlow only emits on changes, not the current state)
+            LaunchedEffect(Unit) {
+                val storedUserId = storage.getString("user_id")?.takeIf { it.isNotEmpty() }
+                val storedToken = storage.getString("auth_token")?.takeIf { it.isNotEmpty() }
+                Log.d("SDUI", "MainActivity: Initial session load: userId=$storedUserId")
+                userId = storedUserId
+                accessToken = storedToken
+            }
+            
+            // Observe RealGymService session changes for login/logout events
+            val realGymService = spec.gymService as? com.example.serverdrivenui.shared.RealGymService
+            
+            LaunchedEffect(realGymService) {
+                if (realGymService != null) {
+                    Log.d("SDUI", "Observing RealGymService session flow for changes...")
+                    realGymService.sessionFlow.collect { session ->
+                        // Only update on explicit session changes (login/logout)
+                        if (session != null) {
+                            val (uid, token) = session
+                            Log.d("SDUI", "MainActivity: Session changed: userId=$uid")
+                            userId = uid?.takeIf { it.isNotEmpty() }
+                            accessToken = token?.takeIf { it.isNotEmpty() }
+                        }
+                    }
+                }
+            }
+            
+            // Render the app with native overlay for QR scanning
+            val scope = rememberCoroutineScope()
+            // Uses HttpClient directly - no core-data dependency
+            AppWithNativeOverlay(
+                httpClient = ktorHttpClient,
+                supabaseUrl = hostApiConfig.supabaseUrl,
+                supabaseKey = hostApiConfig.supabaseKey,
+                // Only show FAB (pass userId) when Zipline content is actually loaded
+                userId = if (isZiplineReady) userId else null,
+                accessToken = accessToken,
+                cameraPreview = { onQrDetected ->
+                    QrScannerView(onQrCodeDetected = onQrDetected)
+                },
+                onAttendanceMarked = {
+                    // Trigger a refresh by updating manifest URL
+                    // Small delay to ensure API write has completed
+                    scope.launch {
+                        Log.d("SDUI", "Attendance marked! Waiting 1s before refresh...")
+                        delay(1000)
+                        Log.d("SDUI", "Triggering home refresh now.")
+                        manifestUrlFlow.value = "${DevConfig.manifestUrl}?refresh=${System.currentTimeMillis()}"
+                    }
+                }
+            ) {
+                App(treehouseApp = app, gymService = null)
+            }
         }
     }
     
@@ -208,14 +287,9 @@ object LoggingLoaderEventListener : LoaderEventListener() {
     }
 }
 
-object SDUIZiplineEventListenerFactory : EventListener.Factory {
-    override fun create(app: app.cash.redwood.treehouse.TreehouseApp<*>, manifestUrl: String?): EventListener {
-        return SDUIZiplineEventListener
-    }
-    override fun close() {}
-}
-
-object SDUIZiplineEventListener : EventListener() {
+class SDUIZiplineEventListener(
+    private val onCodeLoaded: () -> Unit
+) : EventListener() {
     override fun ziplineCreated(zipline: Zipline) {
         Log.d("SDUI-Zipline", "ziplineCreated")
     }
@@ -234,6 +308,7 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun codeLoadSuccess(manifest: ZiplineManifest, zipline: Zipline, startValue: Any?) {
         Log.d("SDUI-Zipline", "codeLoadSuccess: modules=${manifest.modules.keys}")
+        onCodeLoaded()
     }
 
     override fun codeLoadFailed(exception: Exception, startValue: Any?) {

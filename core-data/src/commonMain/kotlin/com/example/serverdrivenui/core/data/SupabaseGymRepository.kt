@@ -53,9 +53,64 @@ class SupabaseGymRepository(
                 }
             }
             val profiles: List<ProfileDto> = response.body()
-            profiles.firstOrNull()
+            val profile = profiles.firstOrNull()
+            
+            if (profile == null && userId == currentUserId && currentAccessToken != null) {
+                println("GymRepo: Profile missing. Attempting to create...")
+                return createProfileIfMissing(userId)
+            }
+            
+            profile
         } catch (e: Exception) {
             println("Error fetching profile: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun createProfileIfMissing(userId: String): ProfileDto? {
+        return try {
+            // 1. Fetch User Data from Auth
+            val authUrl = "$supabaseUrl/auth/v1/user"
+            val userResponse = httpClient.get(authUrl) {
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer $currentAccessToken")
+                }
+            }
+            val userJsonString = userResponse.bodyAsText()
+            // Quick regex parse to avoid complex DTOs for now
+            // Extract email and full_name
+            val emailMatcher = "\"email\":\"([^\"]+)\"".toRegex().find(userJsonString)
+            val email = emailMatcher?.groupValues?.get(1) ?: ""
+            
+            val nameMatcher = "\"full_name\":\"([^\"]+)\"".toRegex().find(userJsonString)
+            val fullName = nameMatcher?.groupValues?.get(1) ?: "New Member"
+
+            println("GymRepo: Creating profile for $email ($fullName)")
+
+            // 2. Insert Profile
+            val profile = ProfileDto(
+                id = userId,
+                email = email,
+                fullName = fullName,
+                membershipStatus = "active", // Default to active for new users to avoid confusion
+                membershipExpiry = null,
+                avatarUrl = null
+            )
+            
+            httpClient.post("$restUrl/profiles") {
+                contentType(io.ktor.http.ContentType.Application.Json)
+                setBody(profile)
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer $currentAccessToken")
+                    append("Prefer", "return=minimal") // We already have the object
+                }
+            }
+            
+            profile
+        } catch (e: Exception) {
+            println("GymRepo: Failed to create profile: ${e.message}")
             null
         }
     }
@@ -174,48 +229,60 @@ class SupabaseGymRepository(
         val userId = currentUserId ?: demoUserId
         
         return try {
-            // Get today's day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+            // Get today's date and day of week
             val today = PlatformDateProvider.today()
-            val todayDayOfWeek = PlatformDateProvider.getDayOfWeek(today)
-            println("SupabaseGymRepository: Today is $today, dayOfWeek=$todayDayOfWeek")
+            val todayDayOfWeek = PlatformDateProvider.getDayOfWeek(today) // 0=Sun, 1=Mon...
+            
+            // Calculate Monday's date for this week
+            // If Sun(0), subtract 6. If Mon(1), subtract 0. If Tue(2), subtract 1...
+            val daysSinceMonday = if (todayDayOfWeek == 0) 6 else todayDayOfWeek - 1
+            val mondayDate = PlatformDateProvider.addDays(today, -daysSinceMonday)
+            
+            println("SupabaseGymRepository: Today=$today, Monday=$mondayDate")
             
             // Fetch attendance records for this week
             val response = httpClient.get("$restUrl/attendance") {
                 parameter("user_id", "eq.$userId")
                 parameter("order", "date.desc")
-                parameter("limit", "7")
+                parameter("limit", "14")
                 parameter("select", "date,status")
                 headers {
                     append("apikey", supabaseKey)
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
             }
-            val attendanceJson = response.bodyAsText()
-            val attendedDates = mutableSetOf<String>()
             
-            // Parse dates from response (simple extraction)
-            val datePattern = "\"date\":\"([^\"]+)\"".toRegex()
-            datePattern.findAll(attendanceJson).forEach { match ->
-                attendedDates.add(match.groupValues[1])
+            // Read as text first to debug
+            val jsonString = response.bodyAsText()
+            println("SupabaseGymRepository: RAW JSON: $jsonString")
+            
+            val records: List<AttendanceDto> = try {
+                val json = kotlinx.serialization.json.Json { 
+                    ignoreUnknownKeys = true 
+                    isLenient = true
+                }
+                json.decodeFromString<List<AttendanceDto>>(jsonString)
+            } catch (e: Exception) {
+                println("SupabaseGymRepository: JSON PARSE ERROR: ${e.message}")
+                emptyList()
             }
-            println("SupabaseGymRepository: Attended dates: $attendedDates")
             
-            // Build status list for Mon-Sun (index 0=Mon, 6=Sun)
-            // todayDayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday
-            // Convert to our index: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
-            val todayIndex = if (todayDayOfWeek == 0) 6 else todayDayOfWeek - 1
-            println("SupabaseGymRepository: Today index (Mon=0): $todayIndex")
+            val attendedDates = records.map { it.date }.toSet()
+            println("SupabaseGymRepository: Parsed records: ${records.size}")
+            println("SupabaseGymRepository: Attended dates set: $attendedDates")
             
             val statuses = mutableListOf<String>()
             for (i in 0 until 7) {
+                // Calculate date for this day (Mon + i)
+                val targetDate = PlatformDateProvider.addDays(mondayDate, i)
+                // Use string comparison for contains because dates are YYYY-MM-DD
+                val isAttended = attendedDates.contains(targetDate)
+                
                 val status = when {
-                    i == todayIndex -> "today"
-                    i < todayIndex -> {
-                        // Check if attended (for now, mock based on a pattern)
-                        // In production, would check if date is in attendedDates
-                        if (attendedDates.isNotEmpty() && i < 3) "attended" else "missed"
-                    }
-                    else -> "future"
+                    isAttended -> "attended"
+                    targetDate > today -> "future"
+                    targetDate == today -> "today" // Not attended, but is today
+                    else -> "missed" // Past and not attended
                 }
                 statuses.add(status)
             }
@@ -746,6 +813,160 @@ class SupabaseGymRepository(
 
     fun getTodayDate(): String {
         return PlatformDateProvider.today()
+    }
+    
+    // ============= QR Attendance (Native Feature) =============
+    
+    /**
+     * Result of QR code validation
+     */
+    data class QrValidationResult(
+        val isValid: Boolean,
+        val qrCodeId: String? = null,
+        val locationName: String? = null,
+        val errorMessage: String? = null
+    )
+    
+    /**
+     * Validate a QR code against gym_qr_codes table
+     */
+    suspend fun validateQrCode(codeValue: String): QrValidationResult {
+        return try {
+            val response = httpClient.get("$restUrl/gym_qr_codes") {
+                url {
+                    parameters.append("code_value", "eq.$codeValue")
+                    parameters.append("select", "id,location_name,valid_from,valid_until")
+                }
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            
+            if (!response.status.isSuccess()) {
+                println("QR validation failed: ${response.status}")
+                return QrValidationResult(
+                    isValid = false,
+                    errorMessage = "Failed to validate QR code"
+                )
+            }
+            
+            val body = response.bodyAsText()
+            println("QR validation response: $body")
+            
+            // Parse response - expecting array like [{"id":"...", "location_name":"..."}]
+            if (body.contains("[]") || body.trim() == "[]") {
+                return QrValidationResult(
+                    isValid = false,
+                    errorMessage = "This QR code is not from a registered gym"
+                )
+            }
+            
+            // Simple parsing - extract id and location_name
+            val json = Json { ignoreUnknownKeys = true }
+            val idMatch = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
+            val locationMatch = Regex("\"location_name\"\\s*:\\s*\"([^\"]+)\"").find(body)
+            
+            QrValidationResult(
+                isValid = true,
+                qrCodeId = idMatch?.groupValues?.get(1),
+                locationName = locationMatch?.groupValues?.get(1) ?: "Gym"
+            )
+        } catch (e: Exception) {
+            println("QR validation error: ${e.message}")
+            QrValidationResult(
+                isValid = false,
+                errorMessage = "Network error: ${e.message}"
+            )
+        }
+    }
+    
+    /**
+     * Check if user already checked in today
+     * Returns the check-in time if exists, null otherwise
+     */
+    suspend fun getTodayAttendance(): String? {
+        val userId = currentUserId ?: return null
+        val today = PlatformDateProvider.today()
+        
+        return try {
+            val response = httpClient.get("$restUrl/attendance") {
+                url {
+                    parameters.append("user_id", "eq.$userId")
+                    parameters.append("date", "eq.$today")
+                    parameters.append("select", "id,created_at")
+                }
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }
+            
+            val body = response.bodyAsText()
+            println("Today attendance response: $body")
+            
+            if (body.contains("[]") || body.trim() == "[]") {
+                null // No attendance today
+            } else {
+                // Extract created_at time
+                val timeMatch = Regex("\"created_at\"\\s*:\\s*\"([^\"]+)\"").find(body)
+                timeMatch?.groupValues?.get(1)?.let { timestamp ->
+                    // Extract just the time portion (HH:MM)
+                    val timePart = timestamp.substringAfter("T").take(5)
+                    timePart
+                } ?: "earlier today"
+            }
+        } catch (e: Exception) {
+            println("Check today attendance error: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Mark attendance via QR scan
+     */
+    suspend fun markQrAttendance(qrCodeId: String?): Boolean {
+        val userId = currentUserId ?: return false
+        val today = PlatformDateProvider.today()
+        val now = PlatformDateProvider.now() // ISO timestamp
+        
+        return try {
+            val body = buildString {
+                append("{")
+                append("\"user_id\": \"$userId\", ")
+                append("\"date\": \"$today\", ")
+                append("\"status\": \"present\", ")
+                append("\"check_in_method\": \"qr_scan\"")
+                if (qrCodeId != null) {
+                    append(", \"qr_code_id\": \"$qrCodeId\"")
+                }
+                append(", \"scanned_at\": \"$now\"")
+                append("}")
+            }
+            
+            println("Marking QR attendance: $body")
+            
+            val response = httpClient.post("$restUrl/attendance") {
+                contentType(ContentType.Application.Json)
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                    append("Prefer", "return=minimal")
+                }
+                setBody(body)
+            }
+            
+            if (response.status.isSuccess()) {
+                println("QR attendance marked successfully")
+                true
+            } else {
+                println("QR attendance failed: ${response.status} - ${response.bodyAsText()}")
+                false
+            }
+        } catch (e: Exception) {
+            println("Mark QR attendance error: ${e.message}")
+            false
+        }
     }
 }
 
