@@ -35,7 +35,17 @@ class MainNavigationShell : Screen {
         // We use 'remember' (or rememberSaveable) to hold state across tab switches.
         // This PREVENTS RELOADING when switching tabs.
         
-        val homeUiState = remember { mutableStateOf<HomeUiState>(HomeUiState.Loading) }
+        // --- State Hoisting for Bottom Nav Tabs ---
+        // Home State is now managed by Singleton HomePresenter to persist across navigation
+        val homeUiState = remember { mutableStateOf(HomePresenter.state.value) }
+        
+        // Subscription to HomePresenter Updates
+        LaunchedEffect(Unit) {
+            HomePresenter.state.collect { 
+                homeUiState.value = it 
+            }
+        }
+        
         val trainingUiState = remember { mutableStateOf<TrainingUiState>(TrainingUiState.Loading) }
         val membershipUiState = remember { mutableStateOf<MembershipUiState>(MembershipUiState.Loading) }
         val profileUiState = remember { mutableStateOf<ProfileUiState>(ProfileUiState.Loading) }
@@ -57,12 +67,14 @@ class MainNavigationShell : Screen {
         
         // Data Fetching Logic (Lazy Loading)
         // Fetches data for the current tab ONLY if it is still in Loading state.
-        LaunchedEffect(currentTab, isLoggedIn) {
+        // We include the states in the key so that if we manually set them to Loading (e.g. after update), it re-triggers.
+        LaunchedEffect(currentTab, isLoggedIn, trainingUiState.value, membershipUiState.value, profileUiState.value) {
             if (isLoggedIn) {
                 when (currentTab) {
-                    "home" -> if (homeUiState.value is HomeUiState.Loading) {
-                        println("MainNavigationShell: Fetching HOME data...")
-                        homeUiState.value = fetchHomeData()
+                    "home" -> {
+                        // HomePresenter manages its own caching/loading state logic
+                        println("MainNavigationShell: Triggering HomePresenter load...")
+                        HomePresenter.loadData()
                     }
                     "training" -> if (trainingUiState.value is TrainingUiState.Loading) {
                         println("MainNavigationShell: Fetching TRAINING data...")
@@ -112,18 +124,25 @@ class MainNavigationShell : Screen {
                         },
                         onNavigateToMembership = {
                             currentTab = "membership"
+                        },
+                        onNavigateToTrainingDetail = { trainingDay ->
+                            navigator.push(TrainingDetailScreen(trainingDay))
                         }
                     )
                     "training" -> TrainingScreenContent(
-                        uiState = trainingUiState.value
+                        uiState = trainingUiState.value,
+                        navigator = navigator
                     )
                     "membership" -> MembershipScreenContent(
                         uiState = membershipUiState.value,
                         onMembershipUpdate = {
                             // Invalidate ALL tabs to ensure fresh data
-                            membershipUiState.value = MembershipUiState.Loading // Re-fetch immediately
-                            homeUiState.value = HomeUiState.Loading     // Re-fetch next visit
-                            profileUiState.value = ProfileUiState.Loading  // Re-fetch next visit
+                            // For Home, we MUST reset the cache to force a refresh on next visit
+                            HomePresenter.reset()
+                            
+                            // For others, set to Loading so they re-fetch on next tab visit
+                            membershipUiState.value = MembershipUiState.Loading 
+                            profileUiState.value = ProfileUiState.Loading
                         }
                     )
                     "profile" -> ProfileScreenContent(
@@ -132,7 +151,7 @@ class MainNavigationShell : Screen {
                             isLoggedIn = false
                             currentTab = "home" // Reset tab
                             // Reset states on logout!
-                            homeUiState.value = HomeUiState.Loading
+                            HomePresenter.reset() // Reset Singleton State
                             trainingUiState.value = TrainingUiState.Loading
                             membershipUiState.value = MembershipUiState.Loading
                             profileUiState.value = ProfileUiState.Loading

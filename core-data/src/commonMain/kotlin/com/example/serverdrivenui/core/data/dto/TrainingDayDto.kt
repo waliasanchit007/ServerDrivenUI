@@ -16,6 +16,7 @@ data class TrainingDayDto(
     val goals: List<String> = emptyList(),
     val supporting: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
+    val classes: List<TrainingClassDto> = emptyList(),
     @SerialName("is_rest_day") val isRestDay: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null
 )

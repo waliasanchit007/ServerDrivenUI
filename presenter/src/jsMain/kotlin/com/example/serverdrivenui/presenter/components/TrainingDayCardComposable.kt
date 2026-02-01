@@ -27,7 +27,8 @@ fun TrainingDayCardComposable(
     goals: List<String>,
     supporting: List<String>,
     isToday: Boolean,
-    attended: Boolean
+    attended: Boolean,
+    onClick: (() -> Unit)? = null
 ) {
     // Card border based on state
     val borderColor = when {
@@ -39,7 +40,7 @@ fun TrainingDayCardComposable(
     val backgroundColor = if (isToday) "accentmuted" else "surface"
     
     SduiCard(
-        onClick = null, 
+        onClick = onClick, 
         backgroundColor = backgroundColor, 
         borderColor = borderColor, 
         borderWidth = borderWidth, 

@@ -117,23 +117,46 @@ class SupabaseGymRepository(
     
     // ============= Training =============
     
+    // ============= Training =============
+    
     suspend fun getWeeklySchedule(referenceDate: String): List<TrainingDayDto> {
         println("GymRepo: getWeeklySchedule called with date: $referenceDate")
-        return try {
-            // Fetch all 7 days of the training schedule (Mon-Sun)
-            // The database should have exactly 7 days for the current week
-            httpClient.get("$restUrl/training_schedule") {
+        // TEMP: Force Template to ensure new UI/Structure is visible immediately
+        // while DB migration is pending.
+        return generateWeeklyTemplate(referenceDate)
+        
+        /* 
+        try {
+            // Try fetching from DB first
+            val response = httpClient.get("$restUrl/training_schedule") {
                 parameter("order", "date.asc")
                 parameter("limit", "7")
+                // Logic: get 7 days starting from Monday of `referenceDate`
+                val dayOfWeek = PlatformDateProvider.getDayOfWeek(referenceDate) // 0=Sun, 1=Mon
+                val daysSinceMonday = if (dayOfWeek == 0) 6 else dayOfWeek - 1
+                val mondayDate = PlatformDateProvider.addDays(referenceDate, -daysSinceMonday)
+                parameter("date", "gte.$mondayDate")
+                
                 headers {
                     append("apikey", supabaseKey)
                     append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
                 }
-            }.body()
+            }
+            
+            val dbSchedule: List<TrainingDayDto> = response.body()
+            
+            // If DB has full week, return it. Otherwise, generate from template.
+            if (dbSchedule.size >= 7) {
+                return dbSchedule
+            } else {
+                println("GymRepo: DB schedule incomplete (${dbSchedule.size}/7). Using Template.")
+                return generateWeeklyTemplate(referenceDate)
+            }
         } catch (e: Exception) {
-            println("GymRepo: getWeeklySchedule error: ${e.message}")
-            emptyList()
+            println("GymRepo: getWeeklySchedule error: ${e.message}. Fallback to Template.")
+            return generateWeeklyTemplate(referenceDate)
         }
+        */
     }
     
     suspend fun getTodaySchedule(): TrainingDayDto? {
@@ -148,9 +171,192 @@ class SupabaseGymRepository(
                 }
             }
             val days: List<TrainingDayDto> = response.body()
-            days.firstOrNull()
+             days.firstOrNull() ?: generateDayFromTemplate(today)
         } catch (e: Exception) {
-            null
+            generateDayFromTemplate(today)
+        }
+    }
+
+    // --- Training Template Logic ---
+    
+    private fun generateWeeklyTemplate(referenceDate: String): List<TrainingDayDto> {
+        val dayOfWeek = PlatformDateProvider.getDayOfWeek(referenceDate) // 0=Sun, 1=Mon
+        val daysSinceMonday = if (dayOfWeek == 0) 6 else dayOfWeek - 1
+        val mondayDate = PlatformDateProvider.addDays(referenceDate, -daysSinceMonday)
+        
+        return (0..6).map { offset ->
+            val date = PlatformDateProvider.addDays(mondayDate, offset)
+            val dow = (1 + offset) % 7 // Logic: Mon(1)..Sat(6),Sun(0). But offset 0 is Monday.
+            // offset 0 (Mon) -> 1
+            // offset 1 (Tue) -> 2
+            // ...
+            // offset 5 (Sat) -> 6
+            // offset 6 (Sun) -> 0 (7%7)
+            
+            getTemplateForDay(if (dow == 0) 0 else dow, date)
+        }
+    }
+    
+    private fun generateDayFromTemplate(date: String): TrainingDayDto {
+        val dow = PlatformDateProvider.getDayOfWeek(date)
+        return getTemplateForDay(dow, date)
+    }
+
+    private fun getTemplateForDay(dayOfWeek: Int, date: String): TrainingDayDto {
+        // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        return when (dayOfWeek) {
+            1 -> TrainingDayDto( // Monday
+                id = "temp-mon-$date", date = date, dayName = "Monday",
+                // Aggregate Focus & Goals
+                focus = "Pull Strength + Freestyle Bar",
+                goals = listOf("Levers", "Skin the Cat", "Muscle Ups", "Bar Freestyle"),
+                tags = listOf("Class 1", "Class 2"),
+                description = "Pull Strength & Skills",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Pull Strength/Static Skills",
+                        exercises = listOf("1. Pull Strength/Static Skills", "2. Core Strength", "3. Spine Mobility"),
+                        goals = listOf("Levers/Skin the cat", "Pull ups/Muscle Ups"),
+                        muscles = listOf("Back", "Arms", "Core")
+                    ),
+                    TrainingClassDto(
+                        name = "Class 2",
+                        focus = "Freestyle Bar Skills/Pull Strength",
+                        exercises = listOf("1. Freestyle Bar Skills/ Pull Strength/", "2. Core Strength", "3. Spine Mobility"),
+                        goals = listOf("Bar Freestyle", "Pull ups/Muscle ups"),
+                        muscles = listOf("Back", "Arms", "Core")
+                    ),
+                    TrainingClassDto(name = "Kids Batch", focus = "Push Strength and Core")
+                )
+            )
+            2 -> TrainingDayDto( // Tuesday
+                id = "temp-tue-$date", date = date, dayName = "Tuesday",
+                focus = "Push Strength/Skills",
+                goals = listOf("Handstand", "L-Sits", "Pike Push-ups", "Dips"),
+                tags = listOf("Class 1", "Kids Skills"),
+                description = "Push Strength",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Push Strength/Skills",
+                        exercises = listOf("1. Push Strength/Skills", "2. Shoulder and Pelvis Mobility"),
+                        goals = listOf("Handstand Strength", "L-Sits", "Pike Push-ups", "Dips/Push ups"),
+                        muscles = listOf("Shoulder", "Chest", "Triceps")
+                    ),
+                    TrainingClassDto(
+                        name = "Kids Batch",
+                        focus = "Skills and Movement (Gymnastics and Freestyle)"
+                    )
+                )
+            )
+            3 -> TrainingDayDto( // Wednesday
+                id = "temp-wed-$date", date = date, dayName = "Wednesday",
+                focus = "Legs Strength + Acrobatics",
+                goals = listOf("Pistol Squats", "Leg Strength", "Flips & Tricks", "Acrobatics"),
+                tags = listOf("Class 1", "Class 2"),
+                description = "Legs & Acrobatics",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Legs Strength/Skills",
+                        exercises = listOf("1. Legs Strength/Skills", "2. Hips, Ankle and Knee Mobility"),
+                        goals = listOf("Pistol Squats", "Legs strength"),
+                        muscles = listOf("Shoulders", "Quads", "Hams", "Glutes", "Calfs", "Core")
+                    ),
+                    TrainingClassDto(
+                        name = "Class 2",
+                        focus = "Acrobatics/Flips/Gymnastics",
+                        exercises = listOf("1. Acrobatics/Flips/Gymnastics", "2. Lower Body Conditioning and Mobility"),
+                        goals = listOf("Floor Flips and Tricks"),
+                        muscles = listOf("Legs", "Core")
+                    ),
+                    TrainingClassDto(name = "Kids Batch", focus = "Pull Strength and Core")
+                )
+            )
+            4 -> TrainingDayDto( // Thursday
+                id = "temp-thu-$date", date = date, dayName = "Thursday",
+                focus = "Pull Endurance + Freestyle",
+                goals = listOf("Levers", "High Reps", "Bar Freestyle"),
+                tags = listOf("Class 1", "Class 2"),
+                description = "Pull Endurance",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Pull Strength and Endurance/Skills",
+                        exercises = listOf("1. Pull Strength and Endurance/Skills", "2. Core Strength", "3. Spine Mobility"),
+                        goals = listOf("Levers/Skin the cat", "Pull ups/Muscle Ups"),
+                        muscles = listOf("Back", "Arms", "Core")
+                    ),
+                    TrainingClassDto(
+                        name = "Class 2",
+                        focus = "Freestyle Bar Skills/Pull Strength",
+                        exercises = listOf("1. Freestyle Bar Skills/ Pull Strength/", "2. Core Strength", "3. Spine Mobility"),
+                        goals = listOf("Bar Freestyle", "Pull ups/Muscle ups"),
+                        muscles = listOf("Back", "Arms", "Core")
+                    ),
+                    TrainingClassDto(name = "Kids Batch", focus = "Legs and Core")
+                )
+            )
+            5 -> TrainingDayDto( // Friday
+                id = "temp-fri-$date", date = date, dayName = "Friday",
+                focus = "Push Endurance + Skills",
+                goals = listOf("Handstand", "Pike Push-ups", "Dips", "Endurance"),
+                tags = listOf("Class 1", "Kids Skills"),
+                description = "Push Endurance",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Push Strength and Endurance/Skills",
+                        exercises = listOf("1. Push Strength and Endurance/Skills", "2. Shoulder and Pelvis Mobility"),
+                        goals = listOf("Handstand Strength", "L-Sits", "Pike Push-ups", "Dips/Push ups"),
+                        muscles = listOf("Shoulder", "Chest", "Triceps")
+                    ),
+                    TrainingClassDto(name = "Kids Batch", focus = "Skills and Movement")
+                )
+            )
+            6 -> TrainingDayDto( // Saturday
+                id = "temp-sat-$date", date = date, dayName = "Saturday",
+                focus = "Legs Endurance + Acrobatics",
+                goals = listOf("Pistol Squats", "Leg Burn", "Flips", "Acrobatics"),
+                tags = listOf("Class 1", "Class 2"),
+                description = "Legs & Acrobatics",
+                classes = listOf(
+                     TrainingClassDto(
+                        name = "Class 1",
+                        focus = "Legs Strength and Endurance/Skills",
+                        exercises = listOf("1. Legs Strength and Endurance/Skills", "2. Hips, Ankle and Knee Mobility"),
+                        goals = listOf("Pistol Squats", "Legs strength"),
+                        muscles = listOf("Shoulders", "Quads", "Hams", "Glutes", "Calfs", "Core")
+                    ),
+                    TrainingClassDto(
+                        name = "Class 2",
+                        focus = "Acrobatics/Flips/Gymnastics",
+                        exercises = listOf("1. Acrobatics/Flips/Gymnastics", "2. Lower Body Conditioning and Mobility"),
+                        goals = listOf("Floor Flips and Tricks"),
+                         muscles = listOf("Legs", "Core")
+                    ),
+                    TrainingClassDto(name = "Class 3", focus = "Bar Freestyle (Intermediate only)")
+                )
+            )
+            0 -> TrainingDayDto( // Sunday
+                id = "temp-sun-$date", date = date, dayName = "Sunday",
+                focus = "Yoga & Recovery",
+                goals = listOf("Flexibility", "Active Recovery"),
+                tags = listOf("Yoga 8am", "Open Gym"),
+                description = "Rest & Recovery",
+                classes = listOf(
+                    TrainingClassDto(
+                        name = "All Batches",
+                        focus = "Yoga for Everyone (8am) / Self-train (9am-9pm)",
+                        exercises = listOf("8 am: Yoga for Everyone", "9 am to 9 pm: Self-train for Athletes"),
+                        goals = listOf("Recovery", "Flexibility"),
+                        muscles = listOf("Full Body")
+                    )
+                ),
+                isRestDay = true
+            )
+            else -> TrainingDayDto(id = "temp-err", date = date, dayName = "Unknown", focus = "Rest", isRestDay = true)
         }
     }
     
@@ -327,7 +533,23 @@ class SupabaseGymRepository(
         println("Repo: assignMembership($userId, $planId)")
         val plan = getMembershipPlans().find { it.id == planId } ?: return false
         
-        val startDate = PlatformDateProvider.today()
+        // Fetch existing history to check for stacking
+        val history = getMembershipHistory()
+        val today = PlatformDateProvider.today()
+
+        // Find the latest end date of any currently active membership
+        // We accept "active" or "upcoming" status (though currently DB might just use "active")
+        val latestActiveMembership = history
+            .filter { it.userId == userId && (it.status.equals("active", ignoreCase = true)) }
+            .maxByOrNull { it.endDate }
+
+        val startDate = if (latestActiveMembership != null && latestActiveMembership.endDate >= today) {
+            // Stack: New membership starts the day AFTER the current one ends
+            PlatformDateProvider.addDays(latestActiveMembership.endDate, 1)
+        } else {
+             // No active membership or it expired: Start today
+            today
+        }
         
         val duration = plan.duration.lowercase()
         val endDate = when {
@@ -390,7 +612,7 @@ class SupabaseGymRepository(
                     append("Content-Type", "application/json")
                 }
                 setBody(TextContent(
-                    """{"user_id":"$userId","amount":"$amount","payment_date":"$now","method":"UPI","status":"completed"}""",
+                    """{"user_id":"$userId","amount":$amount,"payment_date":"$now","method":"UPI","status":"completed"}""",
                     ContentType.Application.Json
                 ))
             }
@@ -517,20 +739,25 @@ class SupabaseGymRepository(
             }
             
             if (response.status.isSuccess()) {
-                // Parse Token - Simplified for "Production Ready" without full Serialization boilerplate here
-                // We should ideally parse Access Token. For now, we assume success means we are good.
-                // In a REAL real app, we extract access_token and store it.
-                // For this task, strict time constraints: we set a flag.
-                currentUserId = "user-${email.hashCode()}" 
-                // In production, currentUserId MUST come from the response body. 
-                // I'll grab it from the response text if simple string parsing works or just use a placeholder to allow flow.
-                // TODO: Parse actual user ID from response.
+                val responseBody = response.bodyAsText()
+                val jsonElement = Json.parseToJsonElement(responseBody)
                 
-                // Hack to make it "work" without huge JSON setup for Auth response:
-                currentAccessToken = supabaseKey 
-                true
+                // Extract user.id from response
+                // Response Format: { "access_token": "...", "user": { "id": "UUID", ... } }
+                val userId = jsonElement.jsonObject["user"]?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
+                val accessToken = jsonElement.jsonObject["access_token"]?.jsonPrimitive?.contentOrNull
+                
+                if (userId != null) {
+                    currentUserId = userId
+                    currentAccessToken = accessToken ?: supabaseKey // Use real token if available, else fallback
+                    println("Repo: Verify OTP Success! UserID: $userId")
+                    return true
+                } else {
+                    println("Repo: Verify OTP success but no User ID found in body")
+                    return false
+                }
             } else {
-                false
+                return false
             }
         } catch (e: Exception) {
              false

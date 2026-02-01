@@ -86,93 +86,7 @@ fun calculateDaysLeft(expiryDateStr: String?): Int {
     }
 }
 
-// Sealed class for UI state
-sealed class HomeUiState {
-    object Loading : HomeUiState()
-    data class Success(
-        val userName: String,
-        val membershipStatus: String, // "active", "expired", etc
-        val membershipExpiry: String?, // Formatted date
-        val daysLeft: Int,
-        val todayTraining: TrainingDayDto?,
-        val streak: Int,
-        val attendanceDays: List<String>,
-        val warningMessage: String?
-    ) : HomeUiState()
-    data class Error(val message: String) : HomeUiState()
-}
-
-suspend fun fetchHomeData(): HomeUiState {
-    return try {
-        println("HomeScreen: Getting Repository...")
-        val repo = GymServiceProvider.getRepository()
-        if (repo == null) {
-            println("HomeScreen: GymService/Repo is null")
-            return HomeUiState.Error("GymService not available")
-        }
-        println("HomeScreen: Repository obtained. Fetching Data...")
-        
-        // Fetch Data
-        val profile = repo.getProfile()
-        if (profile == null) {
-            println("HomeScreen: No Profile Found")
-            return HomeUiState.Error("No Profile Found")
-        }
-        
-        println("HomeScreen: Profile Fetched: ${profile.fullName}")
-        val profileName = profile.fullName.split(" ").firstOrNull() ?: "Member"
-        
-        // Membership - check history first, then fall back to profile status
-        // Membership - check history first, then fall back to profile status
-        val membershipHistory = repo.getMembershipHistory()
-        val activePlan = membershipHistory.firstOrNull { it.status == "active" }
-        
-        // Robust Status Logic:
-        // 1. Trust 'activePlan' from history if present.
-        // 2. Fallback to profile status ONLY if expiry is in the future.
-        val rawStatus = activePlan?.status ?: profile.membershipStatus
-        val rawExpiry = activePlan?.endDate ?: profile.membershipExpiry
-        
-        val daysLeft = calculateDaysLeft(rawExpiry)
-        
-        val status = if (rawStatus == "active") {
-            if (activePlan != null) "active" // Trust history entry
-            else if (daysLeft > 0) "active"  // Trust profile only if valid date
-            else "expired"
-        } else {
-            "inactive"
-        }
-        val expiry = rawExpiry 
-        
-        // Training
-        val todayTraining = repo.getTodaySchedule()
-        
-        // Consistency
-        val streak = repo.getStreak()
-        val attendanceDays = repo.getWeeklyAttendanceStatus()
-        
-        // Logic for warnings
-        val warningMessage = when {
-            status == "inactive" -> "Your membership is inactive. Join a plan today!"
-            status == "active" && daysLeft <= 5 -> "Your membership expires in $daysLeft days. Renew soon!"
-            else -> null
-        }
-        
-        HomeUiState.Success(
-            userName = profileName,
-            membershipStatus = status,
-            membershipExpiry = expiry,
-            daysLeft = daysLeft,
-            warningMessage = warningMessage, // New field needed in State
-            todayTraining = todayTraining,
-            streak = streak,
-            attendanceDays = attendanceDays
-        )
-    } catch (e: Exception) {
-        println("HomeScreen: Error loading data: ${e.message}")
-        HomeUiState.Error("Failed to load: ${e.message}")
-    }
-}
+// HomeUiState and fetchHomeData moved to HomePresenter.kt to fix state persistence issues.
 
 // Update State sealed class to include warningMessage
 // (Doing this via replace_content below might be tricky if I don't target the class definition again.
@@ -188,7 +102,8 @@ suspend fun fetchHomeData(): HomeUiState {
 fun HomeScreenContent(
     uiState: HomeUiState,
     onCoachClick: (String, String, String, String, String) -> Unit,
-    onNavigateToMembership: () -> Unit
+    onNavigateToMembership: () -> Unit,
+    onNavigateToTrainingDetail: (TrainingDayDto) -> Unit
 ) {
     ScrollableColumn(padding = 24) {
         when (val state = uiState) {
@@ -207,6 +122,7 @@ fun HomeScreenContent(
                 }
             }
             is HomeUiState.Success -> {
+                // ... (lines 210-238 unchanged)
                 // 1. Greeting
                 GreetingHeaderComposable(
                     subtitle = "Welcome back,",
@@ -244,7 +160,11 @@ fun HomeScreenContent(
                     label = "Today's Session",
                     focus = focus,
                     goals = goals,
-                    onClick = null 
+                    onClick = {
+                        if (state.todayTraining != null) {
+                            onNavigateToTrainingDetail(state.todayTraining)
+                        }
+                    } 
                 )
                 
                 Spacer(width = 0, height = 32)

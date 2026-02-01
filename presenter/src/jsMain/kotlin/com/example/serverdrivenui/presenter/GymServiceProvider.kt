@@ -66,6 +66,16 @@ object GymServiceProvider {
                         ignoreUnknownKeys = true
                     })
                 }
+                install(io.ktor.client.plugins.logging.Logging) {
+                    logger = object : io.ktor.client.plugins.logging.Logger {
+                        override fun log(message: String) {
+                            println("NETWORK: $message")
+                        }
+                    }
+                    level = io.ktor.client.plugins.logging.LogLevel.ALL
+                }
+                // Custom Request Logging via hook not easily available in config block without plugin
+                // We rely on response validator to log completion.
             }
             val repo = SupabaseGymRepository(
                 httpClient = client,
@@ -74,11 +84,17 @@ object GymServiceProvider {
             )
             
             // Restore session
-            if (token != null && token.isNotEmpty() && userId != null && userId.isNotEmpty()) {
+            // IMPORTANT: We check if userId starts with "user-" which was the legacy fake ID format.
+            // If so, we ignore it to force re-login with real UUID.
+            if (token != null && token.isNotEmpty() && userId != null && userId.isNotEmpty() && !userId.startsWith("user-")) {
                 println("GymServiceProvider: Restoring Session (User: $userId)")
                 repo.setSession(userId, token) 
             } else {
-                println("GymServiceProvider: WARNING - No persisted session found! userId=$userId, hasToken=${token != null}")
+                println("GymServiceProvider: WARNING - No valid persisted session found! userId=$userId (Legacy=${userId?.startsWith("user-")})")
+                // If it was legacy, clear it so we don't keep warning
+                if (userId?.startsWith("user-") == true) {
+                     service.clearSession()
+                }
             }
             
             _repository = repo

@@ -52,7 +52,8 @@ suspend fun fetchTrainingData(): TrainingUiState {
  */
 @Composable
 fun TrainingScreenContent(
-    uiState: TrainingUiState
+    uiState: TrainingUiState,
+    navigator: com.example.serverdrivenui.presenter.Navigator? = null
 ) {
     // val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
     
@@ -60,7 +61,7 @@ fun TrainingScreenContent(
         // Header
         HeaderText(text = "This Week's Training", size = "large")
         Spacer(width = 0, height = 8)
-        SecondaryText(text = "Structured calisthenics program")
+        SecondaryText(text = "Daily calisthenics module")
         
         Spacer(width = 0, height = 24)
         
@@ -87,6 +88,7 @@ fun TrainingScreenContent(
                     val attended = index < state.attendanceStatus.size && state.attendanceStatus[index] == "attended"
                     val dateDisplay = formatDateDisplay(day.date)
                     
+                    // Render Day Card
                     TrainingDayCardComposable(
                         day = day.dayName,
                         date = dateDisplay,
@@ -94,7 +96,12 @@ fun TrainingScreenContent(
                         goals = day.goals,
                         supporting = day.supporting,
                         isToday = isToday,
-                        attended = attended
+                        attended = attended,
+                        onClick = { 
+                           if (navigator != null) {
+                               navigator.push(TrainingDetailScreen(day))
+                           }
+                        }
                     )
                     
                     if (index < state.schedule.size - 1) {

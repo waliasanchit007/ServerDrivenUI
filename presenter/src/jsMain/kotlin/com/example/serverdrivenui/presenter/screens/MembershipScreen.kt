@@ -37,7 +37,16 @@ suspend fun fetchMembershipData(): MembershipUiState {
         
         // Get user's actual current plan from membership_history
         val membershipHistory = repo.getMembershipHistory()
-        val activeMembership = membershipHistory.firstOrNull { it.status == "active" }
+        val today = com.example.serverdrivenui.core.data.PlatformDateProvider.today()
+        
+        // Find currently EFFECTIVE plan (today is between start and end)
+        // If not found, fall back to the latest active plan (e.g. upcoming)
+        val effectiveMembership = membershipHistory.firstOrNull { 
+            it.status == "active" && it.startDate <= today && it.endDate >= today 
+        }
+        val latestMembership = membershipHistory.firstOrNull { it.status == "active" }
+        
+        val activeMembership = effectiveMembership ?: latestMembership
         val currentPlanName = activeMembership?.planName
         
         if (plans.isNotEmpty()) {
