@@ -127,6 +127,9 @@ class MainNavigationShell : Screen {
                         },
                         onNavigateToTrainingDetail = { trainingDay ->
                             navigator.push(TrainingDetailScreen(trainingDay))
+                        },
+                        onNavigateToStreak = {
+                            navigator.push(StreakDetailsScreen())
                         }
                     )
                     "training" -> TrainingScreenContent(

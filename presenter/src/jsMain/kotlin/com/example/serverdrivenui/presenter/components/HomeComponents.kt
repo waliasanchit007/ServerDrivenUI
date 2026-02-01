@@ -151,10 +151,11 @@ fun TrainingSessionCardComposable(
 fun WeeklyAttendanceComposable(
     streak: Int,
     days: List<String>,
-    summary: String
+    summary: String,
+    onClick: (() -> Unit)? = null
 ) {
     SduiCard(
-        onClick = null, 
+        onClick = onClick, 
         backgroundColor = "surface", 
         borderColor = "border", 
         borderWidth = 1, 

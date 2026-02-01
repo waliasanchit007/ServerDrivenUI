@@ -103,7 +103,8 @@ fun HomeScreenContent(
     uiState: HomeUiState,
     onCoachClick: (String, String, String, String, String) -> Unit,
     onNavigateToMembership: () -> Unit,
-    onNavigateToTrainingDetail: (TrainingDayDto) -> Unit
+    onNavigateToTrainingDetail: (TrainingDayDto) -> Unit,
+    onNavigateToStreak: () -> Unit
 ) {
     ScrollableColumn(padding = 24) {
         when (val state = uiState) {
@@ -170,11 +171,11 @@ fun HomeScreenContent(
                 Spacer(width = 0, height = 32)
                 
                 // 4. Training Consistency - derive count from attendance data for consistency
-                val trainingCount = state.attendanceDays.count { it == "attended" }
                 WeeklyAttendanceComposable(
-                    streak = trainingCount,  // Use derived count, not separate streak
+                    streak = state.streak,  // Use the actual streak from state
                     days = state.attendanceDays,
-                    summary = "Trained $trainingCount days this week"
+                    summary = "Trained ${state.attendanceDays.count { it == "attended" }} days this week",
+                    onClick = onNavigateToStreak
                 )
                 
                 Spacer(width = 0, height = 32)

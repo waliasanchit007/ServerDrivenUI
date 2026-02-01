@@ -431,6 +431,24 @@ class SupabaseGymRepository(
         }
     }
 
+    suspend fun getAllAttendanceHistory(): List<AttendanceDto> {
+        val userId = currentUserId ?: demoUserId
+        return try {
+            httpClient.get("$restUrl/attendance") {
+                parameter("user_id", "eq.$userId")
+                parameter("order", "date.desc")
+                parameter("select", "date,status") // We only need date and status
+                headers {
+                    append("apikey", supabaseKey)
+                    append("Authorization", "Bearer ${currentAccessToken ?: supabaseKey}")
+                }
+            }.body()
+        } catch (e: Exception) {
+            println("Error fetching all attendance: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun getWeeklyAttendanceStatus(): List<String> {
         val userId = currentUserId ?: demoUserId
         
