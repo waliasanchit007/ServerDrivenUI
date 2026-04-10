@@ -740,7 +740,7 @@ class CmpScrollableColumn : ScrollableColumn<@Composable (androidx.compose.ui.Mo
             modifier = modifier
                 .fillMaxSize()
                 .padding(horizontal = padding.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp)
         ) {
             val widgets = (children as CmpChildren).widgets

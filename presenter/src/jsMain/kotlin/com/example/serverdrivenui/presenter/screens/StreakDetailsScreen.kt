@@ -63,8 +63,11 @@ class StreakDetailsScreen : Screen {
 
         // --- UI Content ---
         ScrollableColumn(padding = 16) {
+             // Status Bar / Header Spacer
+             Spacer(width = 0, height = 32)
+
              // Header - Simplified to reduce "weirdness"
-            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 16, padding = 0) {
+            FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
                  HeaderText(text = "My Consistency", size = "medium")
                  // Simple Text Button for Close to avoid bulky button UI
                  SduiCard(onClick = { navigator.pop() }, backgroundColor = "transparent", borderColor = "transparent", borderWidth = 0, borderRadius = 0, padding = 8) {
@@ -73,6 +76,9 @@ class StreakDetailsScreen : Screen {
             }
             
             SecondaryText(text = "Track your fitness journey")            
+            
+            Spacer(width = 0, height = 12)
+
             when (val state = uiState) {
                 is StreakUiState.Loading -> SecondaryText(text = "Loading stats...")
                 is StreakUiState.Error -> StyledText(text = state.message, color = "error", style = "bodyMedium", fontWeight = "normal", letterSpacing = 0)
@@ -83,6 +89,8 @@ class StreakDetailsScreen : Screen {
                         StatsCard("Sessions", "${state.totalSessions} 💪")
                     }
                                         
+                    Spacer(width = 0, height = 16)
+
                     // Calendar List with Pagination
                     var visibleMonths by remember { mutableStateOf(2) }
                     
@@ -109,8 +117,8 @@ class StreakDetailsScreen : Screen {
 
 @Composable
 fun StatsCard(label: String, value: String) {
-    SduiCard(onClick = null, backgroundColor = "surface", borderColor = "border", borderWidth = 1, borderRadius = 16, padding = 16) {
-        FlexColumn(verticalArrangement = "Center", horizontalAlignment = "Start", spacing = 4, padding = 0) {
+    SduiCard(onClick = null, backgroundColor = "surface", borderColor = "border", borderWidth = 1, borderRadius = 12, padding = 12) {
+        FlexColumn(verticalArrangement = "Center", horizontalAlignment = "Start", spacing = 2, padding = 0) {
              SecondaryText(text = label)
              StyledText(text = value, style = "headlineSmall", fontWeight = "bold", color = "primary", letterSpacing = 0)
         }
@@ -123,7 +131,7 @@ fun MonthCalendar(month: YearMonth, attendanceMap: Map<String, Boolean>) {
         FlexColumn(verticalArrangement = "Top", horizontalAlignment = "Start", spacing = 0, padding = 0) {
              // Month Header
              StyledText(text = month.name, style = "titleMedium", fontWeight = "bold", color = "primary", letterSpacing = 0)
-             Spacer(width = 0, height = 16)
+             Spacer(width = 0, height = 12)
              
              // Week Headers (Fixed Width Cells)
              FlexRow(horizontalArrangement = "SpaceBetween", verticalAlignment = "CenterVertically", spacing = 0, padding = 0) {
@@ -134,7 +142,7 @@ fun MonthCalendar(month: YearMonth, attendanceMap: Map<String, Boolean>) {
                      }
                  }
              }
-             Spacer(width = 0, height = 8)
+             Spacer(width = 0, height = 4)
              
              // Calendar Grid
              val days = mutableListOf<String?>()
@@ -157,7 +165,7 @@ fun MonthCalendar(month: YearMonth, attendanceMap: Map<String, Boolean>) {
                          DayCell(dayNum = dayNum, isPresent = isPresent)
                      }
                  }
-                 Spacer(width = 0, height = 4) // Row spacing
+                 Spacer(width = 0, height = 4) // Reduced from default large gaps
              }
         }
     }
