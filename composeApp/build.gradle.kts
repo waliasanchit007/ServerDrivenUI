@@ -38,7 +38,7 @@ kotlin {
         iosTarget.compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
-                    freeCompilerArgs.add("-opt-in=app.cash.redwood.RedwoodCodegenApi")
+                    freeCompilerArgs.add("-opt-in=dev.konduit.RedwoodCodegenApi")
                     freeCompilerArgs.add("-opt-in=androidx.compose.ui.ExperimentalComposeUiApi")
                 }
             }

@@ -1,7 +1,7 @@
 package com.example.serverdrivenui.shared
 
-import app.cash.redwood.treehouse.AppService
-import app.cash.redwood.treehouse.ZiplineTreehouseUi
+import dev.konduit.treehouse.AppService
+import dev.konduit.treehouse.ZiplineTreehouseUi
 import app.cash.zipline.ZiplineService
 
 import kotlinx.serialization.KSerializer

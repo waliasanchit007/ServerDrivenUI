@@ -1,7 +1,7 @@
 @file:Suppress("DEPRECATION", "OPT_IN_USAGE")
 @file:OptIn(
-    app.cash.redwood.RedwoodCodegenApi::class,
-    app.cash.redwood.leaks.RedwoodLeakApi::class,
+    dev.konduit.RedwoodCodegenApi::class,
+    dev.konduit.leaks.RedwoodLeakApi::class,
     kotlinx.cinterop.ExperimentalForeignApi::class,
     kotlinx.cinterop.BetaInteropApi::class
 )
@@ -9,10 +9,10 @@
 package com.example.serverdrivenui.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
-import app.cash.redwood.treehouse.TreehouseApp
-import app.cash.redwood.treehouse.TreehouseAppFactory
-import app.cash.redwood.treehouse.MemoryStateStore
-import app.cash.redwood.leaks.LeakDetector
+import dev.konduit.treehouse.TreehouseApp
+import dev.konduit.treehouse.TreehouseAppFactory
+import dev.konduit.treehouse.MemoryStateStore
+import dev.konduit.leaks.LeakDetector
 import app.cash.zipline.Zipline
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.ZiplineHttpClient

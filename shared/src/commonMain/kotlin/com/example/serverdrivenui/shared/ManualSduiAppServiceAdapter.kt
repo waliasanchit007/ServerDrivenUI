@@ -8,8 +8,8 @@ import app.cash.zipline.internal.bridge.OutboundService
 import app.cash.zipline.internal.bridge.ReturningZiplineFunction
 import app.cash.zipline.ZiplineFunction
 import app.cash.zipline.internal.bridge.ZiplineServiceAdapter
-import app.cash.redwood.treehouse.ZiplineTreehouseUi
-import app.cash.redwood.treehouse.AppLifecycle
+import dev.konduit.treehouse.ZiplineTreehouseUi
+import dev.konduit.treehouse.AppLifecycle
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.modules.SerializersModule
@@ -25,7 +25,7 @@ internal open class ManualSduiAppServiceAdapter(
     override fun ziplineFunctions(serializersModule: SerializersModule): List<ZiplineFunction<SduiAppService>> {
         val launchFunction = object : ReturningZiplineFunction<SduiAppService>(
             id = "launch", 
-            signature = "fun launch(): app.cash.redwood.treehouse.ZiplineTreehouseUi",
+            signature = "fun launch(): dev.konduit.treehouse.ZiplineTreehouseUi",
             argSerializers = emptyList(),
             resultSerializer = app.cash.zipline.ziplineServiceSerializer<ZiplineTreehouseUi>()
         ) {
@@ -35,7 +35,7 @@ internal open class ManualSduiAppServiceAdapter(
         }
         val appLifecycleFunction = object : ReturningZiplineFunction<SduiAppService>(
             id = "appLifecycle",
-            signature = "fun appLifecycle(): app.cash.redwood.treehouse.AppLifecycle",
+            signature = "fun appLifecycle(): dev.konduit.treehouse.AppLifecycle",
             argSerializers = emptyList(),
             resultSerializer = app.cash.zipline.ziplineServiceSerializer<AppLifecycle>()
         ) {

@@ -1,9 +1,9 @@
 package com.example.serverdrivenui;
 
 import android.content.Context;
-import app.cash.redwood.protocol.host.HostProtocol;
-import app.cash.redwood.treehouse.TreehouseApp;
-import app.cash.redwood.treehouse.TreehouseAppFactoryAndroidKt;
+import dev.konduit.protocol.host.HostProtocol;
+import dev.konduit.treehouse.TreehouseApp;
+import dev.konduit.treehouse.TreehouseAppFactoryAndroidKt;
 import app.cash.zipline.loader.ManifestVerifier;
 import app.cash.zipline.loader.ZiplineHttpClient;
 import okhttp3.OkHttpClient;
@@ -25,8 +25,8 @@ public class TreehouseHelper {
             50L * 1024L * 1024L, // cacheMaxSizeInBytes
             com.example.serverdrivenui.LoggingLoaderEventListener.INSTANCE, // loaderEventListener
             8, // concurrentDownloads
-            new app.cash.redwood.treehouse.MemoryStateStore(), // stateStore
-            app.cash.redwood.leaks.LeakDetector.Companion.none(), // leakDetector
+            new dev.konduit.treehouse.MemoryStateStore(), // stateStore
+            dev.konduit.leaks.LeakDetector.Companion.none(), // leakDetector
             hostProtocolFactory
         );
     }

@@ -3,6 +3,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
     repositories {
+        mavenLocal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         google {
             mavenContent {
@@ -16,9 +17,6 @@ pluginManagement {
     }
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id == "app.cash.redwood") {
-                useModule("app.cash.redwood:redwood-gradle-plugin:${requested.version}")
-            }
             if (requested.id.id == "app.cash.zipline") {
                 useModule("app.cash.zipline:zipline-gradle-plugin:${requested.version}")
             }
@@ -28,6 +26,7 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        mavenLocal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         google {
             mavenContent {

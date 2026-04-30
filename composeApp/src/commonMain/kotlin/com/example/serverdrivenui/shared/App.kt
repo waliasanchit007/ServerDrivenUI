@@ -3,10 +3,10 @@
 package com.example.serverdrivenui.shared
 
 import androidx.compose.runtime.Composable
-import app.cash.redwood.treehouse.TreehouseApp
-import app.cash.redwood.treehouse.composeui.TreehouseContent
-import app.cash.redwood.treehouse.TreehouseContentSource
-import app.cash.redwood.treehouse.ZiplineTreehouseUi
+import dev.konduit.treehouse.TreehouseApp
+import dev.konduit.treehouse.composeui.TreehouseContent
+import dev.konduit.treehouse.TreehouseContentSource
+import dev.konduit.treehouse.ZiplineTreehouseUi
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier

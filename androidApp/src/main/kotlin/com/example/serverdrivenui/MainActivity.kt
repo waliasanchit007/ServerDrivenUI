@@ -14,7 +14,7 @@ import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
-import app.cash.redwood.treehouse.TreehouseAppFactory
+import dev.konduit.treehouse.TreehouseAppFactory
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
 import okhttp3.OkHttpClient
@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import app.cash.zipline.loader.LoaderEventListener
 import app.cash.zipline.Zipline
-import app.cash.redwood.treehouse.EventListener
+import dev.konduit.treehouse.EventListener
 import app.cash.zipline.ZiplineService
 import app.cash.zipline.ZiplineManifest
 import androidx.compose.runtime.collectAsState
@@ -74,12 +74,12 @@ class MainActivity : ComponentActivity() {
         Log.d("SDUI", "Manifest URL: ${DevConfig.manifestUrl}")
         Log.d("SDUI", "Hot Reload URL: ${DevConfig.hotReloadUrl}")
 
-        val spec = object : app.cash.redwood.treehouse.TreehouseApp.Spec<SduiAppService>() {
+        val spec = object : dev.konduit.treehouse.TreehouseApp.Spec<SduiAppService>() {
             override val name = "sdui"
             override val manifestUrl = manifestUrlFlow.asStateFlow()
 
             override suspend fun bindServices(
-                treehouseApp: app.cash.redwood.treehouse.TreehouseApp<SduiAppService>,
+                treehouseApp: dev.konduit.treehouse.TreehouseApp<SduiAppService>,
                 zipline: Zipline
             ) {
                 Log.d("SDUI-Host", "bindServices called")
@@ -142,7 +142,7 @@ object LoggingLoaderEventListener : LoaderEventListener() {
 }
 
 object SDUIZiplineEventListenerFactory : EventListener.Factory {
-    override fun create(app: app.cash.redwood.treehouse.TreehouseApp<*>, manifestUrl: String?): EventListener {
+    override fun create(app: dev.konduit.treehouse.TreehouseApp<*>, manifestUrl: String?): EventListener {
         return SDUIZiplineEventListener
     }
     override fun close() {}

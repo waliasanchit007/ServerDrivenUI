@@ -2,10 +2,10 @@ package com.example.serverdrivenui.presenter
 
 import androidx.compose.runtime.Composable
 import app.cash.zipline.Zipline
-import app.cash.redwood.treehouse.TreehouseUi
-import app.cash.redwood.treehouse.StandardAppLifecycle
-import app.cash.redwood.treehouse.asZiplineTreehouseUi
-import app.cash.redwood.treehouse.ZiplineTreehouseUi
+import dev.konduit.treehouse.TreehouseUi
+import dev.konduit.treehouse.StandardAppLifecycle
+import dev.konduit.treehouse.asZiplineTreehouseUi
+import dev.konduit.treehouse.ZiplineTreehouseUi
 import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
 import kotlinx.serialization.json.Json

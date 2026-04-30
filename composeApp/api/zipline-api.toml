@@ -4,6 +4,6 @@ functions = [
   # fun close(): kotlin.Unit
   "moYx+T3e",
 
-  # val appLifecycle: app.cash.redwood.treehouse.AppLifecycle
+  # val appLifecycle: dev.konduit.treehouse.AppLifecycle
   "odhmO/d6",
 ]

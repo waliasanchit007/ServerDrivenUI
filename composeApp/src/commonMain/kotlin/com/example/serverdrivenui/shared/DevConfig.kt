@@ -1,39 +1,40 @@
 package com.example.serverdrivenui.shared
 
 /**
- * Development configuration for connecting to the Zipline server.
- * 
- * Update SERVER_IP to match your development machine's IP address.
- * Find it with: `ipconfig getifaddr en0` (macOS) or `hostname -I` (Linux)
+ * Development configuration for connecting to the Zipline dev-server.
+ *
+ * Set SERVER_BASE_URL to one of:
+ *   - LAN IP:        "http://192.168.1.6:8080"
+ *   - Android emul:  "http://10.0.2.2:8080"
+ *   - adb reverse:   "http://127.0.0.1:8080"  (after `adb reverse tcp:8080 tcp:8080`)
+ *   - ngrok tunnel:  "https://your-subdomain.ngrok-free.dev"
+ *
+ * Tip on local IP: `ipconfig getifaddr en0` (macOS) / `hostname -I` (Linux).
  */
 object DevConfig {
     /**
-     * Development server IP address.
-     * - Use "10.0.2.2" for Android emulator
-     * - Use "127.0.0.1" with `adb reverse tcp:8080 tcp:8080` for USB debugging
-     * - Use your machine's actual IP for wireless debugging
+     * Full base URL of the dev-server. Include scheme; omit trailing slash.
+     * For ngrok, no port is needed — it terminates TLS on 443.
      */
-    const val SERVER_IP = "192.168.1.86"
-    
+    const val SERVER_BASE_URL = "https://proximally-dialogic-priscila.ngrok-free.dev"
+
     /**
-     * Server port (default 8080)
-     */
-    const val SERVER_PORT = 8080
-    
-    /**
-     * Base URL for the Zipline manifest
+     * Base URL for the Zipline manifest.
      */
     val manifestUrl: String
-        get() = "http://$SERVER_IP:$SERVER_PORT/manifest.zipline.json"
-    
+        get() = "$SERVER_BASE_URL/manifest.zipline.json"
+
     /**
-     * WebSocket URL for hot reload notifications
+     * WebSocket URL for hot reload notifications.
+     * Derived from SERVER_BASE_URL: http -> ws, https -> wss.
      */
     val hotReloadUrl: String
-        get() = "ws://$SERVER_IP:$SERVER_PORT/hot-reload"
-    
+        get() = SERVER_BASE_URL
+            .replaceFirst("https://", "wss://")
+            .replaceFirst("http://", "ws://") + "/hot-reload"
+
     /**
-     * Whether hot reload is enabled (can be disabled for release builds)
+     * Whether hot reload is enabled (can be disabled for release builds).
      */
     const val HOT_RELOAD_ENABLED = true
 }

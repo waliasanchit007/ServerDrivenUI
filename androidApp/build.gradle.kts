@@ -43,7 +43,7 @@ kotlin {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {
             freeCompilerArgs.addAll(
-                "-opt-in=app.cash.redwood.RedwoodCodegenApi",
+                "-opt-in=dev.konduit.RedwoodCodegenApi",
                 "-opt-in=kotlin.RequiresOptIn"
             )
         }

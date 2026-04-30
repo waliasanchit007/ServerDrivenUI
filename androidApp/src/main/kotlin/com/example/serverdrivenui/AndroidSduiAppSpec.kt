@@ -1,7 +1,7 @@
 package com.example.serverdrivenui
 
 import android.util.Log
-import app.cash.redwood.treehouse.TreehouseApp
+import dev.konduit.treehouse.TreehouseApp
 import app.cash.zipline.Zipline
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.SduiAppService
