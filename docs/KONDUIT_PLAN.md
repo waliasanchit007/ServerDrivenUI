@@ -1,0 +1,591 @@
+# Konduit — Plan v2
+
+> Single source of truth for the Konduit library and the Caliclan migration.
+> Replaces the v1 plan at `~/Downloads/KONDUIT_PLAN.md`.
+>
+> No time estimates. Phases are gated by deliverables, not deadlines.
+
+---
+
+## 1. Mission
+
+Konduit is Caliclan's private fork of CashApp Redwood 0.18.0 + Zipline. It
+ships executable Kotlin screen logic to a Compose Multiplatform app without
+an app-store update. Konduit is the "browser" (host primitives + Zipline
+runtime); the **guest** is per-screen Kotlin compiled to `.zipline` and
+served from a CDN.
+
+**The boundary that matters:**
+- **Guest** is platform-agnostic Kotlin/JS — produces UI trees, never calls
+  platform APIs.
+- **Host** is per-platform (Compose Multiplatform today; native iOS/Android
+  later). Implements `Cmp*` widgets in the local toolkit.
+
+The contract between them is Konduit's schema (immutable widget IDs, additive
+property changes only within a major version).
+
+---
+
+## 2. Locked-in decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| **Fork base** | CashApp Redwood `0.18.0` | Final stable release |
+| **Fork posture** | Soft fork in name only — upstream is dormant | We will not actively track upstream; merges only if a critical Zipline-related fix lands |
+| **Maven group** | `dev.konduit` | Already published, working |
+| **Version scheme** | `MAJOR.MINOR.PATCH-caliclan.N` | `1.0.0-caliclan.1` is the current floor |
+| **Distribution** | GitHub Packages (pre-release + stable). mavenLocal for dev | Private repo, simple auth via PAT |
+| **Wire-format promise** | Host `vMAJOR.x.y-caliclan.N` runs all guests built against the same MAJOR | Major bump = no compat promise |
+| **Manifest signing** | Optional, not mandatory in production | Per Caliclan choice; security risk documented |
+| **Guest pinning per app** | Yes — manifest URLs include version (`/manifests/v23/manifest.zipline.json`) | Old app binaries lock to known-good guest versions |
+| **Test policy** | No new tests written. Upstream snapshot tests preserved (1880 LFS PNGs); may be re-enabled later without code changes | User decision |
+| **Plan ordering** | 0 → 1 → 1.5 → 2 → 5a/5d → 3 → 4 → 5b/5c → 6-as-principles | Cleanup before CI; dev tooling slices before the schema slog |
+
+### Deferred — explicitly scheduled in this plan
+
+- **Strip non-CMP modules** (`konduit-widget-view/uiview/dom`,
+  `konduit-layout-view/uiview/dom`, equivalent lazylayout/UI-basic variants)
+  → Phase 1.5
+- **Class-name rename** (`RedwoodPlugin → KonduitPlugin`, ~79 identifiers)
+  → Phase 1.5 (or never; cosmetic only, no functional impact)
+- **GitHub Packages publishing pipeline** → Phase 2
+- **CHANGELOG cadence** → Phase 2
+
+### Out of scope (forever, unless reversed)
+
+- Maven Central publishing (only if Konduit is open-sourced)
+- Native iOS / native Android hosts (architecture preserved per
+  `WIDGET_CONTRACT.md`, but no host implementation planned)
+- WASM migration (Zipline 2.0) — wait for upstream Zipline to ship it
+
+---
+
+## 3. Engineering principles
+
+These apply across all phases. Treat them as invariants.
+
+### 3.1 Wire-format compatibility
+
+**Promise:** Within a given MAJOR version, the host is forward-compatible
+with all older guests built against that same MAJOR.
+
+Concretely: host `1.0.0-caliclan.5` runs any guest built against any
+`1.0.0-caliclan.[1..5]`. A guest built against `caliclan.7` running on a
+host at `caliclan.5` is undefined behavior — the host should fail gracefully
+(see §3.5 missing-widget policy) but is not required to render.
+
+**To preserve this within MAJOR:**
+- Widget IDs are immutable. Once assigned, never reused, never renumbered.
+- New widgets only appear at unused IDs.
+- Properties on existing widgets can only be **added**, never removed,
+  retyped, or renamed. Added properties must have defaults the host
+  applies when the guest doesn't set them.
+- Events on existing widgets can only be added, never removed.
+- Generated code in `konduit-protocol-host` and `konduit-protocol-guest`
+  must default-skip unknown properties (Redwood's protocol already does
+  this; preserve it).
+
+**Major bump (`2.0.0-caliclan.1`)** is the only release type that may
+break wire format. Triggered by: removing a widget, removing a property,
+retyping a property, changing event signatures, changing modifier
+serialization.
+
+### 3.2 Versioning
+
+| Bump | Trigger |
+|---|---|
+| `1.0.0-caliclan.N → caliclan.N+1` | Any non-breaking change: new widget at unused ID, new property with default, new modifier, internal refactor, dependency bump within compatible range, doc change |
+| `1.0.0 → 1.1.0-caliclan.1` | Reserved — currently unused; minor bumps fold into `caliclan.N` for now |
+| `1.x → 2.0.0-caliclan.1` | Any breaking change (see §3.1) |
+
+**Hotfix branches:** From any released tag, branch `hotfix/X.Y.Z-caliclan.N`,
+fix, tag `X.Y.Z-caliclan.N+0.1` style is overkill — just bump `caliclan.N+1`
+and merge back to main. We are not on main 90% of the time, so this is fine.
+
+**CHANGELOG.md** at repo root. Every release tag has a section. Format:
+```
+## 1.0.0-caliclan.2 — YYYY-MM-DD
+### Added
+- Widget(46) RangeSlider
+### Changed
+- ...
+### Fixed
+- ...
+```
+
+### 3.3 Schema governance
+
+**Widget ID registry:** `docs/WIDGET_REGISTRY.md` is the single source of
+truth. Maintained as a numbered table. Every PR that adds a widget MUST
+update the registry in the same commit.
+
+**ID ranges:**
+| Range | Owner | Purpose |
+|---|---|---|
+| 1–99 | Konduit | Tier 1 + 2 widgets (foundation + core M3) |
+| 100–199 | Konduit | Tier 3 widgets (extended M3) |
+| 200–999 | Reserved | Future Konduit growth |
+| 1000+ | Caliclan / consumers | App-specific domain widgets |
+
+We claim 1000+ (instead of v1's 200+) so an unused upstream Redwood ID
+collision is impossible — Redwood never went past ~30 widgets in 0.18.0.
+
+**Deprecation:** `@Widget(45) @Deprecated("Use Widget(46) instead")` keeps
+the ID forever. Renderer keeps working. Eventual removal only at major bump.
+
+**Caliclan vs Konduit boundary:**
+- Konduit ships **schema-defined widgets** (IDs 1–999) but Caliclan declares
+  them in its own `schema/Schema.kt`. This means Caliclan currently owns
+  widget definitions; Konduit only ships the gradle plugin + protocol +
+  facade. **Decision:** keep this. Konduit becoming a self-contained
+  primitive library is a Phase 6 north-star, not a deliverable.
+
+### 3.4 Distribution + publishing
+
+**Where artifacts live:**
+| Repo | Purpose | Auth |
+|---|---|---|
+| `~/.m2/repository/dev/konduit/` (mavenLocal) | Active dev | None |
+| `https://maven.pkg.github.com/waliasanchit007/konduit` | All published versions (pre-release + stable) | GitHub PAT with `read:packages` for consumers, `write:packages` for publishers |
+
+**Publishing trigger (Phase 2):** publish on **git tag matching `v*`**, NOT
+on every push to main. WIP merges to main don't ship.
+
+**Tag → version mapping:** `git tag v1.0.0-caliclan.2` publishes
+`dev.konduit:konduit-*:1.0.0-caliclan.2` (strip the `v` prefix).
+
+**Local dev workflow stays:** every consumer (Caliclan today, future
+projects) has `mavenLocal()` first in repo order. Active Konduit changes
+go to mavenLocal via `./gradlew publishToMavenLocal -x test
+-DRELEASE_SIGNING_ENABLED=false` and Caliclan picks them up immediately.
+
+### 3.5 Missing-widget / unknown-property policy (host-side)
+
+When the host sees a widget ID it doesn't know (guest built against newer
+host), it logs an error and renders a placeholder Box (debug builds: red
+"unknown widget N" box; release: empty Box). Never crashes.
+
+When the host receives a property it doesn't recognize, it ignores the
+property silently. Already Redwood's default — preserve.
+
+When the host receives an event from the guest it can't dispatch (widget
+gone), drop the event. Log in debug.
+
+### 3.6 Forking ops
+
+**Upstream remote:** keep `upstream =
+https://github.com/cashapp/redwood.git` configured locally for ad-hoc LFS
+fetches and reference. **Do not auto-merge upstream.** No periodic sync
+ritual.
+
+**If upstream ships a critical Zipline fix:** evaluate, cherry-pick the
+specific commit, version-bump as a `caliclan.N+1`. Treat upstream as a
+reference, not a pipeline.
+
+### 3.7 Caliclan-side compatibility for production guests
+
+**Guest version pinning:** the manifest URL in DevConfig today is
+unversioned (`/manifest.zipline.json`). For production:
+- CDN serves manifests at `/manifests/<version>/manifest.zipline.json`.
+- Caliclan's `composeApp` BuildConfig records the host's Konduit version
+  at build time.
+- App constructs the URL: `https://cdn.caliclan.dev/manifests/${BuildConfig.KONDUIT_VERSION}/manifest.zipline.json`.
+- Old app binaries always pull a guest manifest pinned to their host's
+  Konduit version → impossible for new guests to break old apps.
+
+**Cached fallback:** Zipline's loader already caches the last successful
+manifest. If the latest fetch fails, fall back to cached. Document this
+as a host responsibility.
+
+**Wire-compat broken outright:** if Caliclan must ship a major bump
+(`2.0.0-caliclan.1`), it ships a new app binary AND switches to
+`/manifests/v2/...` URL. Old binaries continue serving from
+`/manifests/v1/...` indefinitely.
+
+### 3.8 Security posture (signing optional)
+
+Per locked-in decision, manifest signing is **not mandatory.** Risk
+acknowledged: a compromised CDN or DNS can serve arbitrary code into
+the app binary's QuickJS.
+
+**Mitigations baked into the plan even without mandatory signing:**
+- HTTPS-only manifest URLs in release builds. Enforced via
+  `BuildConfig.DEBUG ? allow http : require https` check in
+  `KonduitProvider`.
+- Cert pinning **not required** but recommended once a stable CDN is
+  chosen. Out of scope for this plan.
+- `freshAtEpochMs` field on the manifest is populated by Zipline. Anti-
+  rollback (rejecting stale manifests) is wireable later as a host hook.
+
+If Caliclan's threat model changes, signing can be flipped on without
+schema changes — Ed25519 keys + the `signatures` field in the manifest are
+already supported by upstream Zipline.
+
+### 3.9 Operations (minimal, not a phase)
+
+These are ongoing rituals once Phase 2 lands:
+
+- **Telemetry on guest load.** Wire `EventListener` (already in
+  `MainActivity.kt:25` host-side) to whatever observability stack
+  Caliclan adopts. Out of scope for this plan but a known TODO.
+- **Manifest URL strategy** as in §3.7 — no daily ops, just a CDN
+  convention.
+- **Build cache.** Phase 2 configures Gradle remote build cache to keep
+  CI reasonable (currently `publishToMavenLocal` is 6 minutes from
+  scratch).
+
+---
+
+## 4. Phase plan
+
+Phases are gated by deliverables. Each phase ends with a verification
+checklist that must pass before the next starts.
+
+### ✅ Phase 0 — Inventory (DONE)
+**Deliverable:** `docs/PHASE_0_INVENTORY.md` — versions, modules, schema
+widgets, Cmp* implementations, screens, concerns.
+
+### ✅ Phase 1 — Fork + repoint (DONE)
+**Deliverable:** Caliclan running on `dev.konduit:1.0.0-caliclan.1` from
+mavenLocal, end-to-end verified on Android + iOS (Welcome screen renders
+on both).
+
+What landed: 4 commits in `~/AndroidStudioProjects/konduit` (+ pushed to
+`https://github.com/waliasanchit007/konduit`); 1 commit in Caliclan
+(`cbbc349` on `claude/vigilant-euclid-681447`).
+
+### Phase 1.5 — Cleanup
+**Why now:** before CI infrastructure builds on top of modules we'll
+delete.
+
+**Tasks:**
+1. **Strip non-CMP modules from konduit fork:**
+   - `konduit-widget-view`, `konduit-widget-uiview`, `konduit-widget-dom`
+   - `konduit-layout-view`, `konduit-layout-uiview`, `konduit-layout-dom`
+   - `konduit-lazylayout-view`, `konduit-lazylayout-uiview`,
+     `konduit-lazylayout-dom`
+   - `konduit-ui-basic-view`, `konduit-ui-basic-uiview`,
+     `konduit-ui-basic-dom`
+   - Test fixtures and snapshot folders for the above
+   - Remove from `settings.gradle.kts` and any `build.gradle` references
+   - Drop unused LFS PNGs (snapshot tests for stripped modules) — clone
+     size goes from 153MB → ~80MB
+2. **Class-name rename (optional, can defer to never):**
+   - `RedwoodPlugin → KonduitPlugin` and ~78 sibling identifiers
+   - Pure cosmetic; no functional impact. Skip if it doesn't bother you.
+3. **Re-publish to mavenLocal as `1.0.0-caliclan.2`** (bump from .1).
+4. **Bump Caliclan's `redwood = "1.0.0-caliclan.2"`** in
+   `libs.versions.toml`. Re-verify Android + iOS run.
+
+**Deliverable:** Konduit fork has only CMP-relevant modules. Caliclan
+runs on `caliclan.2`. Both platforms verified.
+
+**Verification checklist:**
+- [ ] `./gradlew :androidApp:assembleDebug` succeeds in Caliclan
+- [ ] `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` succeeds
+- [ ] App launches on Android device, renders welcome screen
+- [ ] App launches on iOS sim, renders welcome screen
+- [ ] `du -sh ~/AndroidStudioProjects/konduit/.git` shows reduced size
+
+### Phase 2 — CI + publishing infrastructure
+**Goal:** Publishing is one `git tag && git push --tags` away. Builds
+auto-validate on PR.
+
+**Tasks:**
+1. **PR-check workflow** (`.github/workflows/ci.yml` in konduit repo):
+   - Linux runner for non-iOS jobs (build, test, lint)
+   - macOS runner ONLY for iOS-specific tasks, gated to PRs that touch
+     iOS or to main pushes
+   - Cache `~/.gradle` and `.gradle` between runs
+2. **Publish-on-tag workflow** (`.github/workflows/publish.yml`):
+   ```yaml
+   on:
+     push:
+       tags: ['v*']
+   ```
+   Reads version from tag, publishes to GitHub Packages with the repo's
+   built-in `GITHUB_TOKEN`.
+3. **Kotlin compatibility matrix** (`.github/workflows/compat-matrix.yml`):
+   - Weekly cron
+   - Override mechanism: add `kotlin = providers.gradleProperty("kotlin.version").orElse("2.1.0").get()` reading in `libs.versions.toml`
+     extension (Konduit's build-support plugin), so
+     `-Pkotlin.version=2.2.0` actually overrides
+   - Test against Kotlin `2.1.0`, `2.1.20`, `2.2.0`
+   - Failure is informational, doesn't block
+4. **Gradle remote build cache:** configure `~/.gradle/init.gradle` or
+   `gradle.properties` to use GitHub Actions cache as the remote backend.
+5. **Default empty signatory** for `signJsPublication`:
+   - Add `signing { isRequired = providers.systemProperty("RELEASE_SIGNING_ENABLED").orElse("true").map { it.toBoolean() } }` so
+     `publishToMavenLocal` works without flags. (Today we pass
+     `-DRELEASE_SIGNING_ENABLED=false` manually — bake in the default.)
+6. **CHANGELOG.md** at konduit root, with `1.0.0-caliclan.1` and
+   `caliclan.2` entries backfilled.
+
+**Deliverable:** A clean tag push triggers GH Packages publishing. PR
+checks gate merges. Compat matrix runs weekly.
+
+**Verification checklist:**
+- [ ] Push a test tag `v1.0.0-caliclan.2-test`, observe artifacts at
+      `https://github.com/waliasanchit007/konduit/packages`
+- [ ] Caliclan can resolve `dev.konduit:konduit-compose:1.0.0-caliclan.2`
+      from GH Packages with a PAT, not just mavenLocal
+- [ ] PR check on a no-op commit takes <5 min on linux, doesn't fire
+      macOS unless an iOS-relevant file changed
+- [ ] Compat matrix run succeeds for Kotlin 2.1.0 (current pin)
+
+### Phase 3a — Dev tooling vertical slices
+**Why before Phase 3:** Phase 3 (schema redesign) involves dozens of
+trial-and-error iterations. Hot-reload + error boundary make that
+tolerable.
+
+**Tasks (subset of v1's Phase 5):**
+1. **5d Error boundary** (`KonduitContent` catches guest crashes,
+   renders fallback UI with retry). Implementation in Caliclan's
+   `composeApp/src/commonMain/.../App.kt`:
+   ```kotlin
+   @Composable
+   fun KonduitContent(screenId: String, modifier: Modifier = Modifier) {
+       val state by rememberKonduitState(screenId)
+       Box(modifier) {
+           when (state) {
+               is Loading -> KonduitLoadingPlaceholder()
+               is Success -> KonduitRenderer(state.nodes)
+               is Error   -> KonduitErrorFallback(state.error, onRetry = state::retry)
+           }
+       }
+   }
+   ```
+2. **5a Compilation status overlay** (debug builds only). Banner at top
+   of app showing reload state. Driven by a `StateFlow<KonduitDevState>`
+   exposed from `KonduitProvider`. Wrapped in `if (BuildConfig.DEBUG)`.
+
+**Deliverable:** Caliclan dev experience: edit presenter screen → save →
+yellow "Kompiling..." banner → green "✓ Loaded" → screen reloads. Guest
+crash shows red banner with file/line, host stays alive.
+
+### Phase 3 — Schema redesign
+**The big one.** Replace ad-hoc Cmp* widgets with a tiered, M3-aligned
+schema.
+
+**Approach:** build Tier 1 end-to-end first (all 10 widgets: schema +
+Cmp* + facade + at least one presenter screen exercising each). Use
+that as the unit of estimation for Tier 2 + Tier 3 — DO NOT commit to a
+Tier 2/3 scope until Tier 1 is done and reviewed.
+
+**Tier 1 — Foundation (all 10 must land before Tier 2 starts):**
+| ID | Widget | Notes |
+|---|---|---|
+| 1 | Box | Container with overlap |
+| 2 | Column | Vertical stack |
+| 3 | Row | Horizontal stack |
+| 4 | Spacer | Fixed gap |
+| 5 | LazyColumn | Uses `konduit-lazylayout-*` protocol — different from regular widgets |
+| 6 | LazyRow | Same |
+| 7 | LazyItem | Slot inside lazy lists |
+| 8 | Text | M3 typography via `SchemaTextStyle` |
+| 9 | AsyncImage | Coil host-side; URL property |
+| 10 | Icon | Material icons; tinted via `SchemaColor` |
+
+Each Tier 1 widget needs:
+- `@Widget(N)` declaration in Caliclan's `schema/Schema.kt`
+- `Cmp*` impl in `composeApp/Protocol.kt`
+- Entry in `CmpWidgetFactory`
+- Facade function in `konduit-compose-facade` (Phase 4 module — start
+  it during Tier 1)
+
+**Tier 1 verification gate (before Tier 2 begins):**
+- [ ] All 10 widgets render correctly on Android and iOS
+- [ ] Diff Tier 1 implementation effort vs my estimate; revise Tier 2/3
+      scope based on real numbers
+- [ ] No regressions in existing Caliclan screens (welcome screen still
+      renders)
+
+**Tier 2 — Core M3** (~30 widgets, IDs 21–80): buttons, text fields,
+selection controls, containers, feedback, navigation structure.
+Re-spec'd after Tier 1 retrospective.
+
+**Tier 3 — Extended** (~16 widgets, IDs 81–150): chips, list items,
+flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh,
+shimmer, navigation rail. Same: re-spec'd after Tier 2.
+
+**SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
+```kotlin
+enum class SchemaColor {
+    Primary, OnPrimary, PrimaryContainer, OnPrimaryContainer,
+    Secondary, OnSecondary, SecondaryContainer, OnSecondaryContainer,
+    Tertiary, OnTertiary,
+    Surface, OnSurface, SurfaceVariant, OnSurfaceVariant,
+    Background, OnBackground,
+    Error, OnError, Outline, OutlineVariant,
+    // Caliclan brand slots — extensible without breaking wire format
+    Accent1, Accent2, Accent3, Accent4
+}
+
+enum class SchemaTextStyle {
+    DisplayLarge, DisplayMedium, DisplaySmall,
+    HeadlineLarge, HeadlineMedium, HeadlineSmall,
+    TitleLarge, TitleMedium, TitleSmall,
+    BodyLarge, BodyMedium, BodySmall,
+    LabelLarge, LabelMedium, LabelSmall
+}
+```
+
+`Accent1..Accent4` slots: host's MaterialTheme maps these to Caliclan's
+brand colors. Adding a brand color = re-skinning the host, not a schema
+bump.
+
+**GuestModifier (defined as part of Tier 1):**
+Supported chains:
+```
+fillMaxWidth/Height/Size, padding(...), background(SchemaColor),
+size/width/height(Dp), weight(Float, scope-typed),
+clickable(onClick), alpha(Float), clip(SchemaShape),
+border(width: Dp, color: SchemaColor), wrapContentWidth/Height
+```
+Explicitly NOT supported (hard-fail at codegen if guest tries):
+`graphicsLayer{}`, `pointerInput{}`, `drawBehind{}`, `nestedScroll(...)`.
+
+`weight()` is scope-typed (only valid in `ColumnScope` / `RowScope`),
+matching real Compose. Reuse Redwood's `LayoutModifier` scope mechanism
+— do not reinvent.
+
+**Slot-typed widgets** (Scaffold, TopAppBar, NavigationBar with action
+slots) are deferred to Tier 2 and may need schema-level work to express
+multiple named child slots. Note as a known unknown.
+
+**Deliverable:** Caliclan presenter screens rebuilt against the new
+schema. Both platforms run. Old `Cmp*` widgets removed.
+
+### Phase 4 — Compose facade
+**Goal:** guest code in `presenter/` looks identical to normal CMP code.
+
+**New module:** `konduit-compose-facade` (lives in the konduit repo).
+
+Package layout mirrors `androidx.compose.*` exactly:
+```
+src/commonMain/kotlin/androidx/compose/
+├── material3/   (Button, Text, Card, ... — every Tier 1+2+3 widget)
+├── foundation/layout/   (Column, Row, Box, Spacer)
+└── ui/Modifier.kt   (GuestModifier exposed as `Modifier`)
+```
+
+**This works ONLY because guest's classpath has no real AndroidX.**
+Architecture invariant: `konduit-compose-facade` is depended on by
+`presenter/` (guest), never by `composeApp/` (host). Adding it to host
+classpath = name collision = crash. **Document this as a top-of-file
+warning in the facade module's README.**
+
+**API drift sync ritual:** `docs/FACADE_SYNC.md` will record:
+- Pinned M3 version (e.g., `1.3.x`)
+- Procedure for adding a new widget when M3 ships one
+- Why we're not at the latest M3 (if applicable)
+
+**Completion test (the v1 plan's standard):** show a presenter screen
+to a Compose dev who's never heard of Konduit. They should be ~95%
+unable to tell. Acknowledge known leaks: `SchemaColor` ≠ `Color`,
+`GuestModifier` is a subset, `remember{}` semantics around QuickJS
+heap.
+
+**Deliverable:** All presenter screens migrated to facade imports. Diff
+shows only import-line changes, zero logic changes.
+
+### Phase 5 — Dev tooling rest
+**Tasks (5b + 5c from v1):**
+1. **5b Single dev command** — `./gradlew konduit:dev` chains:
+   - `:presenter:jsBrowserDevelopmentExecutable --continuous`
+   - `:dev-server:run`
+   - Tails Logcat with Konduit filter
+2. **5c Clean Logcat output** — custom `EventListener` formats events:
+   ```
+   D/Konduit: ⬇ Downloading manifest...
+   D/Konduit: ✓ Loaded HomeScreen (1.2s, fresh)
+   D/Konduit: 🔄 Reloading HomeScreen (file changed)
+   E/Konduit: ✕ HomeScreen crashed at HomeScreen.kt:47
+   ```
+   Source maps enabled in presenter:
+   ```kotlin
+   zipline { sourceMapEnabled = true }
+   ```
+
+**Deliverable:** Dev workflow is one command. Logcat is readable. File:line
+in stack traces.
+
+### Phase 6 — Standalone library principles (NOT a phase, just guardrails)
+
+This is the long-term north star: "any CMP app can adopt Konduit in a few
+steps." Not a deliverable. Maintain these architectural constraints
+across Phases 3+4+5 so we don't paint into a corner:
+
+- `konduit-host` (whatever module name we pick) must have zero knowledge
+  of any specific schema. Schema is consumed via the gradle plugin's
+  generated code.
+- Konduit ships **primitives + facade**, not domain widgets. Domain
+  widgets live in consumer apps (Caliclan today, others later).
+- `KonduitContent` is pure composable + `KonduitProvider` is the only
+  setup. No global config, no service locators.
+
+When/if Konduit goes public, this becomes Phase 6 with concrete tasks.
+Until then, treat as a review checklist for Phase 3 and 4 decisions.
+
+---
+
+## 5. Documentation deliverables
+
+Each phase produces or updates docs in the konduit repo (not Caliclan's):
+
+| Doc | Owner phase | Status |
+|---|---|---|
+| `README.md` | Phase 1.5 | Generated from upstream; needs Konduit-flavored rewrite |
+| `CHANGELOG.md` | Phase 2 | Backfill `caliclan.1` + `.2`, then living doc |
+| `docs/QUICK_START.md` | Phase 4 | "How to consume konduit in a fresh CMP app" |
+| `docs/MENTAL_MODEL.md` | Phase 4 | Host/Guest/Schema explained |
+| `docs/ADDING_A_WIDGET.md` | Phase 3 | Step-by-step; refers to WIDGET_REGISTRY.md |
+| `docs/WIDGET_REGISTRY.md` | Phase 3 | Numbered table; PR-reviewed |
+| `docs/MODIFIER_GUIDE.md` | Phase 3 | What's supported, what isn't, scope rules |
+| `docs/FACADE_SYNC.md` | Phase 4 | M3 version pin + drift procedure |
+| `docs/UPGRADING_KOTLIN.md` | Phase 2 | Which IR/FIR APIs to check, runbook |
+| `docs/CONTRIBUTING.md` | Phase 2 | Build, test, version, release |
+
+Caliclan repo continues to own:
+- `docs/PHASE_0_INVENTORY.md` ✅
+- `docs/WIDGET_CONTRACT.md` ✅ (the host-implementation contract for future native hosts)
+- `docs/KONDUIT_PLAN.md` (this file)
+
+---
+
+## 6. Glossary (canonical)
+
+| Term | Meaning |
+|---|---|
+| Host | The CMP app binary that ships to app stores. Contains widget impls, Zipline runtime, and the facade is **never** here |
+| Guest | Kotlin code compiled to `.zipline`, served from CDN. Contains screen logic. Updated without app store |
+| Schema | The contract defining available widgets. Widget IDs are the wire format — never renumbered, never reused |
+| Wire format | The on-disk/on-wire serialization of a UI tree. Stable within a major version |
+| Protocol | Serialization layer between guest Compose and host widget tree. Generated by konduit-gradle-plugin |
+| KonduitContent | Composable in the host that mounts a guest-driven screen region |
+| KonduitProvider | Wraps the app, initializes Zipline loader, makes KonduitContent work |
+| GuestModifier | Konduit's Modifier impl for guest code. Exposed as `Modifier` via the facade |
+| Facade | `konduit-compose-facade` — package-mirrors `androidx.compose.*` so guest imports look identical to real CMP |
+| `.zipline` file | Compiled QuickJS bytecode — the unit served from CDN |
+| Manifest | `manifest.zipline.json` — lists `.zipline` modules, URLs, signatures, freshness timestamp |
+| HostApi | Interface the guest calls into for native capabilities (data fetching, navigation, analytics) |
+| Caliclan | The consumer app driving this fork's existence. Internal name |
+
+---
+
+## 7. Decisions log
+
+Track every decision that resolves an ambiguity. Append-only.
+
+| Date | Decision | By |
+|---|---|---|
+| 2026-04 | Soft fork in name only — no upstream sync ritual | walsan679 |
+| 2026-04 | GitHub Packages for all artifacts (private), mavenLocal for dev | walsan679 |
+| 2026-04 | Wire-format compat: forward-compat within a major | claude (delegated) |
+| 2026-04 | Manifest signing not mandatory in production | walsan679 |
+| 2026-04 | Guest version pinning per app version: yes (versioned manifest URLs) | walsan679 |
+| 2026-04 | No new tests written; upstream snapshots preserved | walsan679 |
+| 2026-04 | Phase order: 0→1→1.5→2→3a→3→4→5→6-as-principles | walsan679 |
+| 2026-04 | App-schema range moved 200+ → 1000+ to avoid upstream collision | claude |
+| 2026-04 | `Accent1..Accent4` slots in SchemaColor for brand extensibility without bumps | claude |
+| 2026-04 | Class-name rename (`RedwoodPlugin → KonduitPlugin`) optional, may never happen | walsan679 |
