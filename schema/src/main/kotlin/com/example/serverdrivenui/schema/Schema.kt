@@ -4,118 +4,153 @@ import dev.konduit.schema.Children
 import dev.konduit.schema.Property
 import dev.konduit.schema.Schema
 import dev.konduit.schema.Widget
-import kotlin.Unit
 
+/**
+ * Phase 3 Tier 1 schema — Konduit primitives + Caliclan navigation widgets.
+ *
+ * ID ranges per docs/KONDUIT_PLAN.md §3.3:
+ *   1–10    Konduit Tier 1 (foundation widgets)
+ *   11–99   Konduit Tier 1+2 reserved
+ *   100–199 Konduit Tier 3 reserved
+ *   200–999 Future Konduit growth
+ *   1000+   Caliclan / consumer app domain widgets
+ *
+ * Wire format: widget IDs are immutable. Once assigned, never reused, never
+ * renumbered. Property additions only with defaults; major bump for any
+ * breaking change.
+ */
 @Schema(
     members = [
-        MyText::class,
-        MyButton::class,
-        MyColumn::class,
-        FlexRow::class,
-        FlexColumn::class,
+        // Tier 1 — Konduit primitives (IDs 1–10)
         Box::class,
+        Column::class,
+        Row::class,
         Spacer::class,
-        SduiTextField::class,
-        SduiSwitch::class,
-        SduiImage::class,
-        SduiCard::class,
-        // Navigation widgets
+        LazyColumn::class,
+        LazyRow::class,
+        LazyItem::class,
+        Text::class,
+        AsyncImage::class,
+        Icon::class,
+        // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
     ],
 )
 interface SduiSchema
 
-// Existing widgets
+// ============================================================================
+// Tier 1 — Konduit primitives
+// ============================================================================
+
+/** Container with z-stacked children. */
 @Widget(1)
-data class MyText(
-    @Property(1) val text: String,
-)
-
-@Widget(2)
-data class MyButton(
-    @Property(1) val text: String,
-    @Property(2) val onClick: () -> Unit,
-)
-
-@Widget(3)
-data class MyColumn(
-    @Children(1) val children: () -> Unit,
-)
-
-// Layout widgets
-@Widget(4)
-data class FlexRow(
-    @Property(1) val horizontalArrangement: String, // "Start", "Center", "End", "SpaceBetween", "SpaceAround", "SpaceEvenly"
-    @Property(2) val verticalAlignment: String, // "Top", "CenterVertically", "Bottom"
-    @Children(1) val children: () -> Unit,
-)
-
-@Widget(5)
-data class FlexColumn(
-    @Property(1) val verticalArrangement: String, // "Top", "Center", "Bottom", "SpaceBetween", "SpaceAround", "SpaceEvenly"
-    @Property(2) val horizontalAlignment: String, // "Start", "CenterHorizontally", "End"
-    @Children(1) val children: () -> Unit,
-)
-
-@Widget(6)
 data class Box(
+    @Property(1) val padding: Int,             // dp; 0 = no padding
+    @Property(2) val background: SchemaColor,  // SchemaColor.Transparent = none
+    @Property(3) val onClick: (() -> Unit)?,
     @Children(1) val children: () -> Unit,
 )
 
-@Widget(7)
+/** Vertical stack. */
+@Widget(2)
+data class Column(
+    @Property(1) val padding: Int,
+    @Property(2) val background: SchemaColor,
+    @Property(3) val verticalArrangement: SchemaArrangement,
+    @Property(4) val horizontalAlignment: SchemaHorizontalAlignment,
+    @Property(5) val fillMaxSize: Boolean,
+    @Children(1) val children: () -> Unit,
+)
+
+/** Horizontal stack. */
+@Widget(3)
+data class Row(
+    @Property(1) val padding: Int,
+    @Property(2) val background: SchemaColor,
+    @Property(3) val horizontalArrangement: SchemaArrangement,
+    @Property(4) val verticalAlignment: SchemaVerticalAlignment,
+    @Property(5) val fillMaxWidth: Boolean,
+    @Children(1) val children: () -> Unit,
+)
+
+/** Fixed-size gap. width=0 or height=0 mean unset. */
+@Widget(4)
 data class Spacer(
-    @Property(1) val width: Int,
-    @Property(2) val height: Int,
+    @Property(1) val width: Int,   // dp
+    @Property(2) val height: Int,  // dp
 )
 
-// Input widgets
+/** Lazily-rendered vertical list. Children must be LazyItem widgets. */
+@Widget(5)
+data class LazyColumn(
+    @Property(1) val padding: Int,
+    @Property(2) val fillMaxSize: Boolean,
+    @Children(1) val items: () -> Unit,
+)
+
+/** Lazily-rendered horizontal list. Children must be LazyItem widgets. */
+@Widget(6)
+data class LazyRow(
+    @Property(1) val padding: Int,
+    @Property(2) val fillMaxWidth: Boolean,
+    @Children(1) val items: () -> Unit,
+)
+
+/** Single slot inside a LazyColumn/LazyRow. */
+@Widget(7)
+data class LazyItem(
+    @Children(1) val children: () -> Unit,
+)
+
+/** Display a string. */
 @Widget(8)
-data class SduiTextField(
-    @Property(1) val value: String,
-    @Property(2) val label: String,
-    @Property(3) val placeholder: String,
-    @Property(4) val onValueChange: (String) -> Unit,
+data class Text(
+    @Property(1) val text: String,
+    @Property(2) val color: SchemaColor,
+    @Property(3) val style: SchemaTextStyle,
 )
 
+/** Display an image fetched from a URL. width=0/height=0 = intrinsic size. */
 @Widget(9)
-data class SduiSwitch(
-    @Property(1) val checked: Boolean,
-    @Property(2) val onCheckedChange: (Boolean) -> Unit,
-)
-
-// Display widgets
-@Widget(10)
-data class SduiImage(
+data class AsyncImage(
     @Property(1) val url: String,
     @Property(2) val contentDescription: String,
+    @Property(3) val width: Int,    // dp
+    @Property(4) val height: Int,   // dp
 )
 
-@Widget(11)
-data class SduiCard(
-    @Property(1) val onClick: (() -> Unit)?,
-    @Children(1) val children: () -> Unit,
+/** Material icon. size=0 = default 24dp. */
+@Widget(10)
+data class Icon(
+    @Property(1) val name: SchemaIconName,
+    @Property(2) val tint: SchemaColor,
+    @Property(3) val size: Int,
 )
 
-// ============= Navigation Widgets =============
+// ============================================================================
+// Caliclan navigation primitives (IDs 1000+)
+// ============================================================================
 
 /**
- * Container for screen content with transition support.
- * The Guest renders the current screen inside this widget.
+ * Container for the currently visible screen. The guest renders a single
+ * screen inside this widget; future versions may add transitions.
  */
-@Widget(12)
+@Widget(1000)
 data class ScreenStack(
     @Children(1) val children: () -> Unit,
 )
 
 /**
- * Back press interceptor widget.
- * When enabled, intercepts system back button (Android) and swipe gesture (iOS).
- * Calls onBack callback when triggered.
+ * Back-press / swipe-back interceptor. When enabled=true the host routes the
+ * gesture to the guest's onBack callback instead of the system default.
  */
-@Widget(13)
+@Widget(1001)
 data class BackHandler(
     @Property(1) val enabled: Boolean,
     @Property(2) val onBack: () -> Unit,
 )
 
+// Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
+// the schema-types module so they're available to every target — the schema/
+// module itself is JVM-only because konduit-schema is published JVM-only.

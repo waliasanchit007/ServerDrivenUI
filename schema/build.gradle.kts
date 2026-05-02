@@ -9,6 +9,7 @@ kotlin {
 
 dependencies {
     implementation(libs.redwood.schema)
+    implementation(project(":schema-types"))
 }
 
 redwoodSchema {

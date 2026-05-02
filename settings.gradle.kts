@@ -42,6 +42,7 @@ dependencyResolutionManagement {
 include(":composeApp")
 include(":androidApp")
 include(":schema")
+include(":schema-types")
 include(":presenter")
 include(":shared")
 include(":shared-protocol-host")

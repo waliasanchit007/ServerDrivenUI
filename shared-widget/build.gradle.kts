@@ -19,6 +19,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libs.redwood.widget)
+            api(project(":schema-types"))
         }
     }
 }
