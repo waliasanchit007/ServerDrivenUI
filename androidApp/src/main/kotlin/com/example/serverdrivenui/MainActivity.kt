@@ -40,12 +40,18 @@ import androidx.lifecycle.lifecycleScope
 class MainActivity : ComponentActivity() {
     private val hotReloadManager = HotReloadManager()
     private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         Log.d("SDUI", "MainActivity onCreate - Guest-Driven Navigation")
+
+        // Phase 3a — let the dev controller drive a manifest re-fetch on Retry.
+        // We bump the URL with a timestamp param so Treehouse treats it as new.
+        com.example.serverdrivenui.shared.KonduitDevController.registerRetryCallback {
+            manifestUrlFlow.value = "${DevConfig.manifestUrl}?retry=${System.currentTimeMillis()}"
+        }
 
         val httpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -113,6 +119,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(refreshTrigger) {
                 if (refreshTrigger > 0) {
                     Log.d("SDUI", "Hot reload triggered at $refreshTrigger")
+                    com.example.serverdrivenui.shared.KonduitDevController.reportReloading()
                     manifestUrlFlow.value = "${DevConfig.manifestUrl}?t=$refreshTrigger"
                 }
             }
@@ -167,14 +174,20 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun codeLoadSuccess(manifest: ZiplineManifest, zipline: Zipline, startValue: Any?) {
         Log.d("SDUI-Zipline", "codeLoadSuccess: modules=${manifest.modules.keys}")
+        com.example.serverdrivenui.shared.KonduitDevController.reportLoadSuccess(fresh = true)
     }
 
     override fun codeLoadFailed(exception: Exception, startValue: Any?) {
         Log.e("SDUI-Zipline", "codeLoadFailed: ${exception.message}", exception)
+        com.example.serverdrivenui.shared.KonduitDevController.reportError(
+            message = "Guest code load failed",
+            detail = exception.message,
+        )
     }
 
     override fun downloadStart(url: String): Any? {
         Log.d("SDUI-Zipline", "downloadStart: $url")
+        com.example.serverdrivenui.shared.KonduitDevController.reportDownloadStart()
         return null
     }
 
@@ -184,6 +197,10 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun downloadFailed(url: String, exception: Exception, startValue: Any?) {
         Log.e("SDUI-Zipline", "downloadFailed: $url, error=${exception.message}", exception)
+        com.example.serverdrivenui.shared.KonduitDevController.reportError(
+            message = "Manifest download failed",
+            detail = "$url\n${exception.message}",
+        )
     }
 
     override fun manifestReady(manifest: ZiplineManifest) {
@@ -192,6 +209,10 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun manifestParseFailed(exception: Exception) {
         Log.e("SDUI-Zipline", "manifestParseFailed: ${exception.message}", exception)
+        com.example.serverdrivenui.shared.KonduitDevController.reportError(
+            message = "Manifest parse failed",
+            detail = exception.message,
+        )
     }
 
     override fun mainFunctionStart(applicationName: String): Any? {

@@ -9,11 +9,14 @@
 package com.example.serverdrivenui.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
+import dev.konduit.treehouse.EventListener
 import dev.konduit.treehouse.TreehouseApp
 import dev.konduit.treehouse.TreehouseAppFactory
 import dev.konduit.treehouse.MemoryStateStore
 import dev.konduit.leaks.LeakDetector
 import app.cash.zipline.Zipline
+import app.cash.zipline.ZiplineManifest
+import app.cash.zipline.ZiplineService
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.ZiplineHttpClient
 import kotlinx.coroutines.CoroutineScope
@@ -120,6 +123,66 @@ private val manifestUrlFlow = MutableStateFlow(DevConfig.manifestUrl)
 private val hotReloadManager = HotReloadManager()
 
 /**
+ * Phase 3a — iOS event listener bridges Treehouse loader events to the
+ * shared [KonduitDevController] so the host can render error fallbacks
+ * and the dev banner.
+ */
+private object IosKonduitEventListener : EventListener() {
+    override fun ziplineCreated(zipline: Zipline) {
+        println("SDUI-iOS-Zipline: ziplineCreated")
+    }
+
+    override fun bindService(name: String, service: ZiplineService) {
+        println("SDUI-iOS-Zipline: bindService name=$name")
+    }
+
+    override fun takeService(name: String, service: ZiplineService) {
+        println("SDUI-iOS-Zipline: takeService name=$name")
+    }
+
+    override fun codeLoadSuccess(manifest: ZiplineManifest, zipline: Zipline, startValue: Any?) {
+        println("SDUI-iOS-Zipline: codeLoadSuccess: modules=${manifest.modules.keys.size}")
+        KonduitDevController.reportLoadSuccess(fresh = true)
+    }
+
+    override fun codeLoadFailed(exception: Exception, startValue: Any?) {
+        println("SDUI-iOS-Zipline: codeLoadFailed: ${exception.message}")
+        KonduitDevController.reportError(
+            message = "Guest code load failed",
+            detail = exception.message,
+        )
+    }
+
+    override fun downloadStart(url: String): Any? {
+        println("SDUI-iOS-Zipline: downloadStart: $url")
+        KonduitDevController.reportDownloadStart()
+        return null
+    }
+
+    override fun downloadFailed(url: String, exception: Exception, startValue: Any?) {
+        println("SDUI-iOS-Zipline: downloadFailed: $url, ${exception.message}")
+        KonduitDevController.reportError(
+            message = "Manifest download failed",
+            detail = "$url\n${exception.message}",
+        )
+    }
+
+    override fun manifestParseFailed(exception: Exception) {
+        println("SDUI-iOS-Zipline: manifestParseFailed: ${exception.message}")
+        KonduitDevController.reportError(
+            message = "Manifest parse failed",
+            detail = exception.message,
+        )
+    }
+}
+
+private object IosKonduitEventListenerFactory : EventListener.Factory {
+    override fun create(app: TreehouseApp<*>, manifestUrl: String?): EventListener =
+        IosKonduitEventListener
+    override fun close() {}
+}
+
+/**
  * Initialize the TreehouseApp instance.
  * SIMPLIFIED: No navigation services - Guest handles all navigation via BackHandler widget.
  */
@@ -170,9 +233,15 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     
     val app = treehouseAppFactory.create(
         appScope = appScope,
-        spec = spec
+        spec = spec,
+        eventListenerFactory = IosKonduitEventListenerFactory,
     )
-    
+
+    // Phase 3a — let the dev controller drive a manifest re-fetch on Retry.
+    KonduitDevController.registerRetryCallback {
+        manifestUrlFlow.value = "${DevConfig.manifestUrl}?retry=${kotlin.time.TimeSource.Monotonic.markNow().hashCode()}"
+    }
+
     // Connect to hot reload WebSocket
     hotReloadManager.connect(DevConfig.hotReloadUrl)
     
@@ -194,6 +263,7 @@ fun MainViewController() = ComposeUIViewController {
     LaunchedEffect(refreshTrigger) {
         if (refreshTrigger > 0) {
             println("SDUI-iOS: Hot reload triggered at $refreshTrigger")
+            KonduitDevController.reportReloading()
             manifestUrlFlow.value = "${DevConfig.manifestUrl}?t=$refreshTrigger"
         }
     }
