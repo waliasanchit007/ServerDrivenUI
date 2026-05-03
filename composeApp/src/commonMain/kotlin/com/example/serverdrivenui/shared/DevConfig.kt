@@ -16,7 +16,7 @@ object DevConfig {
      * Full base URL of the dev-server. Include scheme; omit trailing slash.
      * For ngrok, no port is needed — it terminates TLS on 443.
      */
-    const val SERVER_BASE_URL = "http://127.0.0.1:8080"
+    const val SERVER_BASE_URL = "https://proximally-dialogic-priscila.ngrok-free.dev"
 
     /**
      * Base URL for the Zipline manifest.
