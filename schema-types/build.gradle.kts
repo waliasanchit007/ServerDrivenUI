@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -9,4 +10,10 @@ kotlin {
     }
     iosArm64()
     iosSimulatorArm64()
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+        }
+    }
 }
