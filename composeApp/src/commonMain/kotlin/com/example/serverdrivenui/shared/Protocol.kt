@@ -342,12 +342,23 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
     override val value: CmpRender = { mod ->
         if (url.isNotEmpty()) {
             var m = mod
-            if (width > 0) m = m.width(width.dp)
+            m = if (width > 0) m.width(width.dp) else m.fillMaxWidth()
             if (height > 0) m = m.height(height.dp)
             CoilAsyncImage(
                 model = url,
                 contentDescription = contentDescription,
                 modifier = m,
+                onState = { state ->
+                    when (state) {
+                        is coil3.compose.AsyncImagePainter.State.Loading ->
+                            println("CmpAsyncImage: Loading $url")
+                        is coil3.compose.AsyncImagePainter.State.Success ->
+                            println("CmpAsyncImage: Success $url (${state.result.image.width}x${state.result.image.height})")
+                        is coil3.compose.AsyncImagePainter.State.Error ->
+                            println("CmpAsyncImage: Error $url: ${state.result.throwable}")
+                        else -> {}
+                    }
+                },
             )
         }
     }

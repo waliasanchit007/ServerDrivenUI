@@ -12,11 +12,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor2.KtorNetworkFetcherFactory
+import coil3.request.crossfade
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 import dev.konduit.treehouse.TreehouseApp
 import dev.konduit.treehouse.TreehouseContentSource
 import dev.konduit.treehouse.ZiplineTreehouseUi
 import dev.konduit.treehouse.composeui.TreehouseContent
+
+/**
+ * Builds the singleton ImageLoader Coil uses for AsyncImage. ktor3-based
+ * network fetcher (multiplatform — works on Android via okhttp engine,
+ * iOS via Darwin engine).
+ */
+private fun newImageLoader(context: PlatformContext): ImageLoader =
+    ImageLoader.Builder(context)
+        .components { add(KtorNetworkFetcherFactory()) }
+        .crossfade(true)
+        .build()
 
 /**
  * Content source that creates the ZiplineTreehouseUi.
@@ -49,6 +65,8 @@ fun App(
     treehouseApp: TreehouseApp<SduiAppService>?,
     showDevOverlay: Boolean = true,
 ) {
+    setSingletonImageLoaderFactory { context -> newImageLoader(context) }
+
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),

@@ -46,7 +46,7 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor"
 ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 ktor-server-host-common = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version = "3.0.4" }
-coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version = "3.0.4" }
+coil-network-ktor2 = { module = "io.coil-kt.coil3:coil-network-ktor2", version = "3.0.4" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 

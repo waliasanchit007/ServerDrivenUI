@@ -79,7 +79,7 @@ kotlin {
             implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor3)
+            implementation(libs.coil.network.ktor2)
         }
     }
         
