@@ -472,9 +472,56 @@ since the foundation is laid (schema-types, theme bindings, factory
 pattern, modifier wiring). Estimate: **Tier 2's 30 widgets in 2-3
 batches of 10** (buttons → input → containers/selection/feedback/nav).
 
-**Tier 2 — Core M3** (~30 widgets, IDs 21–80): buttons, text fields,
-selection controls, containers, feedback, navigation structure.
-Re-spec'd after Tier 1 retrospective.
+**Tier 2 — Core M3** (~30 widgets, IDs 21–80). Re-spec'd post-Tier-1
+into 8 ordered batches. Each batch ends with a build + device verify
+on Android (mandatory) and iOS sim (rapid-verify ritual, see §8.3).
+
+**Batch 2.0 — LayoutModifier system (foundation)**
+Land before any Tier 2 widget. See §8.2 for full design. One commit
+that:
+- Adds `dev.konduit:konduit-layout-modifiers` as a `redwoodSchema`
+  source in Caliclan's schema build.
+- Defines the modifier set in Caliclan's schema:
+  `Padding`, `Size`, `Width`, `Height`, `Background`, `Weight`,
+  `Clickable`, `FillMaxWidth`, `FillMaxHeight`, `FillMaxSize`, `Alpha`.
+- Migrates Tier 1 widgets off their direct properties (`padding`,
+  `background`, `fillMaxSize`, etc.) onto the modifier chain.
+- Updates `Tier1ShowcaseScreen` to use the new modifier syntax.
+- Verification gate: existing Tier 1 showcase still renders
+  identically on Android + iOS.
+
+**Batch 2.1 — Buttons + click feedback** (IDs 21–28)
+Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton,
+IconButton, FloatingActionButton, ExtendedFloatingActionButton.
+All share a common Cmp* pattern (lambda + label slot + variants).
+
+**Batch 2.2 — Inputs** (IDs 31–33)
+TextField, OutlinedTextField, SearchBar.
+Shared state pattern (value + onValueChange).
+
+**Batch 2.3 — Selection** (IDs 41–46)
+Checkbox, RadioButton, Switch, Slider, RangeSlider, SegmentedButton.
+Shared `value` + `onChange` event pattern.
+
+**Batch 2.4 — Containers** (IDs 51–54)
+Card, ElevatedCard, OutlinedCard, Surface.
+Trivial wrappers around their Compose counterparts; can land in one
+commit.
+
+**Batch 2.5 — Feedback** (IDs 61–64)
+LinearProgressIndicator, CircularProgressIndicator, Badge, Snackbar.
+Mostly stateless except Snackbar (which needs a host-side queue).
+
+**Batch 2.6 — Navigation structure** (IDs 71–78)
+Scaffold, TopAppBar, LargeTopAppBar, MediumTopAppBar, NavigationBar,
+NavigationBarItem, TabRow, Tab. Only batch that needs new schema
+capability: **named slots** (TopAppBar's `title`/`navigationIcon`/
+`actions`, Scaffold's `topBar`/`bottomBar`/`floatingActionButton`/
+`content`). Plan: extend `@Children(N)` with a slot name; the Konduit
+schema generator already supports this — verify upstream pattern.
+
+**Batch 2.7 — Misc closeout** (IDs 79–80)
+HorizontalDivider, VerticalDivider. Trivial.
 
 **Tier 3 — Extended** (~16 widgets, IDs 81–150): chips, list items,
 flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh,
@@ -645,7 +692,180 @@ Caliclan repo continues to own:
 
 ---
 
-## 7. Decisions log
+## 7. Course corrections (May 2026 — post-Tier 1)
+
+After Phase 3 Tier 1 landed and was verified end-to-end on both Android
+and iOS, we agreed on five corrections to apply before Tier 2 starts.
+
+### 8.1 Open the Caliclan PR before Tier 2
+
+The branch `claude/vigilant-euclid-681447` has 12+ commits stacked since
+the last main merge. Stacking another 30+ Tier 2 commits on top makes
+review impossibly large. Action: open a PR for the Tier 1 work now,
+review/squash → land on main, cut Tier 2 from a clean base.
+
+The PR is the formal "Phase 3 Tier 1 closure" event.
+
+### 8.2 Introduce the LayoutModifier system at Tier 2 start
+
+Tier 1 widgets used direct `@Property` fields (`padding: Int`,
+`background: SchemaColor`, `fillMaxSize: Boolean`, etc.) for layout
+concerns. That choice was acceptable for 10 widgets but does not scale
+— Tier 2's 30 widgets each multiply the property count and the schema
+becomes unmaintainable. Worse, it can't express composable orthogonal
+concerns (e.g., a `Button` that's `clickable` AND `padded` AND
+`weight=1f` inside a Row).
+
+**Solution: adopt Konduit's `konduit-layout-modifiers` module** — same
+pattern Redwood/Konduit uses for upstream's own widgets. Caliclan's
+schema declares which modifiers it wants; the Konduit gradle plugin
+generates the wrappers; host Cmp* widgets receive a typed `Modifier`
+chain and apply it.
+
+**Modifier set for Tier 2 baseline** (declared in Caliclan's schema):
+
+| Modifier | Args | Maps to Compose |
+|---|---|---|
+| `Padding` | start, top, end, bottom: Int (dp); 0 = none | `Modifier.padding(...)` |
+| `Size` | width, height: Int (dp) | `Modifier.size(width.dp, height.dp)` |
+| `Width` | value: Int (dp) | `Modifier.width(value.dp)` |
+| `Height` | value: Int (dp) | `Modifier.height(value.dp)` |
+| `Background` | color: SchemaColor | `Modifier.background(color)` |
+| `Weight` | value: Float | `Modifier.weight(value)` (Column/Row scope only) |
+| `Clickable` | onClick: () -> Unit | `Modifier.clickable { onClick() }` |
+| `FillMaxWidth` | — | `Modifier.fillMaxWidth()` |
+| `FillMaxHeight` | — | `Modifier.fillMaxHeight()` |
+| `FillMaxSize` | — | `Modifier.fillMaxSize()` |
+| `Alpha` | value: Float | `Modifier.alpha(value)` |
+
+These cover ≥90% of real Compose modifier usage. Add more if needed
+but resist the urge to add `graphicsLayer{}`, `pointerInput{}`,
+`drawBehind{}` — those don't fit the schema model.
+
+**Migration of Tier 1 widgets:** existing direct properties
+(`padding`, `background`, `fillMaxSize`, `fillMaxWidth`, `verticalArrangement`,
+`horizontalAlignment`, `verticalAlignment`, `horizontalArrangement`)
+collapse onto the modifier chain. The widgets themselves get simpler:
+
+  ```kotlin
+  // Before (Tier 1)
+  @Widget(2)
+  data class Column(
+      @Property(1) val padding: Int,
+      @Property(2) val background: SchemaColor,
+      @Property(3) val verticalArrangement: SchemaArrangement,
+      @Property(4) val horizontalAlignment: SchemaHorizontalAlignment,
+      @Property(5) val fillMaxSize: Boolean,
+      @Children(1) val children: () -> Unit,
+  )
+
+  // After (Batch 2.0)
+  @Widget(2)
+  data class Column(
+      @Property(1) val verticalArrangement: SchemaArrangement,
+      @Property(2) val horizontalAlignment: SchemaHorizontalAlignment,
+      @Children(1) val children: () -> Unit,
+  )
+  // padding, background, fillMaxSize move to the modifier chain
+  ```
+
+**Wire format implication:** this is a Tier 1 schema rewrite that
+removes properties (3 from Box, 5 from Column, 5 from Row, 2 from
+LazyColumn, 2 from LazyRow). Per §3.1 that's a major-bumpable change.
+But — Tier 1 has not been deployed to any production guest, so we can
+treat Batch 2.0 as a "schema reset within the same major version" and
+keep `1.0.0-caliclan.N`. Document this caveat in the Batch 2.0 commit
+message.
+
+**Verification gate for Batch 2.0:** existing `Tier1ShowcaseScreen`
+renders identically on Android and iOS after migration.
+
+### 8.3 iOS rapid-verify ritual
+
+Tier 1 verification on iOS was painful: build → manually open Xcode →
+run on sim → check log. Tier 2's 8 batches × 2 platforms = 16 verify
+cycles. We need a faster loop.
+
+**Action:** add a script `scripts/verify-ios.sh` (Caliclan repo):
+
+  ```bash
+  #!/usr/bin/env bash
+  set -e
+  ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+  ./gradlew :presenter:compileDevelopmentExecutableKotlinJsZipline
+  open iosApp/iosApp.xcodeproj
+  echo "Now: hit ⌘R in Xcode. Once running, glance at Xcode's console."
+  ```
+
+Counterpart `scripts/verify-android.sh`:
+
+  ```bash
+  #!/usr/bin/env bash
+  set -e
+  ./gradlew :androidApp:installDebug
+  adb shell pm clear com.example.serverdrivenui
+  adb shell am start -n com.example.serverdrivenui/.MainActivity
+  ```
+
+Run after every Batch 2.x commit. Ensures iOS doesn't bit-rot the way
+it would if we waited until the end of Tier 2 to test.
+
+### 8.4 Phase 4 Compose Facade — defer (reclassify nice-to-have)
+
+Plan v2 §4 had a full Phase 4 spec for `konduit-compose-facade`,
+making guest imports look like:
+
+  ```kotlin
+  import androidx.compose.foundation.layout.Box  // facade
+  ```
+
+instead of
+
+  ```kotlin
+  import com.example.serverdrivenui.schema.compose.Box  // current
+  ```
+
+After Tier 1, the current schema-direct path is clean enough that the
+facade's "make it look like real CMP" goal is mostly cosmetic. The
+real benefit (familiar imports for Compose-experienced devs) doesn't
+justify the cost (mirror M3 surface, sync ritual, classpath fragility).
+
+**Action:** reclassify Phase 4 from "must do" to "do iff Konduit goes
+public OR a developer onboarding survey says imports are confusing".
+Cross out from the Tier 1→2→3→4→5 default path. If we revisit, it'll
+be after Tier 3 is done and we have data on developer ergonomics.
+
+Phase 4's deferral does NOT affect Phase 5 (rest of dev tooling) —
+that runs after Tier 2/3.
+
+### 8.5 Add Caliclan CI build gate
+
+Currently the Caliclan repo (`waliasanchit007/ServerDrivenUI`) has no
+CI. Konduit has CI but only validates Konduit changes; Caliclan's
+schema changes (where most Tier 2 work happens) get no automated
+build check before PR merge.
+
+**Action:** add `.github/workflows/ci.yml` to Caliclan that runs:
+
+  ```yaml
+  - ./gradlew :androidApp:assembleDebug
+  - ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+  - ./gradlew :presenter:compileDevelopmentExecutableKotlinJsZipline
+  ```
+
+on every PR + push to main. macOS-only (same reasoning as Konduit's CI).
+30-min timeout. Caches `~/.gradle`. Catches:
+- Schema codegen failures (missing imports, malformed @Property)
+- Missing `@Serializable` on enums
+- iOS framework link issues
+- Presenter zipline compile errors
+
+Land this AFTER Batch 2.0 (the LayoutModifier migration) so the CI
+exercises the new modifier system from day one.
+
+---
+
+## 8. Decisions log
 
 Track every decision that resolves an ambiguity. Append-only.
 
@@ -665,3 +885,9 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Schema split into `schema/` (JVM-only, @Schema/@Widget defs) + `schema-types/` (KMP, plain @Serializable enums) | claude |
 | 2026-05 | Coil network: `coil-network-ktor2` (matches our Ktor 2.3.12), set up via `setSingletonImageLoaderFactory` in App.kt | claude |
 | 2026-05 | Drop Linux CI, single macOS-only validator (Linux runner hung at 58m on cache restore) | walsan679 |
+| 2026-05 | Course correction post-Tier-1: open Caliclan PR before Tier 2 starts | walsan679 |
+| 2026-05 | Course correction: introduce LayoutModifier system as Batch 2.0 (foundation before Tier 2 widgets) | walsan679 |
+| 2026-05 | Course correction: add iOS rapid-verify ritual + per-batch verification cycle | walsan679 |
+| 2026-05 | Course correction: defer Phase 4 Compose Facade to "nice-to-have", revisit only if Konduit goes public | walsan679 |
+| 2026-05 | Course correction: add Caliclan CI build gate (after Batch 2.0) | walsan679 |
+| 2026-05 | Tier 2 batching: 8 ordered batches (2.0 modifiers → 2.1 buttons → 2.2 inputs → 2.3 selection → 2.4 containers → 2.5 feedback → 2.6 nav structure → 2.7 misc closeout) | walsan679 |
