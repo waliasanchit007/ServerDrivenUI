@@ -134,12 +134,12 @@ These will bite you again on Tier 2+. They're documented in `KONDUIT_PLAN.md`
 ## What's pending
 
 ### Tier 1 closure
-- [ ] Verify Tier 1 showcase end-to-end on iOS sim (build is green; runtime
-      blocked on the user's Wi-Fi network — both AP isolation and ngrok edge
-      transit are flaky on the current setup)
-- [ ] Confirm AsyncImage renders on Android once network cooperates (the
-      Coil ktor2 fix at `b23c2c3` was correct but the manifest fetch was
-      failing during last verification)
+- [x] All 10 widgets verified rendering on Android (Galaxy S22 Ultra) —
+      including AsyncImage with the `coil-network-ktor2` + scrollable
+      `LazyColumn` fix at `b23c2c3`.
+- [ ] Verify Tier 1 showcase end-to-end on iOS sim (build green; runtime
+      pending — user's Wi-Fi has been flaky for ngrok edge transit, so
+      retry whenever the next session has a stable network)
 
 ### Caliclan branch
 - [ ] Push `claude/vigilant-euclid-681447` to origin (10 commits, no PR yet)
