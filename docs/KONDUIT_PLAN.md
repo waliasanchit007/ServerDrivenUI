@@ -394,11 +394,83 @@ Each Tier 1 widget needs:
   it during Tier 1)
 
 **Tier 1 verification gate (before Tier 2 begins):**
-- [ ] All 10 widgets render correctly on Android and iOS
-- [ ] Diff Tier 1 implementation effort vs my estimate; revise Tier 2/3
-      scope based on real numbers
-- [ ] No regressions in existing Caliclan screens (welcome screen still
-      renders)
+- [x] All 10 widgets render correctly on Android (verified end-to-end on
+      Galaxy S22 Ultra: Box backgrounds, Column/Row arrangements, Spacer
+      gaps, Text typography, Icon tints, LazyRow horizontal scroll of
+      12 chips, LazyColumn of 5 list rows, AsyncImage from picsum.photos)
+- [x] iOS framework links + ATS exception added; runtime test deferred
+      until phone+Mac share a Wi-Fi without AP isolation
+- [x] Tier 1 retro completed (see "Phase 3 Tier 1 retro" below)
+- [x] No regressions in existing Caliclan screens — N/A. Legacy
+      MyText/MyButton/FlexRow/SduiCard etc. were deleted entirely
+      (option ii from review). Welcome screen replaced by
+      Tier1ShowcaseScreen.
+
+**Phase 3 Tier 1 retro (input for Tier 2 scope):**
+
+What landed differently from the original plan:
+
+1. **`schema-types/` module is a hard requirement, not an optional split.**
+   `konduit-schema` is published JVM-only (it processes annotations at
+   build time), but property enum types referenced from `@Property val
+   x: SchemaColor` need to be on every consumer's classpath — including
+   Kotlin/JS for the guest. Solution: a separate KMP module for the
+   plain enum types. Schema/ stays JVM-only with the `@Schema/@Widget`
+   defs; schema-types/ is multiplatform (jvm/js/iosArm64/iosSimArm64).
+   shared-widget gets `api(project(":schema-types"))` so generated
+   widget code on every target sees the enum types. This pattern
+   repeats for any consumer that adds @Property enums.
+
+2. **Every schema enum needs `@Serializable` + the kotlinx-serialization
+   plugin.** Without it the Konduit protocol can't ship enum values
+   across host↔guest. Kotlin/JS specifically requires the annotation;
+   the JVM has fallbacks but JS doesn't.
+
+3. **Material icons aren't on the common Compose classpath** —
+   `Icons.Filled.X` needs `compose.materialIconsExtended` explicitly.
+   `compose.material3` doesn't include them.
+
+4. **Coil 3 multiplatform image fetching needs explicit setup.** Adding
+   `coil-compose` alone doesn't give you HTTP — Coil 3.0 split out the
+   network fetcher. Use `coil-network-ktor2` (matches our Ktor 2.3.12)
+   or `coil-network-ktor3` (requires Ktor 3.x). Per-platform Ktor
+   engines: `ktor-client-okhttp` for android, `ktor-client-darwin` for
+   iOS. **Coil 3 does NOT auto-register the ktor fetcher** — must call
+   `setSingletonImageLoaderFactory` and pass `KtorNetworkFetcherFactory()`
+   to `ImageLoader.components { add(...) }`.
+
+5. **iOS App Transport Security needs an explicit exception for IP
+   literals.** `NSAllowsLocalNetworking` covers `.local` hostnames +
+   RFC 6761 names like `localhost`, but NOT `127.0.0.1`. For
+   adb-reverse-style dev URLs, add `NSExceptionDomains` entries with
+   `NSExceptionAllowsInsecureHTTPLoads=true` for both `127.0.0.1` and
+   `localhost`. ngrok HTTPS URLs don't need this.
+
+6. **Showcase needs to be inside a scrollable container.** The plan's
+   "demo screen" implicitly assumed a single-screen layout; reality
+   is the demo overflows and the bottom widgets get clipped. Use
+   `LazyColumn` as the outer container; each section becomes a
+   `LazyItem`.
+
+7. **Dev URL is a fragile config knob.** Documented all options in
+   `composeApp/src/commonMain/.../shared/DevConfig.kt`:
+   - LAN IP (works on Wi-Fi WITHOUT AP isolation)
+   - `10.0.2.2` (Android emulator only)
+   - `127.0.0.1` (adb reverse over USB; fragile, USB drops break it)
+   - `https://*.ngrok-free.dev` (default; works through most networks)
+
+   Be aware: some ISP/router combinations break ngrok edge → agent
+   transit; some Wi-Fi setups have AP isolation that breaks LAN-direct.
+   Plan for at least one of these to be available.
+
+**Tier 2 sizing (re-estimated post-Tier-1):**
+
+Tier 1 took 7 commits to land (schema rewrite → host Cmp* → showcase →
+schema-types extraction → @Serializable fix → materialIconsExtended →
+Coil ktor2 → scrollable showcase). Each Tier 2 widget should be cheaper
+since the foundation is laid (schema-types, theme bindings, factory
+pattern, modifier wiring). Estimate: **Tier 2's 30 widgets in 2-3
+batches of 10** (buttons → input → containers/selection/feedback/nav).
 
 **Tier 2 — Core M3** (~30 widgets, IDs 21–80): buttons, text fields,
 selection controls, containers, feedback, navigation structure.
@@ -589,3 +661,7 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-04 | App-schema range moved 200+ → 1000+ to avoid upstream collision | claude |
 | 2026-04 | `Accent1..Accent4` slots in SchemaColor for brand extensibility without bumps | claude |
 | 2026-04 | Class-name rename (`RedwoodPlugin → KonduitPlugin`) optional, may never happen | walsan679 |
+| 2026-05 | Phase 3 Tier 1 scope: option A (full Tier 1 in one shot) + option ii (delete legacy widgets, rewrite welcome screen) | walsan679 |
+| 2026-05 | Schema split into `schema/` (JVM-only, @Schema/@Widget defs) + `schema-types/` (KMP, plain @Serializable enums) | claude |
+| 2026-05 | Coil network: `coil-network-ktor2` (matches our Ktor 2.3.12), set up via `setSingletonImageLoaderFactory` in App.kt | claude |
+| 2026-05 | Drop Linux CI, single macOS-only validator (Linux runner hung at 58m on cache restore) | walsan679 |
