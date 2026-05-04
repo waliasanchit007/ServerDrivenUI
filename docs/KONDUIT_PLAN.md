@@ -731,12 +731,13 @@ chain and apply it.
 | `Width` | value: Int (dp) | `Modifier.width(value.dp)` |
 | `Height` | value: Int (dp) | `Modifier.height(value.dp)` |
 | `Background` | color: SchemaColor | `Modifier.background(color)` |
-| `Weight` | value: Float | `Modifier.weight(value)` (Column/Row scope only) |
-| `Clickable` | onClick: () -> Unit | `Modifier.clickable { onClick() }` |
+| `Weight` | value: Double | `Modifier.weight(value.toFloat())` (Row/Column scope only) |
 | `FillMaxWidth` | — | `Modifier.fillMaxWidth()` |
 | `FillMaxHeight` | — | `Modifier.fillMaxHeight()` |
 | `FillMaxSize` | — | `Modifier.fillMaxSize()` |
-| `Alpha` | value: Float | `Modifier.alpha(value)` |
+| `Alpha` | value: Double | `Modifier.alpha(value.toFloat())` |
+
+**Dropped from the original §8.2 set:** `Clickable(onClick: () -> Unit)`. Konduit's protocol-guest codegen emits `ContextualSerializer(Function0<Unit>::class)` for lambda-typed modifier properties, which is invalid Kotlin (class literal not allowed on a generic type) and fails the JS compile. Click handlers stay as direct widget `@Property` fields — `Box.onClick` for now, `Button.onClick` etc. in Batch 2.1. If this codegen bug ever gets fixed in the konduit fork, we can revisit.
 
 These cover ≥90% of real Compose modifier usage. Add more if needed
 but resist the urge to add `graphicsLayer{}`, `pointerInput{}`,
@@ -891,3 +892,7 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Course correction: defer Phase 4 Compose Facade to "nice-to-have", revisit only if Konduit goes public | walsan679 |
 | 2026-05 | Course correction: add Caliclan CI build gate (after Batch 2.0) | walsan679 |
 | 2026-05 | Tier 2 batching: 8 ordered batches (2.0 modifiers → 2.1 buttons → 2.2 inputs → 2.3 selection → 2.4 containers → 2.5 feedback → 2.6 nav structure → 2.7 misc closeout) | walsan679 |
+| 2026-05 | Batch 2.0 architecture: new `:shared-modifier` gradle module applies `dev.konduit.generator.modifiers` plugin; modifiers live as `@Modifier`-annotated classes alongside `@Widget`s in `:schema`; widget consumers depend transitively on the generated `*.schema.modifier.X` interfaces | claude |
+| 2026-05 | Batch 2.0 scope reduction: drop `Clickable(onClick: () -> Unit)` modifier — Konduit codegen for lambda-typed modifier properties emits invalid Kotlin/JS (`Function0<Unit>::class`). Click handlers live as widget `@Property` instead. | claude |
+| 2026-05 | Batch 2.0 Weight scoping: keep Weight as an `UnscopedElement` for now and have CmpRow/CmpColumn extract it from each child's modifier chain at render time. Promoting to a `ScopedElement` is a follow-up that needs RowScope/ColumnScope schema additions and Children-receiver changes. | claude |
+| 2026-05 | Batch 2.0 wire-format reset: removed properties from Box (3), Column (3), Row (3), LazyColumn (2), LazyRow (2). Tier 1 was never deployed → schema reset within `1.0.0-caliclan.N`, no major bump. | walsan679 |

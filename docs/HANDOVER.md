@@ -13,8 +13,11 @@
 | 2 — CI + GitHub Packages publish | ✅ | konduit `.github/workflows/{ci,publish,compat-matrix}.yml`; macOS-only after Linux runner kept hanging |
 | 3a — Dev tooling slices (error boundary + reload overlay) | ✅ | `composeApp/src/commonMain/.../shared/{KonduitDevState,KonduitDevOverlay}.kt` + `App.kt` wiring |
 | 3 — Schema redesign Tier 1 | ✅ | 10 widgets at IDs 1–10 + 2 nav at 1000+ + theme enums + showcase |
+| Batch 2.0 — LayoutModifier system | ✅ (compiles; on-device verify pending) | new `:shared-modifier` module + 10 modifiers + Tier 1 widget rewrite + showcase migration |
 
 **Tier 1 verified end-to-end on BOTH Android (Galaxy S22 Ultra) and iOS sim** — all 10 widgets render, including AsyncImage via Coil + ktor2.
+
+**Batch 2.0 compile-verified on Android `assembleDebug` + iOS `linkDebugFrameworkIosSimulatorArm64` + presenter `compileDevelopmentExecutableKotlinJsZipline`. Device parity verification still pending — run on phone + sim before declaring the batch fully done.**
 
 **Konduit fork** (private): `https://github.com/waliasanchit007/konduit`
 - `main` at `975c9cdaa` (Phase 2 + Linux CI drop)
@@ -32,7 +35,10 @@
 - `b23c2c3` Coil ktor2 fetcher + scrollable showcase
 - `7be7a14` Plan retro + handover doc
 - `478eb09` HANDOVER: Tier 1 fully verified on Android
-- *PR open after Tier 1 — see "What's pending"*
+- `aec5d70` Plan v3: Tier 2 batch order + 5 course corrections
+- *Batch 2.0 commit lands here once committed.*
+
+**Caliclan PR #1:** https://github.com/waliasanchit007/ServerDrivenUI/pull/1 (open).
 
 ## Current state
 
@@ -126,6 +132,10 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
    - 127.0.0.1: adb reverse over USB; flaky if USB drops
    - ngrok HTTPS: works through most networks; can be blocked by some ISPs
 
+8. **Konduit codegen for lambda-typed modifier properties is broken on Kotlin/JS.** A `@Modifier` data class containing `val onClick: () -> Unit` (or any `Function0<Unit>`) makes the protocol-guest gen emit `ContextualSerializer(Function0<Unit>::class)` — invalid Kotlin syntax (class literal not allowed on a generic type). This bit us during Batch 2.0; we dropped the planned `Clickable` modifier and kept `onClick` as a direct `@Property` on `Box`. **Convention going forward:** click handlers / lambdas live on the widget that needs them, never on a modifier. Tier 2 buttons / IconButton / FAB will follow this rule.
+
+9. **Layout modifier classes need their own gradle module.** Konduit's `dev.konduit.generator.modifiers` plugin produces the cross-platform `*.schema.modifier.X` interfaces consumed by the generated factory. Caliclan added `:shared-modifier` for this purpose. The widget generator (`:shared-widget`) depends on it via `api(project(":shared-modifier"))` so transitive consumers (composeApp host, presenter guest, protocol modules) all see the modifier interfaces.
+
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 
 Five corrections agreed before Tier 2 starts:
@@ -144,8 +154,8 @@ Five corrections agreed before Tier 2 starts:
 
 | Batch | Scope | IDs | Notes |
 |---|---|---|---|
-| **2.0** | LayoutModifier system + Tier 1 migration | — | Foundation; gate on showcase-still-renders parity |
-| 2.1 | Buttons (Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton, IconButton, FAB, ExtendedFAB) | 21–28 | |
+| ✅ **2.0** | LayoutModifier system + Tier 1 migration | — | 10 modifiers (no `Clickable` — codegen blocker, see gotcha #8). Compile-green on Android + iOS + guest. Device parity verify TODO. |
+| 2.1 | Buttons (Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton, IconButton, FAB, ExtendedFAB) | 21–28 | onClick stays a widget @Property per gotcha #8 |
 | 2.2 | Inputs (TextField, OutlinedTextField, SearchBar) | 31–33 | |
 | 2.3 | Selection (Checkbox, RadioButton, Switch, Slider, RangeSlider, SegmentedButton) | 41–46 | |
 | 2.4 | Containers (Card, ElevatedCard, OutlinedCard, Surface) | 51–54 | One commit |
@@ -160,12 +170,12 @@ Each batch ends with a build + device verify on Android (mandatory) and iOS sim 
 ### Caliclan branch
 - [ ] Open PR for Tier 1 work on `claude/vigilant-euclid-681447`. PR description should reference HANDOVER.md and the 12 commits since main.
 
-### Tier 2 — Batch 2.0 (FIRST WORK FOR NEXT SESSION)
-- [ ] Inspect `dev.konduit:konduit-layout-modifiers` to understand the upstream `@LayoutModifier` shape.
-- [ ] Add modifier set to Caliclan's schema (Padding, Size, Width, Height, Background, Weight, Clickable, FillMaxWidth, FillMaxHeight, FillMaxSize, Alpha).
-- [ ] Migrate Tier 1 widgets off direct properties onto modifier chain.
-- [ ] Update `Tier1ShowcaseScreen` to use modifier syntax.
-- [ ] Verification: showcase renders identically on Android + iOS.
+### Tier 2 — Batch 2.0 ✅ (compile-verified, device verify pending)
+- [x] Inspect `dev.konduit:konduit-layout-modifiers` to understand the upstream `@Modifier` shape.
+- [x] Add modifier set to Caliclan's schema (Padding, Size, Width, Height, Background, Weight, FillMaxWidth, FillMaxHeight, FillMaxSize, Alpha — Clickable dropped per gotcha #8).
+- [x] Migrate Tier 1 widgets off direct properties onto modifier chain.
+- [x] Update `Tier1ShowcaseScreen` to use modifier syntax.
+- [ ] **Run on Android + iOS sim** to confirm parity with pre-Batch 2.0 visual output. This is the formal verification gate for §8.2.
 
 ### Tier 2 — Batches 2.1–2.7
 After Batch 2.0, follow the table above. Each batch lands as one or more commits with:
@@ -214,10 +224,10 @@ For Batch 2.0 specifically, also inspect:
 
 > Continue Konduit / Caliclan work. Read `docs/HANDOVER.md` and `docs/KONDUIT_PLAN.md` first.
 >
-> Phase 3 Tier 1 is fully verified on Android + iOS. The Caliclan branch `claude/vigilant-euclid-681447` is pushed to origin with 12 commits.
+> Phase 3 Tier 1 + Batch 2.0 are compile-verified on Android assemble, iOS framework link, and guest .zipline build. Device parity for Batch 2.0 still needs to happen.
 >
-> First task: open the PR for Tier 1 work (course correction §7.1).
+> First task: run the showcase on a real Android device + iOS sim and confirm Tier1ShowcaseScreen renders the same as pre-Batch 2.0 (this is the §8.2 verification gate).
 >
-> Second task: Batch 2.0 — introduce the LayoutModifier system per plan §7.2. Inspect `~/AndroidStudioProjects/konduit/konduit-layout-modifiers/` for upstream patterns, then add the modifier set to Caliclan's schema, migrate Tier 1 widgets off direct properties, update `Tier1ShowcaseScreen`. Verification gate: showcase renders identically on Android + iOS.
+> Second task: Batch 2.1 — Buttons (IDs 21–28) per plan §4. Keep `onClick: (() -> Unit)?` as a direct widget @Property, NOT a modifier (gotcha #8 — Konduit codegen for lambda-typed modifier properties is broken on Kotlin/JS).
 >
-> Third task onwards: Batches 2.1 through 2.7 per plan §4 Tier 2 table.
+> Third task onwards: Batches 2.2 through 2.7 per plan §4 Tier 2 table.

@@ -1,23 +1,30 @@
 package com.example.serverdrivenui.schema
 
 import dev.konduit.schema.Children
+import dev.konduit.schema.Modifier
 import dev.konduit.schema.Property
 import dev.konduit.schema.Schema
 import dev.konduit.schema.Widget
 
 /**
- * Phase 3 Tier 1 schema — Konduit primitives + Caliclan navigation widgets.
+ * Phase 3 Tier 1 schema (post Batch 2.0) — Konduit primitives + Caliclan
+ * navigation widgets, plus the LayoutModifier set.
  *
- * ID ranges per docs/KONDUIT_PLAN.md §3.3:
+ * Widget ID ranges per docs/KONDUIT_PLAN.md §3.3:
  *   1–10    Konduit Tier 1 (foundation widgets)
- *   11–99   Konduit Tier 1+2 reserved
+ *   11–99   Konduit Tier 2 reserved
  *   100–199 Konduit Tier 3 reserved
  *   200–999 Future Konduit growth
  *   1000+   Caliclan / consumer app domain widgets
  *
+ * Modifier tag space is independent of widget tag space; Caliclan modifiers
+ * start at 1.
+ *
  * Wire format: widget IDs are immutable. Once assigned, never reused, never
  * renumbered. Property additions only with defaults; major bump for any
- * breaking change.
+ * breaking change. Batch 2.0 removes the Tier 1 layout properties (padding,
+ * background, fillMaxSize, etc.) — per HANDOVER.md it's treated as a
+ * "schema reset within the same major" since Tier 1 was never deployed.
  */
 @Schema(
     members = [
@@ -35,46 +42,66 @@ import dev.konduit.schema.Widget
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
+        // Layout modifiers (tags 1–11)
+        Padding::class,
+        Size::class,
+        Width::class,
+        Height::class,
+        Background::class,
+        Weight::class,
+        FillMaxWidth::class,
+        FillMaxHeight::class,
+        FillMaxSize::class,
+        Alpha::class,
     ],
 )
 interface SduiSchema
 
 // ============================================================================
-// Tier 1 — Konduit primitives
+// Tier 1 — Konduit primitives (post LayoutModifier migration)
 // ============================================================================
 
-/** Container with z-stacked children. */
+/**
+ * Container with z-stacked children. Layout is modifier-driven; the lone
+ * direct property is [onClick] because the codegen path for lambda-typed
+ * modifier properties is broken on Kotlin/JS (`Function0<Unit>::class` is
+ * not a valid class literal). Tier 2 widgets that take callbacks (Button,
+ * IconButton, etc.) follow the same convention — keep the lambda as a
+ * widget @Property, not a Modifier.
+ */
 @Widget(1)
 data class Box(
-    @Property(1) val padding: Int,             // dp; 0 = no padding
-    @Property(2) val background: SchemaColor,  // SchemaColor.Transparent = none
-    @Property(3) val onClick: (() -> Unit)?,
+    @Property(1) val onClick: (() -> Unit)?,
     @Children(1) val children: () -> Unit,
 )
 
-/** Vertical stack. */
+/**
+ * Vertical stack. Container axis properties (arrangement / cross-axis
+ * alignment) stay as direct @Property; per-child layout (padding,
+ * background, weight, fillMax*) lives on the modifier chain.
+ */
 @Widget(2)
 data class Column(
-    @Property(1) val padding: Int,
-    @Property(2) val background: SchemaColor,
-    @Property(3) val verticalArrangement: SchemaArrangement,
-    @Property(4) val horizontalAlignment: SchemaHorizontalAlignment,
-    @Property(5) val fillMaxSize: Boolean,
+    @Property(1) val verticalArrangement: SchemaArrangement,
+    @Property(2) val horizontalAlignment: SchemaHorizontalAlignment,
     @Children(1) val children: () -> Unit,
 )
 
-/** Horizontal stack. */
+/** Horizontal stack. Same modifier model as [Column]. */
 @Widget(3)
 data class Row(
-    @Property(1) val padding: Int,
-    @Property(2) val background: SchemaColor,
-    @Property(3) val horizontalArrangement: SchemaArrangement,
-    @Property(4) val verticalAlignment: SchemaVerticalAlignment,
-    @Property(5) val fillMaxWidth: Boolean,
+    @Property(1) val horizontalArrangement: SchemaArrangement,
+    @Property(2) val verticalAlignment: SchemaVerticalAlignment,
     @Children(1) val children: () -> Unit,
 )
 
-/** Fixed-size gap. width=0 or height=0 mean unset. */
+/**
+ * Fixed-size gap. width=0 or height=0 mean unset.
+ *
+ * Spacer keeps direct width/height properties because they ARE the widget —
+ * not redundant decoration like Box's padding. Modifier-based sizing also
+ * works on top of these.
+ */
 @Widget(4)
 data class Spacer(
     @Property(1) val width: Int,   // dp
@@ -84,16 +111,12 @@ data class Spacer(
 /** Lazily-rendered vertical list. Children must be LazyItem widgets. */
 @Widget(5)
 data class LazyColumn(
-    @Property(1) val padding: Int,
-    @Property(2) val fillMaxSize: Boolean,
     @Children(1) val items: () -> Unit,
 )
 
 /** Lazily-rendered horizontal list. Children must be LazyItem widgets. */
 @Widget(6)
 data class LazyRow(
-    @Property(1) val padding: Int,
-    @Property(2) val fillMaxWidth: Boolean,
     @Children(1) val items: () -> Unit,
 )
 
@@ -111,21 +134,18 @@ data class Text(
     @Property(3) val style: SchemaTextStyle,
 )
 
-/** Display an image fetched from a URL. width=0/height=0 = intrinsic size. */
+/** Display an image fetched from a URL. */
 @Widget(9)
 data class AsyncImage(
     @Property(1) val url: String,
     @Property(2) val contentDescription: String,
-    @Property(3) val width: Int,    // dp
-    @Property(4) val height: Int,   // dp
 )
 
-/** Material icon. size=0 = default 24dp. */
+/** Material icon. Sized via modifier (Size/Width/Height); default is 24dp. */
 @Widget(10)
 data class Icon(
     @Property(1) val name: SchemaIconName,
     @Property(2) val tint: SchemaColor,
-    @Property(3) val size: Int,
 )
 
 // ============================================================================
@@ -150,6 +170,64 @@ data class BackHandler(
     @Property(1) val enabled: Boolean,
     @Property(2) val onBack: () -> Unit,
 )
+
+// ============================================================================
+// Layout modifiers (Batch 2.0 — see KONDUIT_PLAN.md §8.2)
+//
+// All modifiers are unscoped: applicable to any widget. Weight only takes
+// effect inside Row/Column on the host; in non-flex parents the host
+// silently ignores it. Promoting Weight to a scope-typed modifier is a
+// future refinement (would require RowScope/ColumnScope schema additions
+// and a children-receiver change on Row + Column).
+// ============================================================================
+
+/** Padding around the widget. All values in dp; 0 means none. */
+@Modifier(1)
+data class Padding(
+    val start: Int,
+    val top: Int,
+    val end: Int,
+    val bottom: Int,
+)
+
+/** Required size for the widget. */
+@Modifier(2)
+data class Size(
+    val width: Int,   // dp
+    val height: Int,  // dp
+)
+
+/** Required width. */
+@Modifier(3)
+data class Width(val value: Int)  // dp
+
+/** Required height. */
+@Modifier(4)
+data class Height(val value: Int)  // dp
+
+/** Solid background fill. SchemaColor.Transparent renders as no background. */
+@Modifier(5)
+data class Background(val color: SchemaColor)
+
+/** Flex weight along the parent's main axis. Only meaningful in Row/Column. */
+@Modifier(6)
+data class Weight(val value: Double)
+
+/** Fill the parent's full width. */
+@Modifier(8)
+object FillMaxWidth
+
+/** Fill the parent's full height. */
+@Modifier(9)
+object FillMaxHeight
+
+/** Fill the parent's full width AND height. */
+@Modifier(10)
+object FillMaxSize
+
+/** Render at the given alpha (0.0..1.0). */
+@Modifier(11)
+data class Alpha(val value: Double)
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/

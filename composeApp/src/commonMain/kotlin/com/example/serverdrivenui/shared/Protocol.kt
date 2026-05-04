@@ -15,6 +15,8 @@ import androidx.compose.material3.Icon as ComposeIcon
 import androidx.compose.material3.Text as ComposeText
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -27,9 +29,19 @@ import dev.konduit.widget.Widget
 import app.cash.zipline.Zipline
 import com.example.serverdrivenui.schema.*
 import com.example.serverdrivenui.schema.widget.*
+import com.example.serverdrivenui.schema.modifier.Alpha as MAlpha
+import com.example.serverdrivenui.schema.modifier.Background as MBackground
+import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
+import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
+import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
+import com.example.serverdrivenui.schema.modifier.Height as MHeight
+import com.example.serverdrivenui.schema.modifier.Padding as MPadding
+import com.example.serverdrivenui.schema.modifier.Size as MSize
+import com.example.serverdrivenui.schema.modifier.Weight as MWeight
+import com.example.serverdrivenui.schema.modifier.Width as MWidth
 import kotlinx.coroutines.flow.Flow
 
-private typealias CmpRender = @Composable (androidx.compose.ui.Modifier) -> Unit
+private typealias CmpRender = @Composable (ComposeModifier) -> Unit
 
 // ============================================================================
 // Theme bindings: SchemaColor -> MaterialTheme.colorScheme,
@@ -140,114 +152,155 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
 }
 
 // ============================================================================
-// Tier 1 — host Cmp* implementations
+// LayoutModifier translation
+//
+// Each Cmp* widget reads its `modifier` (the konduit chain set by the
+// runtime) and walks `forEachUnscoped`, translating each schema modifier
+// into a compose Modifier.
+//
+// Weight is intentionally NOT applied here — only Row/Column children
+// can apply it, and they do so before invoking value(...) on the child.
 // ============================================================================
 
+@Composable
+private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifier {
+    var m = base
+    var bgSchemaColor: SchemaColor? = null
+    forEachUnscoped { el ->
+        when (el) {
+            is MFillMaxSize -> m = m.fillMaxSize()
+            is MFillMaxWidth -> m = m.fillMaxWidth()
+            is MFillMaxHeight -> m = m.fillMaxHeight()
+            is MPadding -> m = m.padding(
+                start = el.start.dp,
+                top = el.top.dp,
+                end = el.end.dp,
+                bottom = el.bottom.dp,
+            )
+            is MSize -> m = m.size(width = el.width.dp, height = el.height.dp)
+            is MWidth -> m = m.width(el.value.dp)
+            is MHeight -> m = m.height(el.value.dp)
+            is MBackground -> bgSchemaColor = el.color
+            is MAlpha -> m = m.alpha(el.value.toFloat())
+            is MWeight -> { /* applied by parent Row/Column */ }
+        }
+    }
+    val bg = bgSchemaColor
+    if (bg != null) m = m.background(bg.toComposeColor())
+    return m
+}
+
+private fun KonduitModifier.findWeight(): Float? {
+    var w: Float? = null
+    forEachUnscoped { el ->
+        if (el is MWeight) w = el.value.toFloat()
+    }
+    return w
+}
+
+// ============================================================================
+// Tier 1 — host Cmp* implementations
+//
+// `modifier` is state-backed so that the runtime's setter triggers
+// recomposition of the value lambda, which re-reads the chain.
+// ============================================================================
+
+private class StateModifier {
+    private val _modifier = mutableStateOf<KonduitModifier>(KonduitModifier)
+    var value: KonduitModifier
+        get() = _modifier.value
+        set(v) { _modifier.value = v }
+}
+
 class CmpBox : Box<CmpRender> {
-    private var padding by mutableStateOf(0)
-    private var background by mutableStateOf(SchemaColor.Transparent)
+    private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
-
     override val children: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val bg = background.toComposeColor()
+    override val value: CmpRender = { incoming ->
         val click = onClick
-        val composed = mod
+        val composed = modifier.applyToCompose(incoming)
             .let { if (click != null) it.clickable { click() } else it }
-            .let { if (background != SchemaColor.Transparent) it.background(bg) else it }
-            .let { if (padding > 0) it.padding(padding.dp) else it }
         androidx.compose.foundation.layout.Box(modifier = composed) {
             (children as CmpChildren).render()
         }
     }
 
-    override fun padding(padding: Int) { this.padding = padding }
-    override fun background(background: SchemaColor) { this.background = background }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
 }
 
 class CmpColumn : com.example.serverdrivenui.schema.widget.Column<CmpRender> {
-    private var padding by mutableStateOf(0)
-    private var background by mutableStateOf(SchemaColor.Transparent)
+    private val mod = StateModifier()
     private var verticalArrangement by mutableStateOf(SchemaArrangement.Start)
     private var horizontalAlignment by mutableStateOf(SchemaHorizontalAlignment.Start)
-    private var fillMaxSize by mutableStateOf(false)
 
     override val children: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val bg = background.toComposeColor()
-        val composed = mod
-            .let { if (fillMaxSize) it.fillMaxSize() else it }
-            .let { if (background != SchemaColor.Transparent) it.background(bg) else it }
-            .let { if (padding > 0) it.padding(padding.dp) else it }
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         androidx.compose.foundation.layout.Column(
             modifier = composed,
             verticalArrangement = verticalArrangement.toVertical(),
             horizontalAlignment = horizontalAlignment.toAlignment(),
         ) {
-            (children as CmpChildren).render()
+            (children as CmpChildren).renderInColumn(this)
         }
     }
 
-    override fun padding(padding: Int) { this.padding = padding }
-    override fun background(background: SchemaColor) { this.background = background }
     override fun verticalArrangement(verticalArrangement: SchemaArrangement) {
         this.verticalArrangement = verticalArrangement
     }
     override fun horizontalAlignment(horizontalAlignment: SchemaHorizontalAlignment) {
         this.horizontalAlignment = horizontalAlignment
     }
-    override fun fillMaxSize(fillMaxSize: Boolean) { this.fillMaxSize = fillMaxSize }
 }
 
 class CmpRow : com.example.serverdrivenui.schema.widget.Row<CmpRender> {
-    private var padding by mutableStateOf(0)
-    private var background by mutableStateOf(SchemaColor.Transparent)
+    private val mod = StateModifier()
     private var horizontalArrangement by mutableStateOf(SchemaArrangement.Start)
     private var verticalAlignment by mutableStateOf(SchemaVerticalAlignment.Top)
-    private var fillMaxWidth by mutableStateOf(false)
 
     override val children: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val bg = background.toComposeColor()
-        val composed = mod
-            .let { if (fillMaxWidth) it.fillMaxWidth() else it }
-            .let { if (background != SchemaColor.Transparent) it.background(bg) else it }
-            .let { if (padding > 0) it.padding(padding.dp) else it }
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         androidx.compose.foundation.layout.Row(
             modifier = composed,
             horizontalArrangement = horizontalArrangement.toHorizontal(),
             verticalAlignment = verticalAlignment.toAlignment(),
         ) {
-            (children as CmpChildren).render()
+            (children as CmpChildren).renderInRow(this)
         }
     }
 
-    override fun padding(padding: Int) { this.padding = padding }
-    override fun background(background: SchemaColor) { this.background = background }
     override fun horizontalArrangement(horizontalArrangement: SchemaArrangement) {
         this.horizontalArrangement = horizontalArrangement
     }
     override fun verticalAlignment(verticalAlignment: SchemaVerticalAlignment) {
         this.verticalAlignment = verticalAlignment
     }
-    override fun fillMaxWidth(fillMaxWidth: Boolean) { this.fillMaxWidth = fillMaxWidth }
 }
 
 class CmpSpacer : com.example.serverdrivenui.schema.widget.Spacer<CmpRender> {
+    private val mod = StateModifier()
     private var width by mutableStateOf(0)
     private var height by mutableStateOf(0)
 
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        var m = mod
+    override val value: CmpRender = { incoming ->
+        var m = modifier.applyToCompose(incoming)
         if (width > 0) m = m.width(width.dp)
         if (height > 0) m = m.height(height.dp)
         androidx.compose.foundation.layout.Spacer(modifier = m)
@@ -258,71 +311,67 @@ class CmpSpacer : com.example.serverdrivenui.schema.widget.Spacer<CmpRender> {
 }
 
 class CmpLazyColumn : LazyColumn<CmpRender> {
-    private var padding by mutableStateOf(0)
-    private var fillMaxSize by mutableStateOf(false)
-
+    private val mod = StateModifier()
     override val items: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val composed = mod
-            .let { if (fillMaxSize) it.fillMaxSize() else it }
-            .let { if (padding > 0) it.padding(padding.dp) else it }
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         ComposeLazyColumn(modifier = composed) {
             (items as CmpChildren).renderInLazyScope(this)
         }
     }
-
-    override fun padding(padding: Int) { this.padding = padding }
-    override fun fillMaxSize(fillMaxSize: Boolean) { this.fillMaxSize = fillMaxSize }
 }
 
 class CmpLazyRow : LazyRow<CmpRender> {
-    private var padding by mutableStateOf(0)
-    private var fillMaxWidth by mutableStateOf(false)
-
+    private val mod = StateModifier()
     override val items: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val composed = mod
-            .let { if (fillMaxWidth) it.fillMaxWidth() else it }
-            .let { if (padding > 0) it.padding(padding.dp) else it }
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         ComposeLazyRow(modifier = composed) {
             (items as CmpChildren).renderInLazyScope(this)
         }
     }
-
-    override fun padding(padding: Int) { this.padding = padding }
-    override fun fillMaxWidth(fillMaxWidth: Boolean) { this.fillMaxWidth = fillMaxWidth }
 }
 
 class CmpLazyItem : LazyItem<CmpRender> {
+    private val mod = StateModifier()
     override val children: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        // Inside a LazyColumn/Row scope, LazyItem children render directly; the
-        // lazy parent wraps each child in its own item slot via renderInLazyScope.
-        androidx.compose.foundation.layout.Box(modifier = mod) {
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.foundation.layout.Box(modifier = composed) {
             (children as CmpChildren).render()
         }
     }
 }
 
 class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
+    private val mod = StateModifier()
     private var text by mutableStateOf("")
     private var color by mutableStateOf(SchemaColor.OnSurface)
     private var style by mutableStateOf(SchemaTextStyle.BodyMedium)
 
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         ComposeText(
             text = text,
             color = color.toComposeColor(),
             style = style.toTextStyle(),
-            modifier = mod,
+            modifier = composed,
         )
     }
 
@@ -332,22 +381,21 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
 }
 
 class CmpAsyncImage : AsyncImage<CmpRender> {
+    private val mod = StateModifier()
     private var url by mutableStateOf("")
     private var contentDescription by mutableStateOf("")
-    private var width by mutableStateOf(0)
-    private var height by mutableStateOf(0)
 
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
+    override val value: CmpRender = { incoming ->
         if (url.isNotEmpty()) {
-            var m = mod
-            m = if (width > 0) m.width(width.dp) else m.fillMaxWidth()
-            if (height > 0) m = m.height(height.dp)
+            val composed = modifier.applyToCompose(incoming)
             CoilAsyncImage(
                 model = url,
                 contentDescription = contentDescription,
-                modifier = m,
+                modifier = composed,
                 onState = { state ->
                     when (state) {
                         is coil3.compose.AsyncImagePainter.State.Loading ->
@@ -367,30 +415,29 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
     override fun contentDescription(contentDescription: String) {
         this.contentDescription = contentDescription
     }
-    override fun width(width: Int) { this.width = width }
-    override fun height(height: Int) { this.height = height }
 }
 
 class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
+    private val mod = StateModifier()
     private var name by mutableStateOf(SchemaIconName.Star)
     private var tint by mutableStateOf(SchemaColor.OnSurface)
-    private var size by mutableStateOf(0)
 
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        val m = if (size > 0) mod.size(size.dp) else mod
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
         ComposeIcon(
             imageVector = name.toImageVector(),
             contentDescription = name.name,
             tint = tint.toComposeColor(),
-            modifier = m,
+            modifier = composed,
         )
     }
 
     override fun name(name: SchemaIconName) { this.name = name }
     override fun tint(tint: SchemaColor) { this.tint = tint }
-    override fun size(size: Int) { this.size = size }
 }
 
 // ============================================================================
@@ -398,21 +445,28 @@ class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
 // ============================================================================
 
 class CmpScreenStack : ScreenStack<CmpRender> {
+    private val mod = StateModifier()
     override val children: Widget.Children<CmpRender> = CmpChildren()
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
-    override val value: CmpRender = { mod ->
-        androidx.compose.foundation.layout.Box(modifier = mod.fillMaxSize()) {
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming).fillMaxSize()
+        androidx.compose.foundation.layout.Box(modifier = composed) {
             (children as CmpChildren).render()
         }
     }
 }
 
 class CmpBackHandler : BackHandler<CmpRender> {
+    private val mod = StateModifier()
     private var enabled by mutableStateOf(false)
     private var onBack by mutableStateOf<(() -> Unit)?>(null)
 
-    override var modifier: KonduitModifier = KonduitModifier
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
 
     override val value: CmpRender = { _ ->
         if (enabled && onBack != null) {
@@ -454,7 +508,7 @@ class CmpChildren : Widget.Children<CmpRender> {
     @Composable
     fun render() {
         _widgets.forEach { widget ->
-            widget.value(androidx.compose.ui.Modifier)
+            widget.value(ComposeModifier)
         }
     }
 
@@ -462,14 +516,50 @@ class CmpChildren : Widget.Children<CmpRender> {
     fun renderInLazyScope(scope: LazyListScope) {
         _widgets.forEach { widget ->
             scope.item {
-                widget.value(androidx.compose.ui.Modifier)
+                widget.value(ComposeModifier)
             }
+        }
+    }
+
+    /**
+     * Render inside a compose RowScope. Extracts Weight from each child's
+     * modifier chain and applies it via RowScope.weight() before delegating.
+     */
+    @Composable
+    fun renderInRow(scope: androidx.compose.foundation.layout.RowScope) {
+        _widgets.forEach { widget ->
+            val weight = widget.modifier.findWeight()
+            val base = if (weight != null) {
+                with(scope) { ComposeModifier.weight(weight) }
+            } else {
+                ComposeModifier
+            }
+            widget.value(base)
+        }
+    }
+
+    /** Same as [renderInRow] but for ColumnScope. */
+    @Composable
+    fun renderInColumn(scope: androidx.compose.foundation.layout.ColumnScope) {
+        _widgets.forEach { widget ->
+            val weight = widget.modifier.findWeight()
+            val base = if (weight != null) {
+                with(scope) { ComposeModifier.weight(weight) }
+            } else {
+                ComposeModifier
+            }
+            widget.value(base)
         }
     }
 }
 
 // ============================================================================
 // Widget factory
+//
+// Modifier callbacks are no-ops: the modifier chain reaches each widget
+// via `widget.modifier =` in the runtime's UiModifierChange handler. The
+// state-backed `modifier` field then drives recomposition. The factory
+// callbacks exist purely to satisfy the generated interface contract.
 // ============================================================================
 
 object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
@@ -485,6 +575,17 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun Icon() = CmpIcon()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
+
+    override fun Padding(value: CmpRender, modifier: MPadding) {}
+    override fun Size(value: CmpRender, modifier: MSize) {}
+    override fun Width(value: CmpRender, modifier: MWidth) {}
+    override fun Height(value: CmpRender, modifier: MHeight) {}
+    override fun Background(value: CmpRender, modifier: MBackground) {}
+    override fun Weight(value: CmpRender, modifier: MWeight) {}
+    override fun FillMaxWidth(value: CmpRender, modifier: MFillMaxWidth) {}
+    override fun FillMaxHeight(value: CmpRender, modifier: MFillMaxHeight) {}
+    override fun FillMaxSize(value: CmpRender, modifier: MFillMaxSize) {}
+    override fun Alpha(value: CmpRender, modifier: MAlpha) {}
 }
 
 // ============================================================================

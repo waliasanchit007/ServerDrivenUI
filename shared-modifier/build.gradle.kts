@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.redwood.generator.widget)
+    alias(libs.plugins.redwood.generator.modifiers)
 }
 
 redwoodSchema {
@@ -15,12 +15,11 @@ kotlin {
     }
     iosArm64()
     iosSimulatorArm64()
-    
+
     sourceSets {
         commonMain.dependencies {
             api(libs.redwood.widget)
             api(project(":schema-types"))
-            api(project(":shared-modifier"))
         }
     }
 }
