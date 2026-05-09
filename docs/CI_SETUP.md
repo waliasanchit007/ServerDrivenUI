@@ -25,14 +25,17 @@ needs an explicit Personal Access Token.
 ### One-time setup
 
 1. **Create the PAT.**  Go to
-   <https://github.com/settings/tokens?type=beta> →
-   _Generate new token (fine-grained)_.
+   <https://github.com/settings/tokens> → _Generate new token (classic)_.
 
-   - Repository access: only **`waliasanchit007/konduit`**
-   - Permissions:
-     - **Repository permissions → Contents → Read-only**
-     - **Repository permissions → Packages → Read-only** *(this is the one
-       that actually matters)*
+   > **Important:** must be a **classic** PAT, *not* a fine-grained one.
+   > Fine-grained tokens cannot read Maven packages from GitHub Packages —
+   > only npm / Container / RubyGems are supported there. A fine-grained
+   > token returns HTTP 404 (not 401) on Maven endpoints, which makes the
+   > failure look like a missing artifact instead of an auth issue.
+
+   - Scopes: only **`read:packages`** is required. (You can leave every
+     other scope unchecked — the token doesn't need `repo`, `workflow`,
+     etc. to fetch Maven artifacts.)
    - Expiry: 1 year is fine for now; rotate later.
 
 2. **Add it to Caliclan as a repository secret.**  Open the Caliclan
@@ -49,7 +52,12 @@ needs an explicit Personal Access Token.
    jobs_ on a previous run) will pick up the new secret.
 
 If the secret is missing the workflow fails fast with a clear error in
-the _Verify Konduit read token is present_ step.
+the _Verify Konduit read token is present_ step. The same step also
+probes `konduit-gradle-plugin-1.0.0-caliclan.2.pom` directly, so a
+token that's present but lacks `read:packages` (e.g. a fine-grained
+PAT) fails here too with a 404 → "PAT lacks read:packages" message,
+rather than producing a confusing _plugin not found_ stack trace deep
+in Gradle plugin resolution.
 
 ## Local development
 

@@ -8,10 +8,13 @@ name: CI
 #   3. Guest     — :presenter:compileDevelopmentExecutableKotlinJsZipline
 #
 # Repository secret required:
-#   KONDUIT_READ_TOKEN — a GitHub PAT with `read:packages` scope on
-#   github.com/waliasanchit007/konduit. Set it under Settings → Secrets
-#   and variables → Actions. The default GITHUB_TOKEN cannot read packages
-#   from a different repository in the same account, so this is mandatory.
+#   KONDUIT_READ_TOKEN — a CLASSIC GitHub PAT with `read:packages` scope.
+#   IMPORTANT: a fine-grained PAT does NOT work — GitHub Packages' Maven
+#   registry only honors classic tokens; a fine-grained one returns 404
+#   (not 401) so the symptom looks like a missing artifact, not auth.
+#   Set the secret under Settings → Secrets and variables → Actions. The
+#   default GITHUB_TOKEN cannot read packages from a different repository
+#   in the same account, so this is mandatory. See docs/CI_SETUP.md.
 
 on:
   push:
