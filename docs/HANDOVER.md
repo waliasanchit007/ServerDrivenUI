@@ -13,13 +13,18 @@
 | 2 — CI + GitHub Packages publish | ✅ | konduit `.github/workflows/{ci,publish,compat-matrix}.yml`; macOS-only after Linux runner kept hanging |
 | 3a — Dev tooling slices (error boundary + reload overlay) | ✅ | `composeApp/src/commonMain/.../shared/{KonduitDevState,KonduitDevOverlay}.kt` + `App.kt` wiring |
 | 3 — Schema redesign Tier 1 | ✅ | 10 widgets at IDs 1–10 + 2 nav at 1000+ + theme enums + showcase |
-| Batch 2.0 — LayoutModifier system | ✅ (compiles; on-device verify pending) | new `:shared-modifier` module + 10 modifiers + Tier 1 widget rewrite + showcase migration |
+| Batch 2.0 — LayoutModifier system | ✅ | new `:shared-modifier` module + 10 modifiers + Tier 1 widget rewrite + showcase migration |
+| Batch 2.1 — Buttons (IDs 21-28) | ✅ | Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton, IconButton, FloatingActionButton, ExtendedFloatingActionButton |
+| Batch 2.2 — Inputs (IDs 31-33) | ✅ | TextField, OutlinedTextField, SearchBar — value + placeholder + enabled + onValueChange |
+| Batch 2.3 — Selection (IDs 41-46) | ✅ | Checkbox, RadioButton, Switch, Slider, RangeSlider, SegmentedButtonRow |
+| Batch 2.4 — Containers (IDs 51-54) | ✅ | Card, ElevatedCard, OutlinedCard, Surface |
+| Batch 2.5 — Feedback (IDs 61-64) | ✅ | LinearProgressIndicator, CircularProgressIndicator, Badge, Snackbar |
+| Batch 2.6 — Navigation (IDs 71-78) | ✅ | Scaffold, TopAppBar, LargeTopAppBar, MediumTopAppBar, NavigationBar, NavigationBarItem, TabRow, Tab — first multi-slot widgets |
+| Batch 2.7 — Misc (IDs 79-80) | ✅ | HorizontalDivider, VerticalDivider |
 
-**Tier 1 verified end-to-end on BOTH Android (Galaxy S22 Ultra) and iOS sim** — all 10 widgets render, including AsyncImage via Coil + ktor2.
+**Tier 1 + Tier 2 verified end-to-end on BOTH Android (Galaxy S22 Ultra) and iOS sim** — all 40 widgets (10 Tier 1 + 30 Tier 2) and 10 layout modifiers render correctly.
 
-**Batch 2.0 compile-verified on Android `assembleDebug` + iOS `linkDebugFrameworkIosSimulatorArm64` + presenter `compileDevelopmentExecutableKotlinJsZipline`. iOS sim parity verified: full showcase renders identically to pre-Batch-2.0 (icons, chips, list rows, AsyncImage all working). Android device parity also verified via logcat (CmpAsyncImage Success on real Galaxy S22 Ultra) — pending visual screenshot.**
-
-**Caveat:** Initial Batch 2.0 commit (`3be4c79`) shipped a white-screen bug — the `Background(SchemaColor)` modifier serializer triggered a silent `SerializationException` because Konduit codegen emits `ContextualSerializer(SchemaColor::class)` without a registered SerializersModule. Fixed in a follow-up commit by adding `SduiSerializersModule` (`:schema-types`) and plumbing it into every `TreehouseApp.Spec` + the guest's `StandardAppLifecycle.json`. See gotcha #10.
+**Caveat (resolved):** Initial Batch 2.0 commit (`3be4c79`) shipped a white-screen bug — the `Background(SchemaColor)` modifier serializer triggered a silent `SerializationException` because Konduit codegen emits `ContextualSerializer(SchemaColor::class)` without a registered SerializersModule. Fixed in `6acc7ab` by adding `SduiSerializersModule` (`:schema-types`) and plumbing it into every `TreehouseApp.Spec` + the guest's `StandardAppLifecycle.json`. See gotcha #10.
 
 **Konduit fork** (private): `https://github.com/waliasanchit007/konduit`
 - `main` at `975c9cdaa` (Phase 2 + Linux CI drop)
@@ -38,7 +43,15 @@
 - `7be7a14` Plan retro + handover doc
 - `478eb09` HANDOVER: Tier 1 fully verified on Android
 - `aec5d70` Plan v3: Tier 2 batch order + 5 course corrections
-- *Batch 2.0 commit lands here once committed.*
+- `3be4c79` Batch 2.0: LayoutModifier system + Tier 1 widget rewrite
+- `6acc7ab` Fix Batch 2.0 white screen: register SchemaColor as contextual serializer
+- `2290f54` Batch 2.1: Buttons (IDs 21-28)
+- `848147a` Batch 2.2: Inputs (IDs 31-33)
+- `cbce69d` Batch 2.3: Selection (IDs 41-46)
+- `4c3baf8` Batch 2.4: Containers (IDs 51-54)
+- `10a7513` Batch 2.5: Feedback (IDs 61-64)
+- `bba1888` Batch 2.6: Nav structure (IDs 71-78)
+- `38c6715` Batch 2.7: Dividers (IDs 79-80) — Tier 2 closeout
 
 **Caliclan PR #1:** https://github.com/waliasanchit007/ServerDrivenUI/pull/1 (open).
 
@@ -161,41 +174,47 @@ Five corrections agreed before Tier 2 starts:
 
 | Batch | Scope | IDs | Notes |
 |---|---|---|---|
-| ✅ **2.0** | LayoutModifier system + Tier 1 migration | — | 10 modifiers (no `Clickable` — codegen blocker, see gotcha #8). Compile-green on Android + iOS + guest. Device parity verify TODO. |
-| 2.1 | Buttons (Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton, IconButton, FAB, ExtendedFAB) | 21–28 | onClick stays a widget @Property per gotcha #8 |
-| 2.2 | Inputs (TextField, OutlinedTextField, SearchBar) | 31–33 | |
-| 2.3 | Selection (Checkbox, RadioButton, Switch, Slider, RangeSlider, SegmentedButton) | 41–46 | |
-| 2.4 | Containers (Card, ElevatedCard, OutlinedCard, Surface) | 51–54 | One commit |
-| 2.5 | Feedback (LinearProgressIndicator, CircularProgressIndicator, Badge, Snackbar) | 61–64 | Snackbar needs host-side queue |
-| 2.6 | Nav structure (Scaffold, TopAppBar*3, NavigationBar, NavigationBarItem, TabRow, Tab) | 71–78 | Needs named-slots schema work |
-| 2.7 | Misc closeout (HorizontalDivider, VerticalDivider) | 79–80 | Trivial |
+| ✅ **2.0** | LayoutModifier system + Tier 1 migration | — | 10 modifiers (no `Clickable` — codegen blocker, see gotcha #8). |
+| ✅ **2.1** | Buttons (Button, OutlinedButton, TextButton, FilledTonalButton, ElevatedButton, IconButton, FAB, ExtendedFAB) | 21–28 | onClick stays a widget @Property per gotcha #8 |
+| ✅ **2.2** | Inputs (TextField, OutlinedTextField, SearchBar) | 31–33 | shared value/placeholder/enabled/onValueChange |
+| ✅ **2.3** | Selection (Checkbox, RadioButton, Switch, Slider, RangeSlider, SegmentedButtonRow) | 41–46 | SegmentedButton not in CMP iOS yet — using Row of toggle buttons |
+| ✅ **2.4** | Containers (Card, ElevatedCard, OutlinedCard, Surface) | 51–54 | optional onClick + content slot |
+| ✅ **2.5** | Feedback (LinearProgressIndicator, CircularProgressIndicator, Badge, Snackbar) | 61–64 | Snackbar inline; queue deferred to Tier 3 |
+| ✅ **2.6** | Nav structure (Scaffold, TopAppBar*3, NavigationBar, NavigationBarItem, TabRow, Tab) | 71–78 | first multi-slot widgets via @Children(N) tags |
+| ✅ **2.7** | Misc closeout (HorizontalDivider, VerticalDivider) | 79–80 | thicknessDp + color; length is modifier-driven |
 
-Each batch ends with a build + device verify on Android (mandatory) and iOS sim (rapid-verify ritual).
+All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–80 + 10 layout modifiers.
 
 ## What's pending
 
 ### Caliclan branch
-- [ ] Open PR for Tier 1 work on `claude/vigilant-euclid-681447`. PR description should reference HANDOVER.md and the 12 commits since main.
+- [x] Tier 1 PR opened (#1, still open).
+- [x] All Tier 2 batches landed and verified on device.
 
-### Tier 2 — Batch 2.0 ✅ (compile-verified, device verify pending)
-- [x] Inspect `dev.konduit:konduit-layout-modifiers` to understand the upstream `@Modifier` shape.
-- [x] Add modifier set to Caliclan's schema (Padding, Size, Width, Height, Background, Weight, FillMaxWidth, FillMaxHeight, FillMaxSize, Alpha — Clickable dropped per gotcha #8).
-- [x] Migrate Tier 1 widgets off direct properties onto modifier chain.
-- [x] Update `Tier1ShowcaseScreen` to use modifier syntax.
-- [ ] **Run on Android + iOS sim** to confirm parity with pre-Batch 2.0 visual output. This is the formal verification gate for §8.2.
+### Caliclan CI
+- [ ] Add `.github/workflows/ci.yml` — see plan §7.5. Should run `:androidApp:assembleDebug` + `:composeApp:linkDebugFrameworkIosSimulatorArm64` + `:presenter:compileDevelopmentExecutableKotlinJsZipline` on macOS-only.
 
-### Tier 2 — Batches 2.1–2.7
-After Batch 2.0, follow the table above. Each batch lands as one or more commits with:
-- Schema additions (`@Widget(N)` + props)
-- Cmp* host implementations
-- `CmpWidgetFactory` registration
-- Showcase update demonstrating the new widgets
-- Build verification on Android + iOS
+### Tier 3 (~16 widgets, IDs 81–150)
+Per plan §4: chips, list items, flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh, shimmer, navigation rail. Re-spec'd after Tier 2 settles. Likely batches:
+- Chips (FilterChip, AssistChip, InputChip, SuggestionChip)
+- ListItem + DropdownMenu/MenuItem
+- ModalBottomSheet, AlertDialog, DatePicker, TimePicker
+- HorizontalPager, VerticalPager + PagerIndicator
+- PullToRefresh wrapper
+- NavigationRail / NavigationDrawer (desktop / large-screen)
 
-### Caliclan CI (after Batch 2.0)
-- [ ] Add `.github/workflows/ci.yml` — see plan §7.5
+Open questions:
+- Real `material3.SegmentedButton` — wait for CMP iOS support and migrate.
+- `material3.NavigationBarItem` — needs scope-typed @Children to access RowScope cleanly.
+- Snackbar host queue — design a host-side `SnackbarHostState` + `Snackbar.show(message)` event so the guest doesn't have to manage timing.
 
-### Phase 5 — Rest of dev tooling (after Tier 2/3)
+### Tier 3 modifier additions to consider
+- `border(thicknessDp, color: SchemaColor)`
+- `clip(shape: SchemaShape)` — needs SchemaShape enum
+- `wrapContentWidth() / wrapContentHeight()`
+- `aspectRatio(ratio: Float)`
+
+### Phase 5 — Rest of dev tooling
 Single `./gradlew konduit:dev` command + clean Logcat formatting.
 
 ### Phase 4 — Compose Facade
@@ -205,7 +224,7 @@ Single `./gradlew konduit:dev` command + clean Logcat formatting.
 
 | Repo | Branch / tag | Local path |
 |---|---|---|
-| Caliclan (this) | `claude/vigilant-euclid-681447` (12 commits ahead of main, pushed; PR pending) | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
+| Caliclan (this) | `claude/vigilant-euclid-681447` (Tier 1 + all 8 Tier 2 batches landed; PR #1 open) | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
 | Konduit | `main` at `975c9cdaa`; tag `v1.0.0-caliclan.2` published | `~/AndroidStudioProjects/konduit/` |
 
 ## Key files to read
@@ -231,10 +250,12 @@ For Batch 2.0 specifically, also inspect:
 
 > Continue Konduit / Caliclan work. Read `docs/HANDOVER.md` and `docs/KONDUIT_PLAN.md` first.
 >
-> Phase 3 Tier 1 + Batch 2.0 are compile-verified on Android assemble, iOS framework link, and guest .zipline build. Device parity for Batch 2.0 still needs to happen.
+> Tier 1 + all 8 Tier 2 batches are landed and verified on Android (Galaxy S22 Ultra) + iOS sim (iPhone 16 Pro). 40 widgets + 10 layout modifiers shipped.
 >
-> First task: run the showcase on a real Android device + iOS sim and confirm Tier1ShowcaseScreen renders the same as pre-Batch 2.0 (this is the §8.2 verification gate).
+> First task: add the Caliclan CI build gate (§7.5) — `.github/workflows/ci.yml` running `assembleDebug` + `linkDebugFrameworkIosSimulatorArm64` + `compileDevelopmentExecutableKotlinJsZipline` on macOS. Lock in the verification surface we built up by hand.
 >
-> Second task: Batch 2.1 — Buttons (IDs 21–28) per plan §4. Keep `onClick: (() -> Unit)?` as a direct widget @Property, NOT a modifier (gotcha #8 — Konduit codegen for lambda-typed modifier properties is broken on Kotlin/JS).
+> Second task: rebase / merge PR #1 onto main, push the now-final batch sequence, and tag a checkpoint (e.g. `caliclan-tier-2`).
 >
-> Third task onwards: Batches 2.2 through 2.7 per plan §4 Tier 2 table.
+> Third task: Tier 3 brainstorm. Open questions in HANDOVER under "Tier 3" — chips, sheets, dialogs, pagers, pull-to-refresh. Pick a 2-3 widget starter batch to validate the pattern continues to scale before committing to a full Tier 3 plan.
+>
+> Read the gotchas list in HANDOVER.md before touching anything — gotchas 8 (lambda-in-modifier broken), 9 (`:shared-modifier` module wiring), and 10 (SduiSerializersModule for enum-in-modifier) are the load-bearing ones for any new schema work.
