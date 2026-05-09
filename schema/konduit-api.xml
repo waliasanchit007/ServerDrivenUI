@@ -206,6 +206,14 @@
     <event tag="3" name="onClick" nullable="true" />
     <children tag="1" name="icon" />
   </widget>
+  <widget tag="79" type="com.example.serverdrivenui.schema.HorizontalDivider">
+    <property tag="1" name="thicknessDp" type="kotlin.Int" />
+    <property tag="2" name="color" type="com.example.serverdrivenui.schema.SchemaColor" />
+  </widget>
+  <widget tag="80" type="com.example.serverdrivenui.schema.VerticalDivider">
+    <property tag="1" name="thicknessDp" type="kotlin.Int" />
+    <property tag="2" name="color" type="com.example.serverdrivenui.schema.SchemaColor" />
+  </widget>
   <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
     <children tag="1" name="children" />
   </widget>

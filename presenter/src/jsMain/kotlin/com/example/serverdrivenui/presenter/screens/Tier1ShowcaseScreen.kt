@@ -25,6 +25,8 @@ import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
 import com.example.serverdrivenui.schema.compose.FilledTonalButton
+import com.example.serverdrivenui.schema.compose.HorizontalDivider
+import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.FloatingActionButton
 import com.example.serverdrivenui.schema.compose.Icon
 import com.example.serverdrivenui.schema.compose.IconButton
@@ -631,6 +633,70 @@ class Tier1ShowcaseScreen : Screen {
                         label = "Settings",
                         onClick = { nav = 2 },
                     ) { Icon(name = SchemaIconName.Settings, tint = SchemaColor.OnSurface) }
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Misc — Dividers (Batch 2.7) ---
+            LazyItem {
+                Text(
+                    text = "Dividers",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // HorizontalDivider — default thickness (1dp), default color
+            LazyItem {
+                HorizontalDivider(
+                    thicknessDp = 1,
+                    color = SchemaColor.OutlineVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // Thicker accent divider
+            LazyItem {
+                HorizontalDivider(
+                    thicknessDp = 4,
+                    color = SchemaColor.Primary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // VerticalDividers in a Row
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().height(48),
+                ) {
+                    Text(
+                        text = "Left",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    VerticalDivider(
+                        thicknessDp = 1,
+                        color = SchemaColor.OutlineVariant,
+                        modifier = Modifier.height(32),
+                    )
+                    Text(
+                        text = "Center",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    VerticalDivider(
+                        thicknessDp = 1,
+                        color = SchemaColor.OutlineVariant,
+                        modifier = Modifier.height(32),
+                    )
+                    Text(
+                        text = "Right",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
                 }
             }
 

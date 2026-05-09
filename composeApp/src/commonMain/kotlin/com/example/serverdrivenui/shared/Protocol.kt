@@ -1437,6 +1437,56 @@ class CmpTab : com.example.serverdrivenui.schema.widget.Tab<CmpRender> {
 }
 
 // ============================================================================
+// Tier 2 — Misc (IDs 79–80)
+// ============================================================================
+
+class CmpHorizontalDivider :
+    com.example.serverdrivenui.schema.widget.HorizontalDivider<CmpRender> {
+    private val mod = StateModifier()
+    private var thicknessDp by mutableStateOf(1)
+    private var color by mutableStateOf(SchemaColor.OutlineVariant)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.HorizontalDivider(
+            thickness = thicknessDp.dp,
+            color = color.toComposeColor(),
+            modifier = composed,
+        )
+    }
+
+    override fun thicknessDp(thicknessDp: Int) { this.thicknessDp = thicknessDp }
+    override fun color(color: SchemaColor) { this.color = color }
+}
+
+class CmpVerticalDivider :
+    com.example.serverdrivenui.schema.widget.VerticalDivider<CmpRender> {
+    private val mod = StateModifier()
+    private var thicknessDp by mutableStateOf(1)
+    private var color by mutableStateOf(SchemaColor.OutlineVariant)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.VerticalDivider(
+            thickness = thicknessDp.dp,
+            color = color.toComposeColor(),
+            modifier = composed,
+        )
+    }
+
+    override fun thicknessDp(thicknessDp: Int) { this.thicknessDp = thicknessDp }
+    override fun color(color: SchemaColor) { this.color = color }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1602,6 +1652,8 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun NavigationBarItem() = CmpNavigationBarItem()
     override fun TabRow() = CmpTabRow()
     override fun Tab() = CmpTab()
+    override fun HorizontalDivider() = CmpHorizontalDivider()
+    override fun VerticalDivider() = CmpVerticalDivider()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

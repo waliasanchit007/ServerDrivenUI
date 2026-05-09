@@ -78,6 +78,9 @@ import dev.konduit.schema.Widget
         NavigationBarItem::class,
         TabRow::class,
         Tab::class,
+        // Tier 2 — Misc (IDs 79–80)
+        HorizontalDivider::class,
+        VerticalDivider::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -536,6 +539,30 @@ data class Tab(
     @Property(2) val text: String,
     @Property(3) val onClick: (() -> Unit)?,
     @Children(1) val icon: () -> Unit,
+)
+
+// ============================================================================
+// Tier 2 — Misc (IDs 79–80) — see KONDUIT_PLAN.md §4 Batch 2.7
+// ============================================================================
+
+/**
+ * Thin horizontal rule. Use the modifier chain to constrain width
+ * (FillMaxWidth is typical) and Padding to add insets.
+ */
+@Widget(79)
+data class HorizontalDivider(
+    @Property(1) val thicknessDp: Int,
+    @Property(2) val color: SchemaColor,
+)
+
+/**
+ * Thin vertical rule. Constrain height via the modifier chain (e.g.
+ * Height(24)). Pairs naturally with widgets in a Row.
+ */
+@Widget(80)
+data class VerticalDivider(
+    @Property(1) val thicknessDp: Int,
+    @Property(2) val color: SchemaColor,
 )
 
 // ============================================================================
