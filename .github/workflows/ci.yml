@@ -56,10 +56,20 @@ jobs:
 
       # Konduit token sanity check — fail fast with a clear message
       # rather than letting Gradle hit a 401 and produce a noisy error.
-      - name: Verify Konduit read token is present
+      # Also probes GH Packages so a token that's present but lacks
+      # `read:packages` on waliasanchit007/konduit fails here, not deep in
+      # a plugin-resolution stack trace.
+      - name: Verify Konduit read token is present + can read packages
         run: |
           if [ -z "$GITHUB_TOKEN" ]; then
             echo "::error ::KONDUIT_READ_TOKEN secret is missing — see .github/workflows/ci.yml header for setup"
+            exit 1
+          fi
+          probe="https://maven.pkg.github.com/waliasanchit007/konduit/dev/konduit/konduit-gradle-plugin/1.0.0-caliclan.2/konduit-gradle-plugin-1.0.0-caliclan.2.pom"
+          status=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "$probe")
+          echo "Probe $probe → HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error ::KONDUIT_READ_TOKEN cannot read konduit-gradle-plugin-1.0.0-caliclan.2.pom (HTTP $status). Verify the PAT has 'read:packages' scope on waliasanchit007/konduit."
             exit 1
           fi
 
