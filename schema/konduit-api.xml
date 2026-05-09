@@ -133,6 +133,23 @@
     <property tag="2" name="selectedIndex" type="kotlin.Int" />
     <event tag="3" name="onSelectionChange" params="kotlin.Int" nullable="true" />
   </widget>
+  <widget tag="51" type="com.example.serverdrivenui.schema.Card">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="52" type="com.example.serverdrivenui.schema.ElevatedCard">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="53" type="com.example.serverdrivenui.schema.OutlinedCard">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="54" type="com.example.serverdrivenui.schema.Surface">
+    <property tag="1" name="tonalElevationDp" type="kotlin.Int" />
+    <event tag="2" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
   <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
     <children tag="1" name="children" />
   </widget>

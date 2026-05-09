@@ -16,7 +16,9 @@ import com.example.serverdrivenui.schema.SchemaVerticalAlignment
 import com.example.serverdrivenui.schema.compose.AsyncImage
 import com.example.serverdrivenui.schema.compose.Box
 import com.example.serverdrivenui.schema.compose.Button
+import com.example.serverdrivenui.schema.compose.Card
 import com.example.serverdrivenui.schema.compose.Checkbox
+import com.example.serverdrivenui.schema.compose.ElevatedCard
 import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
@@ -28,6 +30,7 @@ import com.example.serverdrivenui.schema.compose.LazyColumn
 import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
 import com.example.serverdrivenui.schema.compose.OutlinedButton
+import com.example.serverdrivenui.schema.compose.OutlinedCard
 import com.example.serverdrivenui.schema.compose.OutlinedTextField
 import com.example.serverdrivenui.schema.compose.RadioButton
 import com.example.serverdrivenui.schema.compose.RangeSlider
@@ -36,6 +39,7 @@ import com.example.serverdrivenui.schema.compose.SearchBar
 import com.example.serverdrivenui.schema.compose.SegmentedButtonRow
 import com.example.serverdrivenui.schema.compose.Slider
 import com.example.serverdrivenui.schema.compose.Spacer
+import com.example.serverdrivenui.schema.compose.Surface
 import com.example.serverdrivenui.schema.compose.Switch
 import com.example.serverdrivenui.schema.compose.Text
 import com.example.serverdrivenui.schema.compose.TextButton
@@ -367,6 +371,95 @@ class Tier1ShowcaseScreen : Screen {
                     onSelectionChange = { seg = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Containers (Batch 2.4) ---
+            LazyItem {
+                Text(
+                    text = "Containers",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Card(onClick = null, modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        verticalArrangement = SchemaArrangement.Start,
+                        horizontalAlignment = SchemaHorizontalAlignment.Start,
+                        modifier = Modifier.padding(16, 16, 16, 16),
+                    ) {
+                        Text(
+                            text = "Card",
+                            color = SchemaColor.OnSurface,
+                            style = SchemaTextStyle.TitleSmall,
+                        )
+                        Text(
+                            text = "Filled card with default tonal elevation.",
+                            color = SchemaColor.OnSurfaceVariant,
+                            style = SchemaTextStyle.BodyMedium,
+                        )
+                    }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                ElevatedCard(onClick = null, modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        verticalArrangement = SchemaArrangement.Start,
+                        horizontalAlignment = SchemaHorizontalAlignment.Start,
+                        modifier = Modifier.padding(16, 16, 16, 16),
+                    ) {
+                        Text(
+                            text = "ElevatedCard",
+                            color = SchemaColor.OnSurface,
+                            style = SchemaTextStyle.TitleSmall,
+                        )
+                        Text(
+                            text = "Card with shadow.",
+                            color = SchemaColor.OnSurfaceVariant,
+                            style = SchemaTextStyle.BodyMedium,
+                        )
+                    }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                OutlinedCard(onClick = null, modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        verticalArrangement = SchemaArrangement.Start,
+                        horizontalAlignment = SchemaHorizontalAlignment.Start,
+                        modifier = Modifier.padding(16, 16, 16, 16),
+                    ) {
+                        Text(
+                            text = "OutlinedCard",
+                            color = SchemaColor.OnSurface,
+                            style = SchemaTextStyle.TitleSmall,
+                        )
+                        Text(
+                            text = "Card with outline border.",
+                            color = SchemaColor.OnSurfaceVariant,
+                            style = SchemaTextStyle.BodyMedium,
+                        )
+                    }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Surface(
+                    tonalElevationDp = 4,
+                    onClick = null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "  Surface (tonalElevation=4dp)",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                        modifier = Modifier.padding(16, 16, 16, 16),
+                    )
+                }
             }
 
             LazyItem { Spacer(width = 0, height = 32) }

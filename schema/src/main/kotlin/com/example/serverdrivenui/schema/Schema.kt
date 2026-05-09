@@ -59,6 +59,11 @@ import dev.konduit.schema.Widget
         Slider::class,
         RangeSlider::class,
         SegmentedButtonRow::class,
+        // Tier 2 — Containers (IDs 51–54)
+        Card::class,
+        ElevatedCard::class,
+        OutlinedCard::class,
+        Surface::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -352,6 +357,45 @@ data class SegmentedButtonRow(
     @Property(1) val labelsCsv: String,
     @Property(2) val selectedIndex: Int,
     @Property(3) val onSelectionChange: ((Int) -> Unit)?,
+)
+
+// ============================================================================
+// Tier 2 — Containers (IDs 51–54) — see KONDUIT_PLAN.md §4 Batch 2.4
+//
+// All four wrap a children slot. `onClick` is optional — pass null for a
+// non-clickable static container.
+// ============================================================================
+
+/** Filled card. */
+@Widget(51)
+data class Card(
+    @Property(1) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
+)
+
+/** Elevated card (filled + shadow). */
+@Widget(52)
+data class ElevatedCard(
+    @Property(1) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
+)
+
+/** Outlined card. */
+@Widget(53)
+data class OutlinedCard(
+    @Property(1) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
+)
+
+/**
+ * Generic Material surface with a tonal elevation level (0..5).
+ * Useful as a styled background. Click handler is optional.
+ */
+@Widget(54)
+data class Surface(
+    @Property(1) val tonalElevationDp: Int,
+    @Property(2) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
 )
 
 // ============================================================================

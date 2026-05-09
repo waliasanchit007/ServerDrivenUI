@@ -970,6 +970,121 @@ class CmpSegmentedButtonRow :
 }
 
 // ============================================================================
+// Tier 2 — Containers (IDs 51–54)
+// ============================================================================
+
+class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
+    private val mod = StateModifier()
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        if (cb != null) {
+            androidx.compose.material3.Card(onClick = { cb() }, modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        } else {
+            androidx.compose.material3.Card(modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        }
+    }
+
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<CmpRender> {
+    private val mod = StateModifier()
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        if (cb != null) {
+            androidx.compose.material3.ElevatedCard(onClick = { cb() }, modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        } else {
+            androidx.compose.material3.ElevatedCard(modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        }
+    }
+
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpOutlinedCard : com.example.serverdrivenui.schema.widget.OutlinedCard<CmpRender> {
+    private val mod = StateModifier()
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        if (cb != null) {
+            androidx.compose.material3.OutlinedCard(onClick = { cb() }, modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        } else {
+            androidx.compose.material3.OutlinedCard(modifier = composed) {
+                (content as CmpChildren).render()
+            }
+        }
+    }
+
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
+    private val mod = StateModifier()
+    private var tonalElevationDp by mutableStateOf(0)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        if (cb != null) {
+            androidx.compose.material3.Surface(
+                onClick = { cb() },
+                tonalElevation = tonalElevationDp.dp,
+                modifier = composed,
+            ) { (content as CmpChildren).render() }
+        } else {
+            androidx.compose.material3.Surface(
+                tonalElevation = tonalElevationDp.dp,
+                modifier = composed,
+            ) { (content as CmpChildren).render() }
+        }
+    }
+
+    override fun tonalElevationDp(tonalElevationDp: Int) {
+        this.tonalElevationDp = tonalElevationDp
+    }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1119,6 +1234,10 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun Slider() = CmpSlider()
     override fun RangeSlider() = CmpRangeSlider()
     override fun SegmentedButtonRow() = CmpSegmentedButtonRow()
+    override fun Card() = CmpCard()
+    override fun ElevatedCard() = CmpElevatedCard()
+    override fun OutlinedCard() = CmpOutlinedCard()
+    override fun Surface() = CmpSurface()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 
