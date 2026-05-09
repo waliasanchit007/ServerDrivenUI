@@ -32,6 +32,16 @@ pluginManagement {
             if (requested.id.id == "app.cash.zipline") {
                 useModule("app.cash.zipline:zipline-gradle-plugin:${requested.version}")
             }
+            // Konduit fork publishes one JAR (`dev.konduit:konduit-gradle-plugin`)
+            // that contains every `dev.konduit.*` plugin descriptor, but does NOT
+            // publish the per-id plugin marker poms Gradle's plugins-block resolves
+            // first. Map every dev.konduit.* id to that single artifact directly so
+            // a clean checkout (CI / fresh dev box) doesn't 404 on missing markers.
+            // `publishToMavenLocal` emits markers, which is why local builds work
+            // without this — but mavenLocal is a side effect, not a contract.
+            if (requested.id.id.startsWith("dev.konduit.")) {
+                useModule("dev.konduit:konduit-gradle-plugin:${requested.version}")
+            }
         }
     }
 }
