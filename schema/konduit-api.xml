@@ -1,0 +1,116 @@
+<schema version="1" type="com.example.serverdrivenui.schema.SduiSchema">
+  <widget tag="1" type="com.example.serverdrivenui.schema.Box">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="2" type="com.example.serverdrivenui.schema.Column">
+    <property tag="1" name="verticalArrangement" type="com.example.serverdrivenui.schema.SchemaArrangement" />
+    <property tag="2" name="horizontalAlignment" type="com.example.serverdrivenui.schema.SchemaHorizontalAlignment" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="3" type="com.example.serverdrivenui.schema.Row">
+    <property tag="1" name="horizontalArrangement" type="com.example.serverdrivenui.schema.SchemaArrangement" />
+    <property tag="2" name="verticalAlignment" type="com.example.serverdrivenui.schema.SchemaVerticalAlignment" />
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="4" type="com.example.serverdrivenui.schema.Spacer">
+    <property tag="1" name="width" type="kotlin.Int" />
+    <property tag="2" name="height" type="kotlin.Int" />
+  </widget>
+  <widget tag="5" type="com.example.serverdrivenui.schema.LazyColumn">
+    <children tag="1" name="items" />
+  </widget>
+  <widget tag="6" type="com.example.serverdrivenui.schema.LazyRow">
+    <children tag="1" name="items" />
+  </widget>
+  <widget tag="7" type="com.example.serverdrivenui.schema.LazyItem">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="8" type="com.example.serverdrivenui.schema.Text">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="color" type="com.example.serverdrivenui.schema.SchemaColor" />
+    <property tag="3" name="style" type="com.example.serverdrivenui.schema.SchemaTextStyle" />
+  </widget>
+  <widget tag="9" type="com.example.serverdrivenui.schema.AsyncImage">
+    <property tag="1" name="url" type="kotlin.String" />
+    <property tag="2" name="contentDescription" type="kotlin.String" />
+  </widget>
+  <widget tag="10" type="com.example.serverdrivenui.schema.Icon">
+    <property tag="1" name="name" type="com.example.serverdrivenui.schema.SchemaIconName" />
+    <property tag="2" name="tint" type="com.example.serverdrivenui.schema.SchemaColor" />
+  </widget>
+  <widget tag="21" type="com.example.serverdrivenui.schema.Button">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="22" type="com.example.serverdrivenui.schema.OutlinedButton">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="23" type="com.example.serverdrivenui.schema.TextButton">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="24" type="com.example.serverdrivenui.schema.FilledTonalButton">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="25" type="com.example.serverdrivenui.schema.ElevatedButton">
+    <property tag="1" name="text" type="kotlin.String" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="26" type="com.example.serverdrivenui.schema.IconButton">
+    <property tag="1" name="enabled" type="kotlin.Boolean" />
+    <event tag="2" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="27" type="com.example.serverdrivenui.schema.FloatingActionButton">
+    <event tag="1" name="onClick" nullable="true" />
+    <children tag="1" name="content" />
+  </widget>
+  <widget tag="28" type="com.example.serverdrivenui.schema.ExtendedFloatingActionButton">
+    <property tag="1" name="text" type="kotlin.String" />
+    <event tag="2" name="onClick" nullable="true" />
+    <children tag="1" name="icon" />
+  </widget>
+  <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
+    <children tag="1" name="children" />
+  </widget>
+  <widget tag="1001" type="com.example.serverdrivenui.schema.BackHandler">
+    <property tag="1" name="enabled" type="kotlin.Boolean" />
+    <event tag="2" name="onBack" />
+  </widget>
+  <modifier tag="1" type="com.example.serverdrivenui.schema.Padding">
+    <property name="bottom" type="kotlin.Int" />
+    <property name="end" type="kotlin.Int" />
+    <property name="start" type="kotlin.Int" />
+    <property name="top" type="kotlin.Int" />
+  </modifier>
+  <modifier tag="2" type="com.example.serverdrivenui.schema.Size">
+    <property name="height" type="kotlin.Int" />
+    <property name="width" type="kotlin.Int" />
+  </modifier>
+  <modifier tag="3" type="com.example.serverdrivenui.schema.Width">
+    <property name="value" type="kotlin.Int" />
+  </modifier>
+  <modifier tag="4" type="com.example.serverdrivenui.schema.Height">
+    <property name="value" type="kotlin.Int" />
+  </modifier>
+  <modifier tag="5" type="com.example.serverdrivenui.schema.Background">
+    <property name="color" type="com.example.serverdrivenui.schema.SchemaColor" />
+  </modifier>
+  <modifier tag="6" type="com.example.serverdrivenui.schema.Weight">
+    <property name="value" type="kotlin.Double" />
+  </modifier>
+  <modifier tag="8" type="com.example.serverdrivenui.schema.FillMaxWidth" />
+  <modifier tag="9" type="com.example.serverdrivenui.schema.FillMaxHeight" />
+  <modifier tag="10" type="com.example.serverdrivenui.schema.FillMaxSize" />
+  <modifier tag="11" type="com.example.serverdrivenui.schema.Alpha">
+    <property name="value" type="kotlin.Double" />
+  </modifier>
+</schema>

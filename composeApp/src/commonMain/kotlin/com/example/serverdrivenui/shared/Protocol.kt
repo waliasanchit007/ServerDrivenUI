@@ -441,6 +441,215 @@ class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
 }
 
 // ============================================================================
+// Tier 2 — Buttons (IDs 21–28)
+//
+// Common pattern: each Cmp* state-backs `text` (where applicable),
+// `enabled`, and `onClick`. The compose Modifier built from `applyToCompose`
+// flows into the underlying Material3 button.
+// ============================================================================
+
+private class ButtonStateText {
+    var text by mutableStateOf("")
+    var enabled by mutableStateOf(true)
+    var onClick by mutableStateOf<(() -> Unit)?>(null)
+}
+
+@Composable
+private fun ButtonLabel(text: String) {
+    ComposeText(text = text)
+}
+
+class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
+    private val mod = StateModifier()
+    private val s = ButtonStateText()
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = s.onClick
+        androidx.compose.material3.Button(
+            onClick = { cb?.invoke() },
+            enabled = s.enabled,
+            modifier = composed,
+        ) { ButtonLabel(s.text) }
+    }
+
+    override fun text(text: String) { s.text = text }
+    override fun enabled(enabled: Boolean) { s.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+}
+
+class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButton<CmpRender> {
+    private val mod = StateModifier()
+    private val s = ButtonStateText()
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = s.onClick
+        androidx.compose.material3.OutlinedButton(
+            onClick = { cb?.invoke() },
+            enabled = s.enabled,
+            modifier = composed,
+        ) { ButtonLabel(s.text) }
+    }
+
+    override fun text(text: String) { s.text = text }
+    override fun enabled(enabled: Boolean) { s.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+}
+
+class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRender> {
+    private val mod = StateModifier()
+    private val s = ButtonStateText()
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = s.onClick
+        androidx.compose.material3.TextButton(
+            onClick = { cb?.invoke() },
+            enabled = s.enabled,
+            modifier = composed,
+        ) { ButtonLabel(s.text) }
+    }
+
+    override fun text(text: String) { s.text = text }
+    override fun enabled(enabled: Boolean) { s.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+}
+
+class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTonalButton<CmpRender> {
+    private val mod = StateModifier()
+    private val s = ButtonStateText()
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = s.onClick
+        androidx.compose.material3.FilledTonalButton(
+            onClick = { cb?.invoke() },
+            enabled = s.enabled,
+            modifier = composed,
+        ) { ButtonLabel(s.text) }
+    }
+
+    override fun text(text: String) { s.text = text }
+    override fun enabled(enabled: Boolean) { s.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+}
+
+class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButton<CmpRender> {
+    private val mod = StateModifier()
+    private val s = ButtonStateText()
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = s.onClick
+        androidx.compose.material3.ElevatedButton(
+            onClick = { cb?.invoke() },
+            enabled = s.enabled,
+            modifier = composed,
+        ) { ButtonLabel(s.text) }
+    }
+
+    override fun text(text: String) { s.text = text }
+    override fun enabled(enabled: Boolean) { s.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+}
+
+class CmpIconButton : com.example.serverdrivenui.schema.widget.IconButton<CmpRender> {
+    private val mod = StateModifier()
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.IconButton(
+            onClick = { cb?.invoke() },
+            enabled = enabled,
+            modifier = composed,
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpFloatingActionButton : com.example.serverdrivenui.schema.widget.FloatingActionButton<CmpRender> {
+    private val mod = StateModifier()
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.FloatingActionButton(
+            onClick = { cb?.invoke() },
+            modifier = composed,
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpExtendedFloatingActionButton :
+    com.example.serverdrivenui.schema.widget.ExtendedFloatingActionButton<CmpRender> {
+    private val mod = StateModifier()
+    private var text by mutableStateOf("")
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.ExtendedFloatingActionButton(
+            text = { ComposeText(text = text) },
+            icon = { (icon as CmpChildren).render() },
+            onClick = { cb?.invoke() },
+            modifier = composed,
+        )
+    }
+
+    override fun text(text: String) { this.text = text }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -573,6 +782,14 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun Text() = CmpText()
     override fun AsyncImage() = CmpAsyncImage()
     override fun Icon() = CmpIcon()
+    override fun Button() = CmpButton()
+    override fun OutlinedButton() = CmpOutlinedButton()
+    override fun TextButton() = CmpTextButton()
+    override fun FilledTonalButton() = CmpFilledTonalButton()
+    override fun ElevatedButton() = CmpElevatedButton()
+    override fun IconButton() = CmpIconButton()
+    override fun FloatingActionButton() = CmpFloatingActionButton()
+    override fun ExtendedFloatingActionButton() = CmpExtendedFloatingActionButton()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

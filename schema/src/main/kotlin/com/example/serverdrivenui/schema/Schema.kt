@@ -39,6 +39,15 @@ import dev.konduit.schema.Widget
         Text::class,
         AsyncImage::class,
         Icon::class,
+        // Tier 2 — Buttons (IDs 21–28)
+        Button::class,
+        OutlinedButton::class,
+        TextButton::class,
+        FilledTonalButton::class,
+        ElevatedButton::class,
+        IconButton::class,
+        FloatingActionButton::class,
+        ExtendedFloatingActionButton::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -146,6 +155,83 @@ data class AsyncImage(
 data class Icon(
     @Property(1) val name: SchemaIconName,
     @Property(2) val tint: SchemaColor,
+)
+
+// ============================================================================
+// Tier 2 — Buttons (IDs 21–28) — see KONDUIT_PLAN.md §4 Batch 2.1
+//
+// Text-based buttons (21–25) take `text: String` directly. Apps that need
+// custom label styling can lean on the modifier chain or, in a future
+// schema bump, switch to a children slot.
+//
+// Click handlers stay as widget @Property — see HANDOVER.md gotcha #8
+// (Konduit codegen for lambda-typed modifier properties is broken on JS).
+// ============================================================================
+
+/** Filled (high-emphasis) button. */
+@Widget(21)
+data class Button(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** Outlined (medium-emphasis) button. */
+@Widget(22)
+data class OutlinedButton(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** Text-only (low-emphasis) button. */
+@Widget(23)
+data class TextButton(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** Filled tonal (medium-emphasis) button — softer than [Button]. */
+@Widget(24)
+data class FilledTonalButton(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** Elevated (medium-emphasis) button with shadow. */
+@Widget(25)
+data class ElevatedButton(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** Icon-only button. The single child should be an [Icon]. */
+@Widget(26)
+data class IconButton(
+    @Property(1) val enabled: Boolean,
+    @Property(2) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
+)
+
+/** Floating action button (circular). The single child should be an [Icon]. */
+@Widget(27)
+data class FloatingActionButton(
+    @Property(1) val onClick: (() -> Unit)?,
+    @Children(1) val content: () -> Unit,
+)
+
+/**
+ * Extended FAB — pill-shaped FAB with a label and optional leading icon
+ * supplied as the single child.
+ */
+@Widget(28)
+data class ExtendedFloatingActionButton(
+    @Property(1) val text: String,
+    @Property(2) val onClick: (() -> Unit)?,
+    @Children(1) val icon: () -> Unit,
 )
 
 // ============================================================================

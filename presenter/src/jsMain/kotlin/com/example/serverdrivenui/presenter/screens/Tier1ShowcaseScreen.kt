@@ -11,14 +11,22 @@ import com.example.serverdrivenui.schema.SchemaTextStyle
 import com.example.serverdrivenui.schema.SchemaVerticalAlignment
 import com.example.serverdrivenui.schema.compose.AsyncImage
 import com.example.serverdrivenui.schema.compose.Box
+import com.example.serverdrivenui.schema.compose.Button
 import com.example.serverdrivenui.schema.compose.Column
+import com.example.serverdrivenui.schema.compose.ElevatedButton
+import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
+import com.example.serverdrivenui.schema.compose.FilledTonalButton
+import com.example.serverdrivenui.schema.compose.FloatingActionButton
 import com.example.serverdrivenui.schema.compose.Icon
+import com.example.serverdrivenui.schema.compose.IconButton
 import com.example.serverdrivenui.schema.compose.LazyColumn
 import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
+import com.example.serverdrivenui.schema.compose.OutlinedButton
 import com.example.serverdrivenui.schema.compose.Row
 import com.example.serverdrivenui.schema.compose.Spacer
 import com.example.serverdrivenui.schema.compose.Text
+import com.example.serverdrivenui.schema.compose.TextButton
 import com.example.serverdrivenui.schema.compose.background
 import com.example.serverdrivenui.schema.compose.fillMaxSize
 import com.example.serverdrivenui.schema.compose.fillMaxWidth
@@ -169,6 +177,59 @@ class Tier1ShowcaseScreen : Screen {
                     modifier = Modifier.fillMaxWidth().height(200),
                 )
             }
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Buttons (Batch 2.1) ---
+            LazyItem {
+                Text(
+                    text = "Buttons",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Button(text = "Filled", enabled = true, onClick = null)
+                    OutlinedButton(text = "Outlined", enabled = true, onClick = null)
+                    TextButton(text = "Text", enabled = true, onClick = null)
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    FilledTonalButton(text = "Tonal", enabled = true, onClick = null)
+                    ElevatedButton(text = "Elevated", enabled = true, onClick = null)
+                    Button(text = "Disabled", enabled = false, onClick = null)
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    IconButton(enabled = true, onClick = null) {
+                        Icon(name = SchemaIconName.Favorite, tint = SchemaColor.Error)
+                    }
+                    FloatingActionButton(onClick = null) {
+                        Icon(name = SchemaIconName.Add, tint = SchemaColor.OnPrimaryContainer)
+                    }
+                    ExtendedFloatingActionButton(text = "Compose", onClick = null) {
+                        Icon(name = SchemaIconName.Edit, tint = SchemaColor.OnPrimaryContainer)
+                    }
+                }
+            }
+
             LazyItem { Spacer(width = 0, height = 32) }
         }
     }
