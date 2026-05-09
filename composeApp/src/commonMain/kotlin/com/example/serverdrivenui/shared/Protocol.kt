@@ -2052,6 +2052,43 @@ class CmpVerticalPager :
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpPullToRefreshBox :
+    com.example.serverdrivenui.schema.widget.PullToRefreshBox<CmpRender> {
+    private val mod = StateModifier()
+    private var isRefreshing by mutableStateOf(false)
+    private var onRefresh by mutableStateOf<() -> Unit>({})
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onRefresh
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { cb.invoke() },
+            modifier = composed,
+        ) {
+            // BoxScope content — children stack inside the box (M3
+            // default contentAlignment = TopStart). Typical usage is
+            // a single LazyColumn child filling the box; multiple
+            // children stack at TopStart unless they bring their own
+            // layout-axis modifiers.
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun isRefreshing(isRefreshing: Boolean) {
+        this.isRefreshing = isRefreshing
+    }
+    override fun onRefresh(onRefresh: () -> Unit) {
+        this.onRefresh = onRefresh
+    }
+}
+
 class CmpPagerIndicator :
     com.example.serverdrivenui.schema.widget.PagerIndicator<CmpRender> {
     private val mod = StateModifier()
@@ -2275,6 +2312,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun HorizontalPager() = CmpHorizontalPager()
     override fun VerticalPager() = CmpVerticalPager()
     override fun PagerIndicator() = CmpPagerIndicator()
+    override fun PullToRefreshBox() = CmpPullToRefreshBox()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

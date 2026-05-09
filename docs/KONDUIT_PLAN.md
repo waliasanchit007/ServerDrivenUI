@@ -638,6 +638,25 @@ non-color cue for colorblind users. Custom indicators (numbers, custom
 shapes) can land later as an additive @Children(1) `customIndicator`
 slot.
 
+**Batch 3.4 — PullToRefresh** (ID 150). PullToRefreshBox.
+
+Wraps M3's `material3.pulltorefresh.PullToRefreshBox`. Schema is
+deliberately minimal: `isRefreshing: Boolean` + `onRefresh: () -> Unit`
++ `content: () -> Unit` slot. The guest owns the boolean; flipping it
+true on `onRefresh` shows the spinner, flipping back to false hides it.
+
+We do NOT expose `state: PullToRefreshState` — letting the guest hold a
+host-side state object would complicate the wire protocol for ~zero
+benefit; the visible knobs (refreshing, onRefresh) cover the standard
+use cases. Custom indicator slot also deferred — M3's default circular
+spinner is fine for nearly all uses; an additive @Children(2)
+`customIndicator` slot can land later.
+
+Content scope: M3's content lambda is BoxScope, so multiple children
+stack at TopStart. Typical usage is a single LazyColumn child filling
+the box — that's what the guest should compose. Multi-child content
+works but the children stack rather than column.
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -1026,3 +1045,4 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 3.3 Pager onPageChanged uses settledPage, not currentPage: settledPage updates after fling settles ("user landed here"); currentPage updates during swipe ("closest to center right now"). Guests typically want the former for analytics / form validation. First emission after composition is initialPage — guest can deduplicate if needed. | claude |
 | 2026-05 | Batch 3.3 Pager V1 has initialPage-only: programmatic page jumps from the guest aren't supported. `rememberPagerState` ignores subsequent initialPage changes. Adding a `currentPage` @Property + LaunchedEffect(currentPage) { state.animateScrollToPage(currentPage) } is an additive change that can land later without breaking wire. Same pattern would unlock controlled-component-style pager use. | claude |
 | 2026-05 | Batch 3.3 PagerIndicator is host-rolled (no 1:1 M3 widget): Row of dots, active dot is 10dp / inactive 8dp. The size delta is intentional — gives colorblind users a non-color cue beyond active/inactive color. Custom indicators (numbers, custom shapes) deferred to a future additive @Children(1) slot. | claude |
+| 2026-05 | Batch 3.4 PullToRefreshBox keeps state guest-side: `isRefreshing: Boolean` @Property, no host-side `PullToRefreshState`. Letting the guest hold the state object would complicate the wire protocol for ~zero benefit; the visible knobs (refreshing flag, onRefresh callback) cover the standard guest flow (set true on refresh, kick off async, set false on completion). Custom indicator slot also deferred — M3's default circular spinner is fine for nearly all uses. | claude |

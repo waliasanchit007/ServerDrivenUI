@@ -97,6 +97,8 @@ import dev.konduit.schema.Widget
         HorizontalPager::class,
         VerticalPager::class,
         PagerIndicator::class,
+        // Tier 3 — Pull-to-refresh (ID 150)
+        PullToRefreshBox::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -835,6 +837,35 @@ data class PagerIndicator(
     @Property(2) val currentPage: Int,
     @Property(3) val activeColor: SchemaColor,
     @Property(4) val inactiveColor: SchemaColor,
+)
+
+// ============================================================================
+// Tier 3 — Pull-to-refresh (ID 150) — see KONDUIT_PLAN.md §4 Batch 3.4
+// ============================================================================
+
+/**
+ * Wraps content in M3's `PullToRefreshBox`. The user pulls down past
+ * the threshold to fire [onRefresh]; the host shows the spinner while
+ * [isRefreshing] is true. Typical guest flow:
+ *
+ *   var refreshing by remember { mutableStateOf(false) }
+ *   PullToRefreshBox(
+ *       isRefreshing = refreshing,
+ *       onRefresh = {
+ *           refreshing = true
+ *           // kick off async work; flip refreshing back to false when done
+ *       },
+ *   ) { LazyColumn { ... } }
+ *
+ * Custom indicator slot is not exposed in v1 — M3's default circular
+ * spinner is fine for almost all uses. Add as additive @Children(2)
+ * later if needed.
+ */
+@Widget(150)
+data class PullToRefreshBox(
+    @Property(1) val isRefreshing: Boolean,
+    @Property(2) val onRefresh: () -> Unit,
+    @Children(1) val content: () -> Unit,
 )
 
 // ============================================================================

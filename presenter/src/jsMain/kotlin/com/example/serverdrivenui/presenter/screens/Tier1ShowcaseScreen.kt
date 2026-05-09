@@ -1,10 +1,12 @@
 package com.example.serverdrivenui.presenter.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.schema.SchemaArrangement
@@ -36,6 +38,7 @@ import com.example.serverdrivenui.schema.compose.InputChip
 import com.example.serverdrivenui.schema.compose.ListItem
 import com.example.serverdrivenui.schema.compose.ModalBottomSheet
 import com.example.serverdrivenui.schema.compose.PagerIndicator
+import com.example.serverdrivenui.schema.compose.PullToRefreshBox
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.VerticalPager
@@ -1261,6 +1264,69 @@ class Tier1ShowcaseScreen : Screen {
                         activeColor = SchemaColor.Primary,
                         inactiveColor = SchemaColor.OutlineVariant,
                     )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — PullToRefresh (Batch 3.4) ---
+            LazyItem {
+                Text(
+                    text = "PullToRefresh (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Text(
+                    text = "Pull the colored panel below downward to refresh. Spinner runs for 1.2s, then settles.",
+                    color = SchemaColor.OnSurfaceVariant,
+                    style = SchemaTextStyle.BodySmall,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                var refreshing by remember { mutableStateOf(false) }
+                var refreshCount by remember { mutableStateOf(0) }
+                // Simulated async work: when the user pulls, we flip
+                // refreshing=true, then a LaunchedEffect keyed on the
+                // count waits 1.2s and flips it back. Real apps would
+                // kick off a network call instead.
+                LaunchedEffect(refreshCount) {
+                    if (refreshCount > 0) {
+                        delay(1200)
+                        refreshing = false
+                    }
+                }
+                PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = {
+                        refreshing = true
+                        refreshCount += 1
+                    },
+                    modifier = Modifier.fillMaxWidth().height(200),
+                ) {
+                    Column(
+                        verticalArrangement = SchemaArrangement.Start,
+                        horizontalAlignment = SchemaHorizontalAlignment.Start,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(SchemaColor.SecondaryContainer)
+                            .padding(16, 16, 16, 16),
+                    ) {
+                        Text(
+                            text = "Refreshes triggered: $refreshCount",
+                            color = SchemaColor.OnSecondaryContainer,
+                            style = SchemaTextStyle.TitleMedium,
+                        )
+                        Spacer(width = 0, height = 8)
+                        Text(
+                            text = if (refreshing) "Refreshing…" else "Idle. Pull down to refresh.",
+                            color = SchemaColor.OnSecondaryContainer,
+                            style = SchemaTextStyle.BodyMedium,
+                        )
+                    }
                 }
             }
 
