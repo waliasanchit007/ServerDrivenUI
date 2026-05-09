@@ -650,6 +650,118 @@ class CmpExtendedFloatingActionButton :
 }
 
 // ============================================================================
+// Tier 2 — Inputs (IDs 31–33)
+// ============================================================================
+
+class CmpTextField : com.example.serverdrivenui.schema.widget.TextField<CmpRender> {
+    private val mod = StateModifier()
+    private var fieldValue by mutableStateOf("")
+    private var placeholder by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onValueChange by mutableStateOf<((String) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onValueChange
+        androidx.compose.material3.TextField(
+            value = fieldValue,
+            onValueChange = { cb?.invoke(it) },
+            placeholder = { ComposeText(text = placeholder) },
+            enabled = enabled,
+            singleLine = true,
+            modifier = composed,
+        )
+    }
+
+    override fun value(value: String) { this.fieldValue = value }
+    override fun placeholder(placeholder: String) { this.placeholder = placeholder }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onValueChange(onValueChange: ((String) -> Unit)?) {
+        this.onValueChange = onValueChange
+    }
+}
+
+class CmpOutlinedTextField :
+    com.example.serverdrivenui.schema.widget.OutlinedTextField<CmpRender> {
+    private val mod = StateModifier()
+    private var fieldValue by mutableStateOf("")
+    private var placeholder by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onValueChange by mutableStateOf<((String) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onValueChange
+        androidx.compose.material3.OutlinedTextField(
+            value = fieldValue,
+            onValueChange = { cb?.invoke(it) },
+            placeholder = { ComposeText(text = placeholder) },
+            enabled = enabled,
+            singleLine = true,
+            modifier = composed,
+        )
+    }
+
+    override fun value(value: String) { this.fieldValue = value }
+    override fun placeholder(placeholder: String) { this.placeholder = placeholder }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onValueChange(onValueChange: ((String) -> Unit)?) {
+        this.onValueChange = onValueChange
+    }
+}
+
+/**
+ * Search bar = OutlinedTextField with a leading Search icon. We deliberately
+ * stay away from `androidx.compose.material3.SearchBar` because that opens
+ * an expandable suggestion sheet which doesn't fit the SDUI model yet.
+ */
+class CmpSearchBar : com.example.serverdrivenui.schema.widget.SearchBar<CmpRender> {
+    private val mod = StateModifier()
+    private var fieldValue by mutableStateOf("")
+    private var placeholder by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onValueChange by mutableStateOf<((String) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onValueChange
+        androidx.compose.material3.OutlinedTextField(
+            value = fieldValue,
+            onValueChange = { cb?.invoke(it) },
+            placeholder = { ComposeText(text = placeholder) },
+            enabled = enabled,
+            singleLine = true,
+            leadingIcon = {
+                ComposeIcon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                )
+            },
+            modifier = composed,
+        )
+    }
+
+    override fun value(value: String) { this.fieldValue = value }
+    override fun placeholder(placeholder: String) { this.placeholder = placeholder }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onValueChange(onValueChange: ((String) -> Unit)?) {
+        this.onValueChange = onValueChange
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -790,6 +902,9 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun IconButton() = CmpIconButton()
     override fun FloatingActionButton() = CmpFloatingActionButton()
     override fun ExtendedFloatingActionButton() = CmpExtendedFloatingActionButton()
+    override fun TextField() = CmpTextField()
+    override fun OutlinedTextField() = CmpOutlinedTextField()
+    override fun SearchBar() = CmpSearchBar()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

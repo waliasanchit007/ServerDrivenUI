@@ -78,6 +78,24 @@
     <event tag="2" name="onClick" nullable="true" />
     <children tag="1" name="icon" />
   </widget>
+  <widget tag="31" type="com.example.serverdrivenui.schema.TextField">
+    <property tag="1" name="value" type="kotlin.String" />
+    <property tag="2" name="placeholder" type="kotlin.String" />
+    <property tag="3" name="enabled" type="kotlin.Boolean" />
+    <event tag="4" name="onValueChange" params="kotlin.String" nullable="true" />
+  </widget>
+  <widget tag="32" type="com.example.serverdrivenui.schema.OutlinedTextField">
+    <property tag="1" name="value" type="kotlin.String" />
+    <property tag="2" name="placeholder" type="kotlin.String" />
+    <property tag="3" name="enabled" type="kotlin.Boolean" />
+    <event tag="4" name="onValueChange" params="kotlin.String" nullable="true" />
+  </widget>
+  <widget tag="33" type="com.example.serverdrivenui.schema.SearchBar">
+    <property tag="1" name="value" type="kotlin.String" />
+    <property tag="2" name="placeholder" type="kotlin.String" />
+    <property tag="3" name="enabled" type="kotlin.Boolean" />
+    <event tag="4" name="onValueChange" params="kotlin.String" nullable="true" />
+  </widget>
   <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
     <children tag="1" name="children" />
   </widget>

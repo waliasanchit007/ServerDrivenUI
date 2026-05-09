@@ -48,6 +48,10 @@ import dev.konduit.schema.Widget
         IconButton::class,
         FloatingActionButton::class,
         ExtendedFloatingActionButton::class,
+        // Tier 2 — Inputs (IDs 31–33)
+        TextField::class,
+        OutlinedTextField::class,
+        SearchBar::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -232,6 +236,45 @@ data class ExtendedFloatingActionButton(
     @Property(1) val text: String,
     @Property(2) val onClick: (() -> Unit)?,
     @Children(1) val icon: () -> Unit,
+)
+
+// ============================================================================
+// Tier 2 — Inputs (IDs 31–33) — see KONDUIT_PLAN.md §4 Batch 2.2
+//
+// The text-field family uses a hard-fork-of-Compose value + onValueChange
+// pattern. The host owns the editing state; on each keystroke it fires
+// onValueChange so the guest can react and write back via the value
+// property. Single-line, no formatter / mask / IME hints in this batch.
+// ============================================================================
+
+/** Filled text field (Material 3 default). */
+@Widget(31)
+data class TextField(
+    @Property(1) val value: String,
+    @Property(2) val placeholder: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onValueChange: ((String) -> Unit)?,
+)
+
+/** Outlined text field. */
+@Widget(32)
+data class OutlinedTextField(
+    @Property(1) val value: String,
+    @Property(2) val placeholder: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onValueChange: ((String) -> Unit)?,
+)
+
+/**
+ * Search bar — outlined text field with a leading search icon and
+ * placeholder. Same value + onValueChange contract as [TextField].
+ */
+@Widget(33)
+data class SearchBar(
+    @Property(1) val value: String,
+    @Property(2) val placeholder: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onValueChange: ((String) -> Unit)?,
 )
 
 // ============================================================================

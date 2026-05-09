@@ -1,6 +1,10 @@
 package com.example.serverdrivenui.presenter.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.schema.SchemaArrangement
@@ -23,10 +27,13 @@ import com.example.serverdrivenui.schema.compose.LazyColumn
 import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
 import com.example.serverdrivenui.schema.compose.OutlinedButton
+import com.example.serverdrivenui.schema.compose.OutlinedTextField
 import com.example.serverdrivenui.schema.compose.Row
+import com.example.serverdrivenui.schema.compose.SearchBar
 import com.example.serverdrivenui.schema.compose.Spacer
 import com.example.serverdrivenui.schema.compose.Text
 import com.example.serverdrivenui.schema.compose.TextButton
+import com.example.serverdrivenui.schema.compose.TextField
 import com.example.serverdrivenui.schema.compose.background
 import com.example.serverdrivenui.schema.compose.fillMaxSize
 import com.example.serverdrivenui.schema.compose.fillMaxWidth
@@ -228,6 +235,50 @@ class Tier1ShowcaseScreen : Screen {
                         Icon(name = SchemaIconName.Edit, tint = SchemaColor.OnPrimaryContainer)
                     }
                 }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Inputs (Batch 2.2) ---
+            LazyItem {
+                Text(
+                    text = "Inputs",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                var name by remember { mutableStateOf("") }
+                TextField(
+                    value = name,
+                    placeholder = "Your name",
+                    enabled = true,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                var email by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = email,
+                    placeholder = "you@example.com",
+                    enabled = true,
+                    onValueChange = { email = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                var query by remember { mutableStateOf("") }
+                SearchBar(
+                    value = query,
+                    placeholder = "Search…",
+                    enabled = true,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             LazyItem { Spacer(width = 0, height = 32) }
