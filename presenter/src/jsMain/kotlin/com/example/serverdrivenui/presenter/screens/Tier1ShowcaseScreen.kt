@@ -38,9 +38,11 @@ import com.example.serverdrivenui.schema.compose.InputChip
 import com.example.serverdrivenui.schema.compose.ListItem
 import com.example.serverdrivenui.schema.compose.ModalBottomSheet
 import com.example.serverdrivenui.schema.compose.PagerIndicator
+import com.example.serverdrivenui.schema.compose.DatePickerDialog
 import com.example.serverdrivenui.schema.compose.NavigationRail
 import com.example.serverdrivenui.schema.compose.NavigationRailItem
 import com.example.serverdrivenui.schema.compose.PullToRefreshBox
+import com.example.serverdrivenui.schema.compose.TimePickerDialog
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.VerticalPager
@@ -1423,6 +1425,97 @@ class Tier1ShowcaseScreen : Screen {
                         text = "Open drawer demo",
                         enabled = true,
                         onClick = { navigator.push(NavDrawerDemoScreen()) },
+                    )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Pickers (Batch 3.6) ---
+            LazyItem {
+                Text(
+                    text = "Pickers (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // DatePickerDialog — visibility lives in the guest. The
+            // mirror Text shows the last picked date as a millis number
+            // (real apps would format it via kotlinx-datetime).
+            LazyItem {
+                var showDatePicker by remember { mutableStateOf(false) }
+                var pickedDateMillis by remember { mutableStateOf(0L) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 4, 0, 4),
+                ) {
+                    Text(
+                        text = if (pickedDateMillis == 0L) {
+                            "(no date picked)"
+                        } else {
+                            "Picked: $pickedDateMillis (UTC midnight ms)"
+                        },
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Button(
+                        text = "Pick date",
+                        enabled = true,
+                        onClick = { showDatePicker = true },
+                    )
+                }
+                if (showDatePicker) {
+                    DatePickerDialog(
+                        initialSelectedDateMillis = pickedDateMillis,
+                        onConfirm = { millis ->
+                            pickedDateMillis = millis
+                            showDatePicker = false
+                        },
+                        onDismissRequest = { showDatePicker = false },
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // TimePickerDialog — onConfirm fires with packed minutes
+            // since midnight; guest decodes hour + minute for display.
+            LazyItem {
+                var showTimePicker by remember { mutableStateOf(false) }
+                var pickedHour by remember { mutableStateOf(9) }
+                var pickedMinute by remember { mutableStateOf(0) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 4, 0, 4),
+                ) {
+                    val hh = pickedHour.toString().padStart(2, '0')
+                    val mm = pickedMinute.toString().padStart(2, '0')
+                    Text(
+                        text = "Time: $hh:$mm (24h)",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Button(
+                        text = "Pick time",
+                        enabled = true,
+                        onClick = { showTimePicker = true },
+                    )
+                }
+                if (showTimePicker) {
+                    TimePickerDialog(
+                        initialHour = pickedHour,
+                        initialMinute = pickedMinute,
+                        is24Hour = true,
+                        onConfirm = { packedMinutes ->
+                            // Schema encoding: minutes since midnight.
+                            pickedHour = packedMinutes / 60
+                            pickedMinute = packedMinutes % 60
+                            showTimePicker = false
+                        },
+                        onDismissRequest = { showTimePicker = false },
                     )
                 }
             }

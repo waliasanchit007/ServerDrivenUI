@@ -2202,6 +2202,150 @@ class CmpModalNavigationDrawer :
     }
 }
 
+// ============================================================================
+// Tier 3 — Pickers (IDs 170–171)
+//
+// DatePickerDialog uses M3's first-class `material3.DatePickerDialog`
+// + `material3.DatePicker`. TimePickerDialog has no native M3 wrapper —
+// the host hand-rolls an AlertDialog scaffold around M3's TimePicker.
+//
+// Visibility model — same conditional-render pattern as the Tier 3
+// overlays (Batch 3.2): the guest holds a Boolean and only emits the
+// picker widget when visible.
+//
+// OK / Cancel labels are hardcoded ("OK" / "Cancel") in v1; add
+// confirmLabel / dismissLabel @Property additions later for i18n.
+// Initial-state knobs (initialSelectedDateMillis = 0L for "no preset",
+// initialHour / initialMinute / is24Hour for time) are passed through
+// to rememberDatePickerState / rememberTimePickerState.
+//
+// onConfirm semantics: fires AFTER the user taps OK with a valid
+// selection (DatePicker requires a date; TimePicker always has a time).
+// Tap Cancel or scrim → onDismissRequest only, no onConfirm.
+// ============================================================================
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpDatePickerDialog :
+    com.example.serverdrivenui.schema.widget.DatePickerDialog<CmpRender> {
+    private val mod = StateModifier()
+    private var initialSelectedDateMillis by mutableStateOf(0L)
+    private var onConfirm by mutableStateOf<((Long) -> Unit)?>(null)
+    private var onDismissRequest by mutableStateOf<() -> Unit>({})
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { _ ->
+        val dismiss = onDismissRequest
+        val confirm = onConfirm
+        // 0L sentinel → null (no preset). Real dates are always > 0
+        // (Unix epoch is 1970, so any real selection is positive).
+        val initialMillis = if (initialSelectedDateMillis == 0L) {
+            null
+        } else initialSelectedDateMillis
+        val state = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+        )
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { dismiss.invoke() },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        // selectedDateMillis is null until the user
+                        // picks a date — disable OK in that case
+                        // (rather than firing onConfirm with a sentinel).
+                        val picked = state.selectedDateMillis
+                        if (picked != null) confirm?.invoke(picked)
+                    },
+                    enabled = state.selectedDateMillis != null,
+                ) { ComposeText("OK") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { dismiss.invoke() },
+                ) { ComposeText("Cancel") }
+            },
+        ) {
+            androidx.compose.material3.DatePicker(state = state)
+        }
+    }
+
+    override fun initialSelectedDateMillis(initialSelectedDateMillis: Long) {
+        this.initialSelectedDateMillis = initialSelectedDateMillis
+    }
+    override fun onConfirm(onConfirm: ((Long) -> Unit)?) {
+        this.onConfirm = onConfirm
+    }
+    override fun onDismissRequest(onDismissRequest: () -> Unit) {
+        this.onDismissRequest = onDismissRequest
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpTimePickerDialog :
+    com.example.serverdrivenui.schema.widget.TimePickerDialog<CmpRender> {
+    private val mod = StateModifier()
+    private var initialHour by mutableStateOf(0)
+    private var initialMinute by mutableStateOf(0)
+    private var is24Hour by mutableStateOf(true)
+    private var onConfirm by mutableStateOf<((Int) -> Unit)?>(null)
+    private var onDismissRequest by mutableStateOf<() -> Unit>({})
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { _ ->
+        val dismiss = onDismissRequest
+        val confirm = onConfirm
+        val state = androidx.compose.material3.rememberTimePickerState(
+            initialHour = initialHour.coerceIn(0, 23),
+            initialMinute = initialMinute.coerceIn(0, 59),
+            is24Hour = is24Hour,
+        )
+        // No first-class TimePickerDialog in M3 — wrap TimePicker in an
+        // AlertDialog scaffold ourselves. Title slot left empty (M3
+        // convention: time pickers don't typically have titles).
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { dismiss.invoke() },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        // Pack hour + minute into a single Int (minutes
+                        // since midnight) — see Schema doc for rationale.
+                        confirm?.invoke(state.hour * 60 + state.minute)
+                    },
+                ) { ComposeText("OK") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { dismiss.invoke() },
+                ) { ComposeText("Cancel") }
+            },
+            text = {
+                // Center the picker in the dialog's text slot.
+                androidx.compose.foundation.layout.Box(
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                    modifier = ComposeModifier.fillMaxWidth(),
+                ) {
+                    androidx.compose.material3.TimePicker(state = state)
+                }
+            },
+        )
+    }
+
+    override fun initialHour(initialHour: Int) { this.initialHour = initialHour }
+    override fun initialMinute(initialMinute: Int) { this.initialMinute = initialMinute }
+    override fun is24Hour(is24Hour: Boolean) { this.is24Hour = is24Hour }
+    override fun onConfirm(onConfirm: ((Int) -> Unit)?) {
+        this.onConfirm = onConfirm
+    }
+    override fun onDismissRequest(onDismissRequest: () -> Unit) {
+        this.onDismissRequest = onDismissRequest
+    }
+}
+
 class CmpNavigationDrawerItem :
     com.example.serverdrivenui.schema.widget.NavigationDrawerItem<CmpRender> {
     private val mod = StateModifier()
@@ -2504,6 +2648,8 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun NavigationRailItem() = CmpNavigationRailItem()
     override fun ModalNavigationDrawer() = CmpModalNavigationDrawer()
     override fun NavigationDrawerItem() = CmpNavigationDrawerItem()
+    override fun DatePickerDialog() = CmpDatePickerDialog()
+    override fun TimePickerDialog() = CmpTimePickerDialog()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

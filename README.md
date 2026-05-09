@@ -22,11 +22,14 @@ and new features land on `konduit-main` only.
 
 ## What's on `konduit-main` (today)
 
-- 40 server-rendered widgets (10 Tier 1 + 30 Tier 2) at IDs 1–80.
+- **56 server-rendered widgets**: 10 Tier 1 (foundation) + 30 Tier 2
+  (M3 essentials) + 16 Tier 3 (chips, list+menus, overlays, pagers,
+  pull-to-refresh, large-screen nav, pickers). IDs 1–171.
 - 10 layout modifiers (padding, size, fillMaxSize, background, weight, …).
 - Hot-reload dev loop via Zipline + a 1-shot dev server.
 - Verified end-to-end on real Android + iOS sim — see the showcase in
-  `presenter/src/jsMain/.../screens/Tier1ShowcaseScreen.kt`.
+  `presenter/src/jsMain/.../screens/Tier1ShowcaseScreen.kt` and the
+  drawer demo in `screens/NavDrawerDemoScreen.kt`.
 
 Big-picture writeup in `docs/HANDOVER.md`. Full plan + decisions log in
 `docs/KONDUIT_PLAN.md`.

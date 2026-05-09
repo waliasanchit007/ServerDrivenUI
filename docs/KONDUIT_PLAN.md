@@ -700,6 +700,57 @@ NavigationDrawerItem mirrors M3's API one-for-one: selected / label /
 onClick + icon + badge slots. Badge slot accepts any composable (the
 demo uses a Text "12" for an unread count).
 
+**Batch 3.6 — Pickers** (IDs 170–171). DatePickerDialog, TimePickerDialog.
+
+Visibility model — same conditional-render pattern as Tier 3 overlays
+(Batch 3.2): the guest holds a Boolean and only emits the picker
+widget when visible.
+
+DatePickerDialog uses M3's first-class `material3.DatePickerDialog` +
+`material3.DatePicker`. Wire encoding: date as `Long` UTC midnight
+millis. Sentinel `0L` means "no preset" (any real date is positive
+because Unix epoch starts in 1970). Host translates 0L → null when
+calling `rememberDatePickerState`. OK button is disabled until the
+user picks a date — `onConfirm` only fires with a valid selection,
+never with the sentinel.
+
+TimePickerDialog has NO first-class M3 equivalent — the host hand-rolls
+an `AlertDialog` scaffold around `material3.TimePicker`. Confirm /
+dismiss buttons are wired through M3's `confirmButton` / `dismissButton`
+slots; the picker itself sits in the dialog's `text` slot wrapped in a
+Box with `contentAlignment = Center` so it doesn't left-align inside
+the dialog's body.
+
+Time wire encoding: `(initialHour: Int, initialMinute: Int, is24Hour:
+Boolean)` for setup; `onConfirm: ((Int) -> Unit)?` fires with packed
+minutes since midnight (`hour * 60 + minute`, range 0..1439). Guest
+decodes:
+
+```kotlin
+val hour = packedMinutes / 60
+val minute = packedMinutes % 60
+```
+
+Why packed Int and not `(Int, Int) -> Unit`: every existing widget
+in the schema uses single-arg @Property lambdas. Multi-arg lambda
+codegen in Konduit is unverified; introducing it as the LAST batch
+of Tier 3 risks a late-discovered codegen blocker. Packed Int is
+trivially decoded and the encoding is documented — additive
+two-arg variant can land later without breaking wire if/when proven safe.
+
+OK / Cancel labels are hardcoded ("OK" / "Cancel") in v1. Add
+`confirmLabel: String` + `dismissLabel: String` @Property additions
+later for i18n — additive, won't break wire.
+
+**Tier 3 complete.** 16 widgets at IDs 100–171 across 6 batches:
+chips (100–103), list+menus (110–112), overlays (120–121), pagers
+(140–142), pull-to-refresh (150), large-screen nav (160–163),
+pickers (170–171). All batches verified through the three CI gates
+locally on macOS. ID range 130–139 stays open as a buffer between
+overlays (120s) and pagers (140s); 152–159 buffer between
+pull-to-refresh and large-screen nav; 164–169 buffer between large-
+screen nav and pickers.
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -1092,3 +1143,7 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 3.5 ModalNavigationDrawer controlled-component drawer state: guest holds `drawerOpen: Boolean`, host syncs M3's DrawerState via `LaunchedEffect(drawerOpen) { open()/close() }`, reports user gestures back via `snapshotFlow { drawerState.isOpen }.collect { onDrawerStateChange }`. No infinite-loop risk because both sides settle when state matches. Same pattern used for any future controlled component (DrawerSheet, ScaffoldDrawer if/when added). | claude |
 | 2026-05 | Batch 3.5 host wraps drawerContent in ModalDrawerSheet automatically: 99% of drawer content uses ModalDrawerSheet for surface styling, so the host wraps drawerContent in `ModalDrawerSheet { ... }` rather than expose the sheet wrapper as a separate widget. Saves the guest the boilerplate; doesn't lose meaningful flexibility (custom drawer surfaces are exotic enough to wait for explicit demand). | claude |
 | 2026-05 | Batch 3.5 ModalNavigationDrawer can't embed inline: it wraps the WHOLE app surface, not a region of a scroll container. Embedding inside a LazyItem anchors the drawer to the item's edge instead of the screen's edge — visually broken. Caliclan-side pattern: push a dedicated screen via Navigator.push (the showcase does this with NavDrawerDemoScreen) so the drawer has a real top-level surface. Same pattern any consumer should use. | claude |
+| 2026-05 | Batch 3.6 DatePickerDialog uses 0L sentinel for "no preset": Konduit @Property doesn't have a clear nullable-Long path used elsewhere in the schema, and any real date millis is positive (Unix epoch is 1970). Host translates 0L → null when calling rememberDatePickerState. OK button is disabled until the user picks a date; onConfirm only fires with a valid selection. | claude |
+| 2026-05 | Batch 3.6 TimePickerDialog packed-Int encoding: onConfirm fires with `hour * 60 + minute` (minutes since midnight, 0..1439) rather than `(Int, Int) -> Unit`. Every existing widget in the schema uses single-arg @Property lambdas; multi-arg codegen is unverified, and introducing it as the LAST batch of Tier 3 risks a late-discovered codegen blocker. Packed Int is trivially decoded; documented in the schema KDoc. Additive two-arg variant can land later without breaking wire. | claude |
+| 2026-05 | Batch 3.6 TimePickerDialog scaffold is host-rolled: M3 has no first-class TimePickerDialog. Host wraps `material3.TimePicker` in `material3.AlertDialog` with confirmButton + dismissButton slots and centers the picker in the dialog's text slot via Box(contentAlignment = Center). OK / Cancel labels hardcoded in v1; i18n knobs land additively later. | claude |
+| 2026-05 | **Tier 3 complete**. 16 widgets at IDs 100–171 across 6 batches (3.0 chips, 3.1 list+menus, 3.2 overlays, 3.3 pagers, 3.4 pull-to-refresh, 3.5 large-screen nav, 3.6 pickers). All batches verified through the three CI gates (Android assembleDebug + iOS sim framework link + presenter .zipline) locally on macOS. Tier 1 + 2 + 3 totals: 56 widgets. | claude |

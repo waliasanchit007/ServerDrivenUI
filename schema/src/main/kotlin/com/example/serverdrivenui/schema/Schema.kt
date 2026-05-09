@@ -104,6 +104,9 @@ import dev.konduit.schema.Widget
         NavigationRailItem::class,
         ModalNavigationDrawer::class,
         NavigationDrawerItem::class,
+        // Tier 3 — Pickers (IDs 170–171)
+        DatePickerDialog::class,
+        TimePickerDialog::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -948,6 +951,68 @@ data class NavigationDrawerItem(
     @Property(3) val onClick: (() -> Unit)?,
     @Children(1) val icon: () -> Unit,
     @Children(2) val badge: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — Pickers (IDs 170–171) — see KONDUIT_PLAN.md §4 Batch 3.6
+//
+// Same conditional-render visibility model as the Tier 3 overlays
+// (Batch 3.2): the guest holds a Boolean and only emits the picker
+// dialog widget when visible. The host packages M3's DatePicker /
+// TimePicker inside a dialog scaffold (DatePickerDialog for date,
+// hand-rolled AlertDialog wrapper for time since M3 has no first-class
+// TimePickerDialog) with built-in OK / Cancel buttons.
+//
+// Wire-format choices documented in KONDUIT_PLAN §4 Batch 3.6:
+//   - Date encoded as Long millis (UTC midnight). 0L = "no preset".
+//   - Time encoded with two scalar properties (initialHour, initialMinute)
+//     and onConfirm gets a packed Int (hour * 60 + minute, minutes-of-day,
+//     0..1439). Single-arg callback avoids any uncertainty about Konduit
+//     codegen for multi-arg @Property lambdas — kept minimal.
+//
+// OK / Cancel labels are hardcoded in v1; add `confirmLabel: String` +
+// `dismissLabel: String` later for i18n without breaking wire.
+// ============================================================================
+
+/**
+ * Modal date picker. Visibility lives in the guest (conditionally
+ * compose this widget). Built-in OK / Cancel buttons; OK fires
+ * [onConfirm] with the selected date in UTC midnight millis, then
+ * the guest is responsible for hiding the dialog.
+ *
+ * [initialSelectedDateMillis]: starting selection in UTC midnight
+ * millis. Pass 0L for "no preset" (the dialog opens with no date
+ * selected and the OK button is disabled until the user picks one).
+ */
+@Widget(170)
+data class DatePickerDialog(
+    @Property(1) val initialSelectedDateMillis: Long,
+    @Property(2) val onConfirm: ((Long) -> Unit)?,
+    @Property(3) val onDismissRequest: () -> Unit,
+)
+
+/**
+ * Modal time picker. Same visibility model as [DatePickerDialog].
+ * Built-in OK / Cancel buttons; OK fires [onConfirm] with the selected
+ * time encoded as MINUTES SINCE MIDNIGHT (0..1439). Guest decodes:
+ *
+ *   val hour = packedMinutes / 60
+ *   val minute = packedMinutes % 60
+ *
+ * The single-Int encoding (rather than two-arg `(Int, Int) -> Unit`)
+ * sidesteps any uncertainty about Konduit codegen for multi-arg lambda
+ * @Properties — every existing widget in the schema uses single-arg
+ * lambdas. Two-arg can land later additively if proven safe.
+ *
+ * [is24Hour] toggles between 24-hour and AM/PM display modes.
+ */
+@Widget(171)
+data class TimePickerDialog(
+    @Property(1) val initialHour: Int,
+    @Property(2) val initialMinute: Int,
+    @Property(3) val is24Hour: Boolean,
+    @Property(4) val onConfirm: ((Int) -> Unit)?,
+    @Property(5) val onDismissRequest: () -> Unit,
 )
 
 // ============================================================================
