@@ -52,6 +52,13 @@ import dev.konduit.schema.Widget
         TextField::class,
         OutlinedTextField::class,
         SearchBar::class,
+        // Tier 2 — Selection (IDs 41–46)
+        Checkbox::class,
+        RadioButton::class,
+        Switch::class,
+        Slider::class,
+        RangeSlider::class,
+        SegmentedButtonRow::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -275,6 +282,76 @@ data class SearchBar(
     @Property(2) val placeholder: String,
     @Property(3) val enabled: Boolean,
     @Property(4) val onValueChange: ((String) -> Unit)?,
+)
+
+// ============================================================================
+// Tier 2 — Selection (IDs 41–46) — see KONDUIT_PLAN.md §4 Batch 2.3
+// ============================================================================
+
+/** Two-state checkbox. */
+@Widget(41)
+data class Checkbox(
+    @Property(1) val checked: Boolean,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onCheckedChange: ((Boolean) -> Unit)?,
+)
+
+/**
+ * Single radio button. Group selection is the guest's job — track which
+ * value is selected and toggle [selected] accordingly per button.
+ */
+@Widget(42)
+data class RadioButton(
+    @Property(1) val selected: Boolean,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+)
+
+/** On / off switch. */
+@Widget(43)
+data class Switch(
+    @Property(1) val checked: Boolean,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onCheckedChange: ((Boolean) -> Unit)?,
+)
+
+/**
+ * Continuous-value slider. [valueFrom]..[valueTo] (defaults 0f..1f).
+ * [steps] = 0 means continuous; >0 inserts that many discrete stops.
+ */
+@Widget(44)
+data class Slider(
+    @Property(1) val value: Float,
+    @Property(2) val valueFrom: Float,
+    @Property(3) val valueTo: Float,
+    @Property(4) val steps: Int,
+    @Property(5) val enabled: Boolean,
+    @Property(6) val onValueChange: ((Float) -> Unit)?,
+)
+
+/** Two-thumb range slider. */
+@Widget(45)
+data class RangeSlider(
+    @Property(1) val rangeStart: Float,
+    @Property(2) val rangeEnd: Float,
+    @Property(3) val valueFrom: Float,
+    @Property(4) val valueTo: Float,
+    @Property(5) val steps: Int,
+    @Property(6) val enabled: Boolean,
+    @Property(7) val onRangeChange: ((Float, Float) -> Unit)?,
+)
+
+/**
+ * Segmented button row. The guest passes a comma-separated list of labels
+ * and tracks which index is selected. We model labels as a String so we
+ * don't need to invent a List<String> @Property type for this batch — that
+ * can come later if we need richer per-segment data.
+ */
+@Widget(46)
+data class SegmentedButtonRow(
+    @Property(1) val labelsCsv: String,
+    @Property(2) val selectedIndex: Int,
+    @Property(3) val onSelectionChange: ((Int) -> Unit)?,
 )
 
 // ============================================================================

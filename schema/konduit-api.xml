@@ -96,6 +96,43 @@
     <property tag="3" name="enabled" type="kotlin.Boolean" />
     <event tag="4" name="onValueChange" params="kotlin.String" nullable="true" />
   </widget>
+  <widget tag="41" type="com.example.serverdrivenui.schema.Checkbox">
+    <property tag="1" name="checked" type="kotlin.Boolean" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onCheckedChange" params="kotlin.Boolean" nullable="true" />
+  </widget>
+  <widget tag="42" type="com.example.serverdrivenui.schema.RadioButton">
+    <property tag="1" name="selected" type="kotlin.Boolean" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onClick" nullable="true" />
+  </widget>
+  <widget tag="43" type="com.example.serverdrivenui.schema.Switch">
+    <property tag="1" name="checked" type="kotlin.Boolean" />
+    <property tag="2" name="enabled" type="kotlin.Boolean" />
+    <event tag="3" name="onCheckedChange" params="kotlin.Boolean" nullable="true" />
+  </widget>
+  <widget tag="44" type="com.example.serverdrivenui.schema.Slider">
+    <property tag="1" name="value" type="kotlin.Float" />
+    <property tag="2" name="valueFrom" type="kotlin.Float" />
+    <property tag="3" name="valueTo" type="kotlin.Float" />
+    <property tag="4" name="steps" type="kotlin.Int" />
+    <property tag="5" name="enabled" type="kotlin.Boolean" />
+    <event tag="6" name="onValueChange" params="kotlin.Float" nullable="true" />
+  </widget>
+  <widget tag="45" type="com.example.serverdrivenui.schema.RangeSlider">
+    <property tag="1" name="rangeStart" type="kotlin.Float" />
+    <property tag="2" name="rangeEnd" type="kotlin.Float" />
+    <property tag="3" name="valueFrom" type="kotlin.Float" />
+    <property tag="4" name="valueTo" type="kotlin.Float" />
+    <property tag="5" name="steps" type="kotlin.Int" />
+    <property tag="6" name="enabled" type="kotlin.Boolean" />
+    <event tag="7" name="onRangeChange" params="kotlin.Float,kotlin.Float" nullable="true" />
+  </widget>
+  <widget tag="46" type="com.example.serverdrivenui.schema.SegmentedButtonRow">
+    <property tag="1" name="labelsCsv" type="kotlin.String" />
+    <property tag="2" name="selectedIndex" type="kotlin.Int" />
+    <event tag="3" name="onSelectionChange" params="kotlin.Int" nullable="true" />
+  </widget>
   <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
     <children tag="1" name="children" />
   </widget>

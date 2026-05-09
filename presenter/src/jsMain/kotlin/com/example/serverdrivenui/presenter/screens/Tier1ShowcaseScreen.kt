@@ -16,6 +16,7 @@ import com.example.serverdrivenui.schema.SchemaVerticalAlignment
 import com.example.serverdrivenui.schema.compose.AsyncImage
 import com.example.serverdrivenui.schema.compose.Box
 import com.example.serverdrivenui.schema.compose.Button
+import com.example.serverdrivenui.schema.compose.Checkbox
 import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
@@ -28,9 +29,14 @@ import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
 import com.example.serverdrivenui.schema.compose.OutlinedButton
 import com.example.serverdrivenui.schema.compose.OutlinedTextField
+import com.example.serverdrivenui.schema.compose.RadioButton
+import com.example.serverdrivenui.schema.compose.RangeSlider
 import com.example.serverdrivenui.schema.compose.Row
 import com.example.serverdrivenui.schema.compose.SearchBar
+import com.example.serverdrivenui.schema.compose.SegmentedButtonRow
+import com.example.serverdrivenui.schema.compose.Slider
 import com.example.serverdrivenui.schema.compose.Spacer
+import com.example.serverdrivenui.schema.compose.Switch
 import com.example.serverdrivenui.schema.compose.Text
 import com.example.serverdrivenui.schema.compose.TextButton
 import com.example.serverdrivenui.schema.compose.TextField
@@ -277,6 +283,88 @@ class Tier1ShowcaseScreen : Screen {
                     placeholder = "Search…",
                     enabled = true,
                     onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Selection (Batch 2.3) ---
+            LazyItem {
+                Text(
+                    text = "Selection",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // Checkbox + Switch row
+            LazyItem {
+                var checked by remember { mutableStateOf(true) }
+                var switched by remember { mutableStateOf(false) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Checkbox(checked = checked, enabled = true, onCheckedChange = { checked = it })
+                    Switch(checked = switched, enabled = true, onCheckedChange = { switched = it })
+                    Checkbox(checked = false, enabled = false, onCheckedChange = null)
+                    Switch(checked = true, enabled = false, onCheckedChange = null)
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // Radio group
+            LazyItem {
+                var pick by remember { mutableStateOf(0) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    RadioButton(selected = pick == 0, enabled = true, onClick = { pick = 0 })
+                    RadioButton(selected = pick == 1, enabled = true, onClick = { pick = 1 })
+                    RadioButton(selected = pick == 2, enabled = true, onClick = { pick = 2 })
+                    RadioButton(selected = false, enabled = false, onClick = null)
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // Slider
+            LazyItem {
+                var v by remember { mutableStateOf(0.4f) }
+                Slider(
+                    value = v,
+                    valueFrom = 0f,
+                    valueTo = 1f,
+                    steps = 0,
+                    enabled = true,
+                    onValueChange = { v = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            // RangeSlider
+            LazyItem {
+                var lo by remember { mutableStateOf(0.2f) }
+                var hi by remember { mutableStateOf(0.8f) }
+                RangeSlider(
+                    rangeStart = lo,
+                    rangeEnd = hi,
+                    valueFrom = 0f,
+                    valueTo = 1f,
+                    steps = 0,
+                    enabled = true,
+                    onRangeChange = { s, e -> lo = s; hi = e },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // SegmentedButtonRow
+            LazyItem {
+                var seg by remember { mutableStateOf(1) }
+                SegmentedButtonRow(
+                    labelsCsv = "Day, Week, Month",
+                    selectedIndex = seg,
+                    onSelectionChange = { seg = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

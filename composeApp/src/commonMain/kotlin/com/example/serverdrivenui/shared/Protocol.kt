@@ -762,6 +762,214 @@ class CmpSearchBar : com.example.serverdrivenui.schema.widget.SearchBar<CmpRende
 }
 
 // ============================================================================
+// Tier 2 — Selection (IDs 41–46)
+// ============================================================================
+
+class CmpCheckbox : com.example.serverdrivenui.schema.widget.Checkbox<CmpRender> {
+    private val mod = StateModifier()
+    private var checked by mutableStateOf(false)
+    private var enabled by mutableStateOf(true)
+    private var onCheckedChange by mutableStateOf<((Boolean) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onCheckedChange
+        androidx.compose.material3.Checkbox(
+            checked = checked,
+            onCheckedChange = { cb?.invoke(it) },
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun checked(checked: Boolean) { this.checked = checked }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onCheckedChange(onCheckedChange: ((Boolean) -> Unit)?) {
+        this.onCheckedChange = onCheckedChange
+    }
+}
+
+class CmpRadioButton : com.example.serverdrivenui.schema.widget.RadioButton<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.RadioButton(
+            selected = selected,
+            onClick = { cb?.invoke() },
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpSwitch : com.example.serverdrivenui.schema.widget.Switch<CmpRender> {
+    private val mod = StateModifier()
+    private var checked by mutableStateOf(false)
+    private var enabled by mutableStateOf(true)
+    private var onCheckedChange by mutableStateOf<((Boolean) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onCheckedChange
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = { cb?.invoke(it) },
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun checked(checked: Boolean) { this.checked = checked }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onCheckedChange(onCheckedChange: ((Boolean) -> Unit)?) {
+        this.onCheckedChange = onCheckedChange
+    }
+}
+
+class CmpSlider : com.example.serverdrivenui.schema.widget.Slider<CmpRender> {
+    private val mod = StateModifier()
+    private var sliderValue by mutableStateOf(0f)
+    private var valueFrom by mutableStateOf(0f)
+    private var valueTo by mutableStateOf(1f)
+    private var steps by mutableStateOf(0)
+    private var enabled by mutableStateOf(true)
+    private var onValueChange by mutableStateOf<((Float) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onValueChange
+        androidx.compose.material3.Slider(
+            value = sliderValue,
+            onValueChange = { cb?.invoke(it) },
+            valueRange = valueFrom..valueTo,
+            steps = steps,
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun value(value: Float) { this.sliderValue = value }
+    override fun valueFrom(valueFrom: Float) { this.valueFrom = valueFrom }
+    override fun valueTo(valueTo: Float) { this.valueTo = valueTo }
+    override fun steps(steps: Int) { this.steps = steps }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onValueChange(onValueChange: ((Float) -> Unit)?) {
+        this.onValueChange = onValueChange
+    }
+}
+
+class CmpRangeSlider : com.example.serverdrivenui.schema.widget.RangeSlider<CmpRender> {
+    private val mod = StateModifier()
+    private var rangeStart by mutableStateOf(0f)
+    private var rangeEnd by mutableStateOf(1f)
+    private var valueFrom by mutableStateOf(0f)
+    private var valueTo by mutableStateOf(1f)
+    private var steps by mutableStateOf(0)
+    private var enabled by mutableStateOf(true)
+    private var onRangeChange by mutableStateOf<((Float, Float) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onRangeChange
+        androidx.compose.material3.RangeSlider(
+            value = rangeStart..rangeEnd,
+            onValueChange = { range -> cb?.invoke(range.start, range.endInclusive) },
+            valueRange = valueFrom..valueTo,
+            steps = steps,
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun rangeStart(rangeStart: Float) { this.rangeStart = rangeStart }
+    override fun rangeEnd(rangeEnd: Float) { this.rangeEnd = rangeEnd }
+    override fun valueFrom(valueFrom: Float) { this.valueFrom = valueFrom }
+    override fun valueTo(valueTo: Float) { this.valueTo = valueTo }
+    override fun steps(steps: Int) { this.steps = steps }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onRangeChange(onRangeChange: ((Float, Float) -> Unit)?) {
+        this.onRangeChange = onRangeChange
+    }
+}
+
+/**
+ * Compose Multiplatform 1.8 doesn't ship `material3.SegmentedButton` on iOS
+ * yet, so we render the row as a custom Row of FilledTonal / Outlined
+ * buttons. Visually similar enough; promote to the real M3 widget when
+ * CMP catches up.
+ */
+class CmpSegmentedButtonRow :
+    com.example.serverdrivenui.schema.widget.SegmentedButtonRow<CmpRender> {
+    private val mod = StateModifier()
+    private var labelsCsv by mutableStateOf("")
+    private var selectedIndex by mutableStateOf(0)
+    private var onSelectionChange by mutableStateOf<((Int) -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onSelectionChange
+        val labels = labelsCsv.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (labels.isNotEmpty()) {
+            androidx.compose.foundation.layout.Row(
+                modifier = composed,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                labels.forEachIndexed { index, label ->
+                    if (index == selectedIndex) {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = { cb?.invoke(index) },
+                        ) { ComposeText(text = label) }
+                    } else {
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = { cb?.invoke(index) },
+                        ) { ComposeText(text = label) }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun labelsCsv(labelsCsv: String) { this.labelsCsv = labelsCsv }
+    override fun selectedIndex(selectedIndex: Int) { this.selectedIndex = selectedIndex }
+    override fun onSelectionChange(onSelectionChange: ((Int) -> Unit)?) {
+        this.onSelectionChange = onSelectionChange
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -905,6 +1113,12 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun TextField() = CmpTextField()
     override fun OutlinedTextField() = CmpOutlinedTextField()
     override fun SearchBar() = CmpSearchBar()
+    override fun Checkbox() = CmpCheckbox()
+    override fun RadioButton() = CmpRadioButton()
+    override fun Switch() = CmpSwitch()
+    override fun Slider() = CmpSlider()
+    override fun RangeSlider() = CmpRangeSlider()
+    override fun SegmentedButtonRow() = CmpSegmentedButtonRow()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 
