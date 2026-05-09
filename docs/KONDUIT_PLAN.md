@@ -602,6 +602,42 @@ parent's layout flow. fillMaxWidth / padding on the overlay would shift
 the surface inside its window, not the trigger. Surface-level styling
 should land as explicit @Property additions later if needed.
 
+**Batch 3.3 — Pagers** (IDs 140–142). HorizontalPager, VerticalPager,
+PagerIndicator.
+
+First "indexed-children" widget shape: each child of the pager's
+`pages` slot is one full page. The host derives pageCount from
+`(pages as CmpChildren).widgets.size` and renders only `widgets[i]`
+for the i-th page (no deep pre-composition; M3's Pager keeps active +
+adjacent pages composed and discards the rest). This is a new pattern
+relative to Tier 1's LazyColumn / Tier 2's TabRow which both render all
+children together — for pages we want lazy, viewport-driven composition.
+
+`onPageChanged` uses `PagerState.settledPage` (post-fling) rather than
+`currentPage` (during-swipe) — guests typically want the "user landed
+here" semantics. The first settled-page emission after composition is
+initialPage, which is a no-op the guest can ignore. We wire this with
+`snapshotFlow { state.settledPage }.collect { ... }` inside a
+LaunchedEffect — no kotlinx-coroutines flow operator deps needed.
+
+V1 limitation: programmatic page jumps from the guest aren't supported.
+`rememberPagerState` ignores subsequent initialPage changes. Adding a
+`currentPage` @Property + LaunchedEffect-driven
+`state.animateScrollToPage(currentPage)` would unlock that, deferred to
+a future additive change.
+
+Defensive bounds — the host coerces initialPage to `[0, pageCount-1]`
+and bails to a no-op page if `widgets.getOrNull(pageIndex) == null`
+(can happen if the children list shrank between recompositions while
+pageCount is still memoized in PagerState).
+
+PagerIndicator is host-rolled (no 1:1 M3 widget). Renders [pageCount]
+dots in a Row; dot at [currentPage] uses [activeColor] (10dp) and is
+slightly larger than inactive dots (8dp) — the size delta acts as a
+non-color cue for colorblind users. Custom indicators (numbers, custom
+shapes) can land later as an additive @Children(1) `customIndicator`
+slot.
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -986,3 +1022,7 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 3.2 overlay visibility model: ModalBottomSheet + AlertDialog use guest-conditional rendering (the guest holds a Boolean, only emits the widget when visible) instead of a `visible: Boolean` @Property. Rationale: keeps wire payload zero when overlays aren't open, matches idiomatic M3 usage in the guest, and avoids forcing every screen to reify overlay slots that are rarely used. M3 hide animations run BEFORE onDismissRequest fires, so dropping the widget on dismiss is safe. | claude |
 | 2026-05 | Batch 3.2 AlertDialog action shape: split confirmButton + dismissButton into two separate @Children slots rather than a single button-row slot. Rationale: M3 AlertDialog places confirm + dismiss with specific spacing / order conventions and the action row's layout adapts to text length; reusing M3's two-slot API means the host doesn't reimplement those layout heuristics. confirmButton is M3-required; if guest passes empty `{}`, M3 renders an empty action area — visible bug rather than host crash. | claude |
 | 2026-05 | Batch 3.2 overlay modifier propagation: neither ModalBottomSheet nor AlertDialog propagates the parent modifier chain to the overlay surface — same reason as DropdownMenu (Batch 3.1). Surface-level styling (size, scrim color, tonal elevation) should land as explicit @Property additions if/when needed. | claude |
+| 2026-05 | Batch 3.3 Pager indexed-children pattern: each child of `pages` is one full page; host renders only `widgets[i]` for page i (not the bulk `render()` call other widgets use). New pattern relative to LazyColumn / TabRow which render all children together — for pages we want lazy, viewport-driven composition matching M3's PagerState semantics. | claude |
+| 2026-05 | Batch 3.3 Pager onPageChanged uses settledPage, not currentPage: settledPage updates after fling settles ("user landed here"); currentPage updates during swipe ("closest to center right now"). Guests typically want the former for analytics / form validation. First emission after composition is initialPage — guest can deduplicate if needed. | claude |
+| 2026-05 | Batch 3.3 Pager V1 has initialPage-only: programmatic page jumps from the guest aren't supported. `rememberPagerState` ignores subsequent initialPage changes. Adding a `currentPage` @Property + LaunchedEffect(currentPage) { state.animateScrollToPage(currentPage) } is an additive change that can land later without breaking wire. Same pattern would unlock controlled-component-style pager use. | claude |
+| 2026-05 | Batch 3.3 PagerIndicator is host-rolled (no 1:1 M3 widget): Row of dots, active dot is 10dp / inactive 8dp. The size delta is intentional — gives colorblind users a non-color cue beyond active/inactive color. Custom indicators (numbers, custom shapes) deferred to a future additive @Children(1) slot. | claude |

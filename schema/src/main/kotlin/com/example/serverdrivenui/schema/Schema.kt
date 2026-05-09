@@ -93,6 +93,10 @@ import dev.konduit.schema.Widget
         // Tier 3 — Overlays (IDs 120–121)
         ModalBottomSheet::class,
         AlertDialog::class,
+        // Tier 3 — Pagers (IDs 140–142)
+        HorizontalPager::class,
+        VerticalPager::class,
+        PagerIndicator::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -769,6 +773,68 @@ data class AlertDialog(
     @Children(1) val icon: () -> Unit,
     @Children(2) val confirmButton: () -> Unit,
     @Children(3) val dismissButton: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — Pagers (IDs 140–142) — see KONDUIT_PLAN.md §4 Batch 3.3
+//
+// Page model: each child of [HorizontalPager.pages] / [VerticalPager.pages]
+// is ONE page. The host iterates the children list to derive pageCount and
+// renders only the i-th child as the i-th page's content (CmpChildren
+// already exposes `widgets: List<Widget>` for indexed access).
+//
+// V1 limitation: programmatic page jumps from the guest are NOT
+// supported. The host wires `rememberPagerState(initialPage)` once;
+// subsequent changes to initialPage are ignored. Adding a `currentPage`
+// @Property + LaunchedEffect(currentPage) { state.animateScrollToPage }
+// is an additive change that can land later without breaking wire.
+// ============================================================================
+
+/**
+ * Swipe-paged horizontal container. Children are individual pages —
+ * the host renders only the currently visible page (no deep
+ * pre-composition). `onPageChanged` fires AFTER a fling settles on a
+ * new page (uses M3's `PagerState.settledPage`).
+ *
+ * [pageSpacingDp]: gap between adjacent pages while swiping. 0 = pages
+ * touch edges. [userScrollEnabled] = false locks paging to programmatic
+ * control (currently always external — see V1 limitation above).
+ */
+@Widget(140)
+data class HorizontalPager(
+    @Property(1) val initialPage: Int,
+    @Property(2) val onPageChanged: ((Int) -> Unit)?,
+    @Property(3) val userScrollEnabled: Boolean,
+    @Property(4) val pageSpacingDp: Int,
+    @Children(1) val pages: () -> Unit,
+)
+
+/** Vertical analog of [HorizontalPager]. Pages stack top-to-bottom. */
+@Widget(141)
+data class VerticalPager(
+    @Property(1) val initialPage: Int,
+    @Property(2) val onPageChanged: ((Int) -> Unit)?,
+    @Property(3) val userScrollEnabled: Boolean,
+    @Property(4) val pageSpacingDp: Int,
+    @Children(1) val pages: () -> Unit,
+)
+
+/**
+ * Host-rolled dot-style page indicator. Renders [pageCount] small
+ * dots in a Row; the dot at index [currentPage] uses [activeColor],
+ * the rest use [inactiveColor]. The guest is expected to track
+ * `currentPage` itself (typically from a Pager's `onPageChanged`).
+ *
+ * No 1:1 M3 widget exists for this — it's a Caliclan-side helper. If
+ * future needs require custom indicators (numbers, custom shapes), an
+ * additive @Children(1) `customIndicator` slot can land later.
+ */
+@Widget(142)
+data class PagerIndicator(
+    @Property(1) val pageCount: Int,
+    @Property(2) val currentPage: Int,
+    @Property(3) val activeColor: SchemaColor,
+    @Property(4) val inactiveColor: SchemaColor,
 )
 
 // ============================================================================

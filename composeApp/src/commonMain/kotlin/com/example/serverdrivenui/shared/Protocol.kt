@@ -1904,6 +1904,198 @@ class CmpAlertDialog : com.example.serverdrivenui.schema.widget.AlertDialog<CmpR
 }
 
 // ============================================================================
+// Tier 3 — Pagers (IDs 140–142)
+//
+// Each pager child = one page. The host uses
+// `(pages as CmpChildren).widgets.size` for pageCount and renders only
+// the i-th child for page i (no deep pre-composition; M3's Pager
+// composes the active + adjacent pages by default and discards the rest).
+//
+// onPageChanged uses `PagerState.settledPage` (post-fling) rather than
+// `currentPage` (during-swipe) — guests typically want the "user landed
+// here" semantics, not "this is closest to center right now". The first
+// settled-page emission after composition is initialPage, which is a
+// no-op the guest can ignore.
+//
+// V1: programmatic page jumps from the guest aren't supported.
+// `rememberPagerState` ignores subsequent initialPage changes; adding a
+// `currentPage` @Property + LaunchedEffect-driven animateScrollToPage
+// is an additive follow-up.
+// ============================================================================
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun PagerHostShared(
+    pages: CmpChildren,
+    initialPage: Int,
+    onPageChanged: ((Int) -> Unit)?,
+    userScrollEnabled: Boolean,
+    pageSpacingDp: Int,
+    composedModifier: ComposeModifier,
+    horizontal: Boolean,
+) {
+    val pageCount = pages.widgets.size
+    // Edge case: empty pages list → render nothing (M3 Pager would
+    // crash with pageCount=0). The guest is responsible for ensuring
+    // at least one page; we just no-op defensively.
+    if (pageCount == 0) return
+    val state = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = initialPage.coerceIn(0, pageCount - 1),
+        pageCount = { pageCount },
+    )
+    // Bridge settledPage → onPageChanged. snapshotFlow re-emits whenever
+    // settledPage changes; the first emission is the initial value
+    // (matches initialPage), which the guest can deduplicate. We don't
+    // drop(1) here because that requires the kotlinx-coroutines flow
+    // operators which add a dep just for this.
+    androidx.compose.runtime.LaunchedEffect(state, onPageChanged) {
+        val cb = onPageChanged ?: return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow { state.settledPage }.collect { cb.invoke(it) }
+    }
+    if (horizontal) {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = state,
+            userScrollEnabled = userScrollEnabled,
+            pageSpacing = pageSpacingDp.dp,
+            modifier = composedModifier,
+        ) { pageIndex ->
+            // Render the i-th child as this page's content. Defensive
+            // bounds-check: if the children list shrank between
+            // recompositions (pageCount memoized), bail to a no-op page.
+            pages.widgets.getOrNull(pageIndex)?.value?.invoke(ComposeModifier)
+        }
+    } else {
+        androidx.compose.foundation.pager.VerticalPager(
+            state = state,
+            userScrollEnabled = userScrollEnabled,
+            pageSpacing = pageSpacingDp.dp,
+            modifier = composedModifier,
+        ) { pageIndex ->
+            pages.widgets.getOrNull(pageIndex)?.value?.invoke(ComposeModifier)
+        }
+    }
+}
+
+class CmpHorizontalPager :
+    com.example.serverdrivenui.schema.widget.HorizontalPager<CmpRender> {
+    private val mod = StateModifier()
+    private var initialPage by mutableStateOf(0)
+    private var onPageChanged by mutableStateOf<((Int) -> Unit)?>(null)
+    private var userScrollEnabled by mutableStateOf(true)
+    private var pageSpacingDp by mutableStateOf(0)
+
+    override val pages: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        PagerHostShared(
+            pages = pages as CmpChildren,
+            initialPage = initialPage,
+            onPageChanged = onPageChanged,
+            userScrollEnabled = userScrollEnabled,
+            pageSpacingDp = pageSpacingDp,
+            composedModifier = composed,
+            horizontal = true,
+        )
+    }
+
+    override fun initialPage(initialPage: Int) { this.initialPage = initialPage }
+    override fun onPageChanged(onPageChanged: ((Int) -> Unit)?) {
+        this.onPageChanged = onPageChanged
+    }
+    override fun userScrollEnabled(userScrollEnabled: Boolean) {
+        this.userScrollEnabled = userScrollEnabled
+    }
+    override fun pageSpacingDp(pageSpacingDp: Int) {
+        this.pageSpacingDp = pageSpacingDp
+    }
+}
+
+class CmpVerticalPager :
+    com.example.serverdrivenui.schema.widget.VerticalPager<CmpRender> {
+    private val mod = StateModifier()
+    private var initialPage by mutableStateOf(0)
+    private var onPageChanged by mutableStateOf<((Int) -> Unit)?>(null)
+    private var userScrollEnabled by mutableStateOf(true)
+    private var pageSpacingDp by mutableStateOf(0)
+
+    override val pages: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        PagerHostShared(
+            pages = pages as CmpChildren,
+            initialPage = initialPage,
+            onPageChanged = onPageChanged,
+            userScrollEnabled = userScrollEnabled,
+            pageSpacingDp = pageSpacingDp,
+            composedModifier = composed,
+            horizontal = false,
+        )
+    }
+
+    override fun initialPage(initialPage: Int) { this.initialPage = initialPage }
+    override fun onPageChanged(onPageChanged: ((Int) -> Unit)?) {
+        this.onPageChanged = onPageChanged
+    }
+    override fun userScrollEnabled(userScrollEnabled: Boolean) {
+        this.userScrollEnabled = userScrollEnabled
+    }
+    override fun pageSpacingDp(pageSpacingDp: Int) {
+        this.pageSpacingDp = pageSpacingDp
+    }
+}
+
+class CmpPagerIndicator :
+    com.example.serverdrivenui.schema.widget.PagerIndicator<CmpRender> {
+    private val mod = StateModifier()
+    private var pageCount by mutableStateOf(0)
+    private var currentPage by mutableStateOf(0)
+    private var activeColor by mutableStateOf(SchemaColor.Primary)
+    private var inactiveColor by mutableStateOf(SchemaColor.OutlineVariant)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        // Row of dots; the active dot is slightly larger to add a
+        // second visual cue beyond color (helps colorblind users).
+        androidx.compose.foundation.layout.Row(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement
+                .spacedBy(6.dp, alignment = androidx.compose.ui.Alignment.CenterHorizontally),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            modifier = composed,
+        ) {
+            for (i in 0 until pageCount) {
+                val isActive = i == currentPage
+                androidx.compose.foundation.layout.Box(
+                    modifier = ComposeModifier
+                        .size(if (isActive) 10.dp else 8.dp)
+                        .background(
+                            color = (if (isActive) activeColor else inactiveColor)
+                                .toComposeColor(),
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        ),
+                )
+            }
+        }
+    }
+
+    override fun pageCount(pageCount: Int) { this.pageCount = pageCount }
+    override fun currentPage(currentPage: Int) { this.currentPage = currentPage }
+    override fun activeColor(activeColor: SchemaColor) { this.activeColor = activeColor }
+    override fun inactiveColor(inactiveColor: SchemaColor) { this.inactiveColor = inactiveColor }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -2080,6 +2272,9 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun DropdownMenuItem() = CmpDropdownMenuItem()
     override fun ModalBottomSheet() = CmpModalBottomSheet()
     override fun AlertDialog() = CmpAlertDialog()
+    override fun HorizontalPager() = CmpHorizontalPager()
+    override fun VerticalPager() = CmpVerticalPager()
+    override fun PagerIndicator() = CmpPagerIndicator()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

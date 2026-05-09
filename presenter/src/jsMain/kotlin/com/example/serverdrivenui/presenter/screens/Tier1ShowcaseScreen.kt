@@ -31,11 +31,14 @@ import com.example.serverdrivenui.schema.compose.DropdownMenu
 import com.example.serverdrivenui.schema.compose.DropdownMenuItem
 import com.example.serverdrivenui.schema.compose.FilterChip
 import com.example.serverdrivenui.schema.compose.HorizontalDivider
+import com.example.serverdrivenui.schema.compose.HorizontalPager
 import com.example.serverdrivenui.schema.compose.InputChip
 import com.example.serverdrivenui.schema.compose.ListItem
 import com.example.serverdrivenui.schema.compose.ModalBottomSheet
+import com.example.serverdrivenui.schema.compose.PagerIndicator
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
+import com.example.serverdrivenui.schema.compose.VerticalPager
 import com.example.serverdrivenui.schema.compose.FloatingActionButton
 import com.example.serverdrivenui.schema.compose.Icon
 import com.example.serverdrivenui.schema.compose.IconButton
@@ -1127,6 +1130,136 @@ class Tier1ShowcaseScreen : Screen {
                                 },
                             )
                         },
+                    )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Pagers (Batch 3.3) ---
+            LazyItem {
+                Text(
+                    text = "Pagers (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // HorizontalPager — three pages, each a colored card with
+            // a label. PagerIndicator below mirrors the current page.
+            // The guest holds currentPage in `remember`; onPageChanged
+            // updates it after each fling settles.
+            LazyItem {
+                val pageColors = listOf(
+                    SchemaColor.PrimaryContainer,
+                    SchemaColor.SecondaryContainer,
+                    SchemaColor.Tertiary,
+                )
+                val pageOnColors = listOf(
+                    SchemaColor.OnPrimaryContainer,
+                    SchemaColor.OnSecondaryContainer,
+                    SchemaColor.OnTertiary,
+                )
+                var currentPage by remember { mutableStateOf(0) }
+                Column(
+                    verticalArrangement = SchemaArrangement.Start,
+                    horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    HorizontalPager(
+                        initialPage = 0,
+                        onPageChanged = { newPage -> currentPage = newPage },
+                        userScrollEnabled = true,
+                        pageSpacingDp = 12,
+                        modifier = Modifier.fillMaxWidth().height(160),
+                    ) {
+                        // Three pages — each a colored Box with a label.
+                        for (i in 0 until 3) {
+                            Box(
+                                onClick = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(pageColors[i])
+                                    .padding(16, 16, 16, 16),
+                            ) {
+                                Text(
+                                    text = "Page ${i + 1} of 3",
+                                    color = pageOnColors[i],
+                                    style = SchemaTextStyle.HeadlineSmall,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(width = 0, height = 12)
+                    PagerIndicator(
+                        pageCount = 3,
+                        currentPage = currentPage,
+                        activeColor = SchemaColor.Primary,
+                        inactiveColor = SchemaColor.OutlineVariant,
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 16) }
+
+            // VerticalPager — two pages, swipe up/down. Smaller height
+            // since vertical pages eat screen space; this is more of a
+            // "demonstrates the API exists" item than a rich demo.
+            LazyItem {
+                Text(
+                    text = "Vertical pager (swipe up/down)",
+                    color = SchemaColor.OnSurfaceVariant,
+                    style = SchemaTextStyle.BodySmall,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 4) }
+            LazyItem {
+                var currentVPage by remember { mutableStateOf(0) }
+                Column(
+                    verticalArrangement = SchemaArrangement.Start,
+                    horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    VerticalPager(
+                        initialPage = 0,
+                        onPageChanged = { newPage -> currentVPage = newPage },
+                        userScrollEnabled = true,
+                        pageSpacingDp = 8,
+                        modifier = Modifier.fillMaxWidth().height(120),
+                    ) {
+                        Box(
+                            onClick = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(SchemaColor.SurfaceVariant)
+                                .padding(16, 16, 16, 16),
+                        ) {
+                            Text(
+                                text = "Top page — swipe up",
+                                color = SchemaColor.OnSurfaceVariant,
+                                style = SchemaTextStyle.BodyMedium,
+                            )
+                        }
+                        Box(
+                            onClick = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(SchemaColor.PrimaryContainer)
+                                .padding(16, 16, 16, 16),
+                        ) {
+                            Text(
+                                text = "Bottom page — swipe down",
+                                color = SchemaColor.OnPrimaryContainer,
+                                style = SchemaTextStyle.BodyMedium,
+                            )
+                        }
+                    }
+                    Spacer(width = 0, height = 8)
+                    PagerIndicator(
+                        pageCount = 2,
+                        currentPage = currentVPage,
+                        activeColor = SchemaColor.Primary,
+                        inactiveColor = SchemaColor.OutlineVariant,
                     )
                 }
             }
