@@ -64,6 +64,11 @@ import dev.konduit.schema.Widget
         ElevatedCard::class,
         OutlinedCard::class,
         Surface::class,
+        // Tier 2 — Feedback (IDs 61–64)
+        LinearProgressIndicator::class,
+        CircularProgressIndicator::class,
+        Badge::class,
+        Snackbar::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -396,6 +401,51 @@ data class Surface(
     @Property(1) val tonalElevationDp: Int,
     @Property(2) val onClick: (() -> Unit)?,
     @Children(1) val content: () -> Unit,
+)
+
+// ============================================================================
+// Tier 2 — Feedback (IDs 61–64) — see KONDUIT_PLAN.md §4 Batch 2.5
+// ============================================================================
+
+/**
+ * Horizontal progress bar. When [indeterminate] is true the bar animates
+ * with no specific progress; otherwise [progress] (0..1) is rendered.
+ */
+@Widget(61)
+data class LinearProgressIndicator(
+    @Property(1) val progress: Float,
+    @Property(2) val indeterminate: Boolean,
+)
+
+/**
+ * Circular progress spinner. When [indeterminate] is true the ring rotates;
+ * otherwise [progress] (0..1) is rendered as an arc.
+ */
+@Widget(62)
+data class CircularProgressIndicator(
+    @Property(1) val progress: Float,
+    @Property(2) val indeterminate: Boolean,
+)
+
+/**
+ * Small numeric / string badge. Renders standalone (not anchored to an
+ * Icon yet — anchoring is a Tier 3 enhancement). Empty [text] means a dot.
+ */
+@Widget(63)
+data class Badge(
+    @Property(1) val text: String,
+)
+
+/**
+ * Inline snackbar. The guest decides when to add and remove the widget;
+ * auto-dismiss / queueing is up to the guest (use LaunchedEffect + delay
+ * to remove after a duration). Tier 3 may add a host-side queue.
+ */
+@Widget(64)
+data class Snackbar(
+    @Property(1) val message: String,
+    @Property(2) val actionLabel: String,
+    @Property(3) val onActionClick: (() -> Unit)?,
 )
 
 // ============================================================================

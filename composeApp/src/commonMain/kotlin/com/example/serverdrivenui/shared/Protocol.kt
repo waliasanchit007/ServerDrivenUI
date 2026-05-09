@@ -1085,6 +1085,122 @@ class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
 }
 
 // ============================================================================
+// Tier 2 — Feedback (IDs 61–64)
+// ============================================================================
+
+class CmpLinearProgressIndicator :
+    com.example.serverdrivenui.schema.widget.LinearProgressIndicator<CmpRender> {
+    private val mod = StateModifier()
+    private var progress by mutableStateOf(0f)
+    private var indeterminate by mutableStateOf(true)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        if (indeterminate) {
+            androidx.compose.material3.LinearProgressIndicator(modifier = composed)
+        } else {
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = composed,
+            )
+        }
+    }
+
+    override fun progress(progress: Float) { this.progress = progress }
+    override fun indeterminate(indeterminate: Boolean) {
+        this.indeterminate = indeterminate
+    }
+}
+
+class CmpCircularProgressIndicator :
+    com.example.serverdrivenui.schema.widget.CircularProgressIndicator<CmpRender> {
+    private val mod = StateModifier()
+    private var progress by mutableStateOf(0f)
+    private var indeterminate by mutableStateOf(true)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        if (indeterminate) {
+            androidx.compose.material3.CircularProgressIndicator(modifier = composed)
+        } else {
+            androidx.compose.material3.CircularProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = composed,
+            )
+        }
+    }
+
+    override fun progress(progress: Float) { this.progress = progress }
+    override fun indeterminate(indeterminate: Boolean) {
+        this.indeterminate = indeterminate
+    }
+}
+
+class CmpBadge : com.example.serverdrivenui.schema.widget.Badge<CmpRender> {
+    private val mod = StateModifier()
+    private var text by mutableStateOf("")
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        if (text.isNotEmpty()) {
+            androidx.compose.material3.Badge(modifier = composed) {
+                ComposeText(text = text)
+            }
+        } else {
+            androidx.compose.material3.Badge(modifier = composed)
+        }
+    }
+
+    override fun text(text: String) { this.text = text }
+}
+
+class CmpSnackbar : com.example.serverdrivenui.schema.widget.Snackbar<CmpRender> {
+    private val mod = StateModifier()
+    private var message by mutableStateOf("")
+    private var actionLabel by mutableStateOf("")
+    private var onActionClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onActionClick
+        androidx.compose.material3.Snackbar(
+            modifier = composed,
+            action = if (actionLabel.isNotEmpty()) {
+                {
+                    androidx.compose.material3.TextButton(onClick = { cb?.invoke() }) {
+                        ComposeText(text = actionLabel)
+                    }
+                }
+            } else null,
+        ) {
+            ComposeText(text = message)
+        }
+    }
+
+    override fun message(message: String) { this.message = message }
+    override fun actionLabel(actionLabel: String) { this.actionLabel = actionLabel }
+    override fun onActionClick(onActionClick: (() -> Unit)?) {
+        this.onActionClick = onActionClick
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1238,6 +1354,10 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun ElevatedCard() = CmpElevatedCard()
     override fun OutlinedCard() = CmpOutlinedCard()
     override fun Surface() = CmpSurface()
+    override fun LinearProgressIndicator() = CmpLinearProgressIndicator()
+    override fun CircularProgressIndicator() = CmpCircularProgressIndicator()
+    override fun Badge() = CmpBadge()
+    override fun Snackbar() = CmpSnackbar()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

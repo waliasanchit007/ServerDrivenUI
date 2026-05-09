@@ -14,10 +14,12 @@ import com.example.serverdrivenui.schema.SchemaIconName
 import com.example.serverdrivenui.schema.SchemaTextStyle
 import com.example.serverdrivenui.schema.SchemaVerticalAlignment
 import com.example.serverdrivenui.schema.compose.AsyncImage
+import com.example.serverdrivenui.schema.compose.Badge
 import com.example.serverdrivenui.schema.compose.Box
 import com.example.serverdrivenui.schema.compose.Button
 import com.example.serverdrivenui.schema.compose.Card
 import com.example.serverdrivenui.schema.compose.Checkbox
+import com.example.serverdrivenui.schema.compose.CircularProgressIndicator
 import com.example.serverdrivenui.schema.compose.ElevatedCard
 import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
@@ -29,6 +31,7 @@ import com.example.serverdrivenui.schema.compose.IconButton
 import com.example.serverdrivenui.schema.compose.LazyColumn
 import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
+import com.example.serverdrivenui.schema.compose.LinearProgressIndicator
 import com.example.serverdrivenui.schema.compose.OutlinedButton
 import com.example.serverdrivenui.schema.compose.OutlinedCard
 import com.example.serverdrivenui.schema.compose.OutlinedTextField
@@ -38,6 +41,7 @@ import com.example.serverdrivenui.schema.compose.Row
 import com.example.serverdrivenui.schema.compose.SearchBar
 import com.example.serverdrivenui.schema.compose.SegmentedButtonRow
 import com.example.serverdrivenui.schema.compose.Slider
+import com.example.serverdrivenui.schema.compose.Snackbar
 import com.example.serverdrivenui.schema.compose.Spacer
 import com.example.serverdrivenui.schema.compose.Surface
 import com.example.serverdrivenui.schema.compose.Switch
@@ -460,6 +464,65 @@ class Tier1ShowcaseScreen : Screen {
                         modifier = Modifier.padding(16, 16, 16, 16),
                     )
                 }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Feedback (Batch 2.5) ---
+            LazyItem {
+                Text(
+                    text = "Feedback",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // Determinate + indeterminate linear
+            LazyItem {
+                LinearProgressIndicator(
+                    progress = 0.65f,
+                    indeterminate = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                LinearProgressIndicator(
+                    progress = 0f,
+                    indeterminate = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // Circular + Badges row
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    CircularProgressIndicator(
+                        progress = 0.4f,
+                        indeterminate = false,
+                    )
+                    CircularProgressIndicator(
+                        progress = 0f,
+                        indeterminate = true,
+                    )
+                    Badge(text = "9")
+                    Badge(text = "99+")
+                    Badge(text = "")
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // Snackbar
+            LazyItem {
+                Snackbar(
+                    message = "Saved to drafts",
+                    actionLabel = "Undo",
+                    onActionClick = null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             LazyItem { Spacer(width = 0, height = 32) }
