@@ -2052,6 +2052,193 @@ class CmpVerticalPager :
     }
 }
 
+// ============================================================================
+// Tier 3 — Large-screen navigation (IDs 160–163)
+//
+// NavigationRail / NavigationRailItem are vertical-axis siblings of
+// NavigationBar / NavigationBarItem; the M3 widgets do the work, the host
+// just bridges the schema properties + slots.
+//
+// ModalNavigationDrawer uses a controlled-component pattern for drawer
+// state: the guest holds `drawerOpen: Boolean`, the host syncs M3's
+// DrawerState to it via LaunchedEffect, and reports user-driven gesture
+// changes back through onDrawerStateChange via snapshotFlow on
+// `isOpen`. Feedback-loop check: when the guest sets drawerOpen=true,
+// LaunchedEffect calls drawerState.open(); the snapshotFlow subsequently
+// fires onDrawerStateChange(true); the guest re-receives drawerOpen=true
+// (no-op). No infinite loop.
+//
+// drawerContent is wrapped in M3's ModalDrawerSheet by the host so the
+// guest emits items directly (typically NavigationDrawerItem children)
+// without worrying about surface styling.
+// ============================================================================
+
+class CmpNavigationRail :
+    com.example.serverdrivenui.schema.widget.NavigationRail<CmpRender> {
+    private val mod = StateModifier()
+
+    override val header: Widget.Children<CmpRender> = CmpChildren()
+    override val items: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val hasHeader = (header as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.NavigationRail(
+            header = if (hasHeader) {
+                {
+                    // M3's header lambda is ColumnScope; render() works
+                    // here because compose's normal scoping gives us a
+                    // composable context to emit children into.
+                    (header as CmpChildren).render()
+                }
+            } else null,
+            modifier = composed,
+        ) {
+            // Items render in M3's NavigationRail content ColumnScope —
+            // each child is expected to be a NavigationRailItem.
+            (items as CmpChildren).render()
+        }
+    }
+}
+
+class CmpNavigationRailItem :
+    com.example.serverdrivenui.schema.widget.NavigationRailItem<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var label by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.NavigationRailItem(
+            selected = selected,
+            onClick = { cb?.invoke() },
+            icon = { (icon as CmpChildren).render() },
+            label = if (label.isNotEmpty()) {
+                { ComposeText(text = label) }
+            } else null,
+            enabled = enabled,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun label(label: String) { this.label = label }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpModalNavigationDrawer :
+    com.example.serverdrivenui.schema.widget.ModalNavigationDrawer<CmpRender> {
+    private val mod = StateModifier()
+    private var drawerOpen by mutableStateOf(false)
+    private var onDrawerStateChange by mutableStateOf<((Boolean) -> Unit)?>(null)
+    private var gesturesEnabled by mutableStateOf(true)
+
+    override val drawerContent: Widget.Children<CmpRender> = CmpChildren()
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val initial = if (drawerOpen) {
+            androidx.compose.material3.DrawerValue.Open
+        } else {
+            androidx.compose.material3.DrawerValue.Closed
+        }
+        // Initial state matches drawerOpen at first composition; later
+        // changes flow through the LaunchedEffects below.
+        val drawerState = androidx.compose.material3.rememberDrawerState(initial)
+        // Guest → host: keep drawerState in sync with the guest's Boolean.
+        // open() / close() are suspend functions; we run them in the
+        // LaunchedEffect's coroutine.
+        androidx.compose.runtime.LaunchedEffect(drawerOpen) {
+            if (drawerOpen && !drawerState.isOpen) drawerState.open()
+            else if (!drawerOpen && !drawerState.isClosed) drawerState.close()
+        }
+        // Host → guest: report user-driven open/close (swipe, scrim tap)
+        // back to the guest. snapshotFlow re-emits when isOpen flips.
+        // First emission matches initial state (no-op for the guest).
+        val cb = onDrawerStateChange
+        if (cb != null) {
+            androidx.compose.runtime.LaunchedEffect(drawerState) {
+                androidx.compose.runtime.snapshotFlow { drawerState.isOpen }
+                    .collect { cb.invoke(it) }
+            }
+        }
+        androidx.compose.material3.ModalNavigationDrawer(
+            drawerContent = {
+                androidx.compose.material3.ModalDrawerSheet {
+                    (drawerContent as CmpChildren).render()
+                }
+            },
+            drawerState = drawerState,
+            gesturesEnabled = gesturesEnabled,
+            modifier = composed,
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun drawerOpen(drawerOpen: Boolean) { this.drawerOpen = drawerOpen }
+    override fun onDrawerStateChange(onDrawerStateChange: ((Boolean) -> Unit)?) {
+        this.onDrawerStateChange = onDrawerStateChange
+    }
+    override fun gesturesEnabled(gesturesEnabled: Boolean) {
+        this.gesturesEnabled = gesturesEnabled
+    }
+}
+
+class CmpNavigationDrawerItem :
+    com.example.serverdrivenui.schema.widget.NavigationDrawerItem<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var label by mutableStateOf("")
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override val badge: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        val hasIcon = (icon as CmpChildren).widgets.isNotEmpty()
+        val hasBadge = (badge as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.NavigationDrawerItem(
+            label = { ComposeText(text = label) },
+            selected = selected,
+            onClick = { cb?.invoke() },
+            icon = if (hasIcon) {
+                { (icon as CmpChildren).render() }
+            } else null,
+            badge = if (hasBadge) {
+                { (badge as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun label(label: String) { this.label = label }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 class CmpPullToRefreshBox :
     com.example.serverdrivenui.schema.widget.PullToRefreshBox<CmpRender> {
@@ -2313,6 +2500,10 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun VerticalPager() = CmpVerticalPager()
     override fun PagerIndicator() = CmpPagerIndicator()
     override fun PullToRefreshBox() = CmpPullToRefreshBox()
+    override fun NavigationRail() = CmpNavigationRail()
+    override fun NavigationRailItem() = CmpNavigationRailItem()
+    override fun ModalNavigationDrawer() = CmpModalNavigationDrawer()
+    override fun NavigationDrawerItem() = CmpNavigationDrawerItem()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

@@ -38,6 +38,8 @@ import com.example.serverdrivenui.schema.compose.InputChip
 import com.example.serverdrivenui.schema.compose.ListItem
 import com.example.serverdrivenui.schema.compose.ModalBottomSheet
 import com.example.serverdrivenui.schema.compose.PagerIndicator
+import com.example.serverdrivenui.schema.compose.NavigationRail
+import com.example.serverdrivenui.schema.compose.NavigationRailItem
 import com.example.serverdrivenui.schema.compose.PullToRefreshBox
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
@@ -73,6 +75,7 @@ import com.example.serverdrivenui.schema.compose.TopAppBar
 import com.example.serverdrivenui.schema.compose.TextButton
 import com.example.serverdrivenui.schema.compose.TextField
 import com.example.serverdrivenui.schema.compose.background
+import com.example.serverdrivenui.schema.compose.fillMaxHeight
 import com.example.serverdrivenui.schema.compose.fillMaxSize
 import com.example.serverdrivenui.schema.compose.fillMaxWidth
 import com.example.serverdrivenui.schema.compose.height
@@ -1327,6 +1330,100 @@ class Tier1ShowcaseScreen : Screen {
                             style = SchemaTextStyle.BodyMedium,
                         )
                     }
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Large-screen navigation (Batch 3.5) ---
+            LazyItem {
+                Text(
+                    text = "Large-screen nav (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // NavigationRail — shown inside a fixed-height row alongside
+            // a mirror that displays the current selection. Real apps
+            // use NavigationRail at large breakpoints (tablet/foldable
+            // unfolded); embedding it inline at phone width is fine for
+            // a showcase demo.
+            LazyItem {
+                var railSelected by remember { mutableStateOf(0) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.Start,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().height(280),
+                ) {
+                    NavigationRail(
+                        modifier = Modifier.fillMaxHeight(),
+                        header = {
+                            // Header sits at the top of the rail.
+                            Icon(
+                                name = SchemaIconName.Menu,
+                                tint = SchemaColor.OnSurface,
+                            )
+                        },
+                        items = {
+                            NavigationRailItem(
+                                selected = railSelected == 0,
+                                label = "Home",
+                                enabled = true,
+                                onClick = { railSelected = 0 },
+                            ) {
+                                Icon(name = SchemaIconName.Home, tint = SchemaColor.OnSurface)
+                            }
+                            NavigationRailItem(
+                                selected = railSelected == 1,
+                                label = "Inbox",
+                                enabled = true,
+                                onClick = { railSelected = 1 },
+                            ) {
+                                Icon(name = SchemaIconName.Email, tint = SchemaColor.OnSurface)
+                            }
+                            NavigationRailItem(
+                                selected = railSelected == 2,
+                                label = "Profile",
+                                enabled = true,
+                                onClick = { railSelected = 2 },
+                            ) {
+                                Icon(name = SchemaIconName.Person, tint = SchemaColor.OnSurface)
+                            }
+                        },
+                    )
+                    Spacer(width = 16, height = 0)
+                    val labels = listOf("Home", "Inbox", "Profile")
+                    Text(
+                        text = "Selected: ${labels[railSelected]}",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // ModalNavigationDrawer wraps the WHOLE screen surface, so
+            // it doesn't embed cleanly inside the LazyColumn. Push a
+            // dedicated demo screen via the Navigator instead — see
+            // NavDrawerDemoScreen. The button below opens it.
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 4, 0, 4),
+                ) {
+                    Text(
+                        text = "ModalNavigationDrawer wraps the full screen — opens in its own demo.",
+                        color = SchemaColor.OnSurfaceVariant,
+                        style = SchemaTextStyle.BodySmall,
+                    )
+                    Button(
+                        text = "Open drawer demo",
+                        enabled = true,
+                        onClick = { navigator.push(NavDrawerDemoScreen()) },
+                    )
                 }
             }
 

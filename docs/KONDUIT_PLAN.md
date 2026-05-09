@@ -657,6 +657,49 @@ stack at TopStart. Typical usage is a single LazyColumn child filling
 the box — that's what the guest should compose. Multi-child content
 works but the children stack rather than column.
 
+**Batch 3.5 — Large-screen navigation** (IDs 160–163). NavigationRail,
+NavigationRailItem, ModalNavigationDrawer, NavigationDrawerItem.
+
+NavigationRail / NavigationRailItem are vertical-axis siblings of
+NavigationBar / NavigationBarItem (Tier 2 IDs 75/76). Same widget shape
+on the schema side — selected / label / enabled / onClick + an icon
+@Children slot — different M3 placement (sidebar vs. bottom bar).
+
+ModalNavigationDrawer introduces the **controlled-component drawer**
+pattern: the guest holds `drawerOpen: Boolean`, the host syncs M3's
+`DrawerState` to it via `LaunchedEffect(drawerOpen) { open()/close() }`,
+and reports user-driven gesture changes back via
+`snapshotFlow { drawerState.isOpen }.collect { onDrawerStateChange }`.
+
+Feedback-loop check (worth documenting because controlled components
+get this wrong often):
+1. Guest sets drawerOpen = true.
+2. LaunchedEffect runs: drawerState.open() → suspend, animates open.
+3. snapshotFlow fires onDrawerStateChange(true).
+4. Guest sets drawerOpen = true (no-op, already true).
+
+No infinite loop. Same path applies for user-gestured open: snapshotFlow
+fires first → guest sets drawerOpen=true → LaunchedEffect re-evaluates
+(state matches, no-op). The pattern is sound.
+
+Drawer surface wrapping — the host wraps `drawerContent` in M3's
+`ModalDrawerSheet` automatically so the guest emits items directly
+(typically NavigationDrawerItem children) without worrying about
+surface styling. This is a deliberate ergonomics call: 99% of drawer
+content uses ModalDrawerSheet anyway, and exposing the sheet wrapper
+as a separate widget would add noise without unlocking real use cases.
+
+Embedding model — ModalNavigationDrawer wraps the WHOLE app surface,
+not a region of a scroll container. Putting it inside a LazyItem would
+anchor the drawer to the item's edge, not the screen's edge — visually
+broken. Caliclan-side: the showcase pushes a dedicated
+`NavDrawerDemoScreen` via Navigator.push so the drawer has a real
+top-level surface to anchor to. Same pattern any consumer should use.
+
+NavigationDrawerItem mirrors M3's API one-for-one: selected / label /
+onClick + icon + badge slots. Badge slot accepts any composable (the
+demo uses a Text "12" for an unread count).
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -1046,3 +1089,6 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 3.3 Pager V1 has initialPage-only: programmatic page jumps from the guest aren't supported. `rememberPagerState` ignores subsequent initialPage changes. Adding a `currentPage` @Property + LaunchedEffect(currentPage) { state.animateScrollToPage(currentPage) } is an additive change that can land later without breaking wire. Same pattern would unlock controlled-component-style pager use. | claude |
 | 2026-05 | Batch 3.3 PagerIndicator is host-rolled (no 1:1 M3 widget): Row of dots, active dot is 10dp / inactive 8dp. The size delta is intentional — gives colorblind users a non-color cue beyond active/inactive color. Custom indicators (numbers, custom shapes) deferred to a future additive @Children(1) slot. | claude |
 | 2026-05 | Batch 3.4 PullToRefreshBox keeps state guest-side: `isRefreshing: Boolean` @Property, no host-side `PullToRefreshState`. Letting the guest hold the state object would complicate the wire protocol for ~zero benefit; the visible knobs (refreshing flag, onRefresh callback) cover the standard guest flow (set true on refresh, kick off async, set false on completion). Custom indicator slot also deferred — M3's default circular spinner is fine for nearly all uses. | claude |
+| 2026-05 | Batch 3.5 ModalNavigationDrawer controlled-component drawer state: guest holds `drawerOpen: Boolean`, host syncs M3's DrawerState via `LaunchedEffect(drawerOpen) { open()/close() }`, reports user gestures back via `snapshotFlow { drawerState.isOpen }.collect { onDrawerStateChange }`. No infinite-loop risk because both sides settle when state matches. Same pattern used for any future controlled component (DrawerSheet, ScaffoldDrawer if/when added). | claude |
+| 2026-05 | Batch 3.5 host wraps drawerContent in ModalDrawerSheet automatically: 99% of drawer content uses ModalDrawerSheet for surface styling, so the host wraps drawerContent in `ModalDrawerSheet { ... }` rather than expose the sheet wrapper as a separate widget. Saves the guest the boilerplate; doesn't lose meaningful flexibility (custom drawer surfaces are exotic enough to wait for explicit demand). | claude |
+| 2026-05 | Batch 3.5 ModalNavigationDrawer can't embed inline: it wraps the WHOLE app surface, not a region of a scroll container. Embedding inside a LazyItem anchors the drawer to the item's edge instead of the screen's edge — visually broken. Caliclan-side pattern: push a dedicated screen via Navigator.push (the showcase does this with NavDrawerDemoScreen) so the drawer has a real top-level surface. Same pattern any consumer should use. | claude |

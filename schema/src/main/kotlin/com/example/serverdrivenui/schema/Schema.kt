@@ -99,6 +99,11 @@ import dev.konduit.schema.Widget
         PagerIndicator::class,
         // Tier 3 — Pull-to-refresh (ID 150)
         PullToRefreshBox::class,
+        // Tier 3 — Large-screen navigation (IDs 160–163)
+        NavigationRail::class,
+        NavigationRailItem::class,
+        ModalNavigationDrawer::class,
+        NavigationDrawerItem::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -866,6 +871,83 @@ data class PullToRefreshBox(
     @Property(1) val isRefreshing: Boolean,
     @Property(2) val onRefresh: () -> Unit,
     @Children(1) val content: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — Large-screen navigation (IDs 160–163) — see KONDUIT_PLAN.md §4 Batch 3.5
+//
+// First batch with controlled-component drawer state: ModalNavigationDrawer
+// uses a guest-held `drawerOpen` Boolean + `onDrawerStateChange` callback
+// — same pattern as Switch/Checkbox extended to a more complex state
+// transition. The host syncs M3's DrawerState to the guest's Boolean
+// via LaunchedEffect, and reports user gestures back via snapshotFlow.
+//
+// NavigationRail is a sibling to NavigationBar (ID 75) — same widget
+// shape, different M3 placement (sidebar vs. bottom bar).
+// ============================================================================
+
+/**
+ * Vertical sidebar nav, intended for tablet / large-screen layouts
+ * but renders on phones too. Mirror of NavigationBar (ID 75) for the
+ * vertical axis. [header] is an optional top slot (e.g. a logo or
+ * menu button); empty `{}` hides it.
+ */
+@Widget(160)
+data class NavigationRail(
+    @Children(1) val header: () -> Unit,
+    @Children(2) val items: () -> Unit,
+)
+
+/**
+ * Single rail entry. Same property shape as NavigationBarItem (ID 76):
+ * selected / label / enabled / onClick + an icon @Children slot. M3
+ * renders rail items vertically inside the rail's Column scope.
+ */
+@Widget(161)
+data class NavigationRailItem(
+    @Property(1) val selected: Boolean,
+    @Property(2) val label: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onClick: (() -> Unit)?,
+    @Children(1) val icon: () -> Unit,
+)
+
+/**
+ * Side-drawer overlay. The drawer slides in from the start edge; the
+ * main app content sits in [content] (always visible behind/beside the
+ * drawer depending on state).
+ *
+ * Controlled-component pattern: the guest holds [drawerOpen] and
+ * mirrors changes via [onDrawerStateChange]. The host syncs M3's
+ * DrawerState to drawerOpen via LaunchedEffect; user gestures (swipe
+ * to open / close, tap scrim) feed back through onDrawerStateChange.
+ *
+ * The host wraps [drawerContent] in M3's `ModalDrawerSheet` for surface
+ * styling, so the guest just emits the items (typically
+ * NavigationDrawerItems) without worrying about the sheet container.
+ */
+@Widget(162)
+data class ModalNavigationDrawer(
+    @Property(1) val drawerOpen: Boolean,
+    @Property(2) val onDrawerStateChange: ((Boolean) -> Unit)?,
+    @Property(3) val gesturesEnabled: Boolean,
+    @Children(1) val drawerContent: () -> Unit,
+    @Children(2) val content: () -> Unit,
+)
+
+/**
+ * Single row inside a [ModalNavigationDrawer]'s drawerContent. M3
+ * styles the row as a pill with selected-state background. [icon] is
+ * optional (empty `{}` = hide); [badge] sits on the trailing edge
+ * (typically a Badge widget showing an unread count).
+ */
+@Widget(163)
+data class NavigationDrawerItem(
+    @Property(1) val selected: Boolean,
+    @Property(2) val label: String,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val icon: () -> Unit,
+    @Children(2) val badge: () -> Unit,
 )
 
 // ============================================================================
