@@ -538,6 +538,33 @@ host renders the chip in label-only mode. FilterChip + InputChip add a
 `selected: Boolean` property; InputChip adds an `onClose: (() -> Unit)?`
 property — null hides the trailing close affordance entirely.
 
+**Batch 3.1 — List + Menus** (IDs 110–112). ListItem, DropdownMenu,
+DropdownMenuItem.
+
+ListItem: first 5-effective-slot widget. Three text properties
+(headline / supporting / overline) + two @Children slots (leadingContent,
+trailingContent). headline is required; supporting + overline collapse
+to null when empty so the row uses M3's natural compact layout instead
+of rendering blank text lines that push the row taller. Headline-as-slot
+(rich-text headline) is deferred — additive @Children(3) can land later.
+M3 ListItem has no native `enabled` flag; the host gates `clickable {}`
+on `enabled && onClick != null` so a disabled row visually still renders
+but won't fire onClick.
+
+DropdownMenu: first popup-anchored widget. Wraps `material3.DropdownMenu`,
+which uses Compose's Popup primitive — the popup positions itself
+relative to the widget's coordinates in its parent. Typical Caliclan
+usage is to wrap the trigger (e.g. an IconButton) and the menu in a Box,
+so the menu anchors to the trigger naturally. The host deliberately does
+NOT propagate the parent's modifier chain to the menu surface — applying
+fillMaxWidth / padding etc. to the menu would shift the popup, not the
+trigger. (If a future caller needs to size the menu surface itself, that
+should land as an explicit `surfaceModifier` property, not silently via
+the modifier chain.)
+
+DropdownMenuItem: leaf row, mirrors M3 1:1. text + enabled + onClick
+properties + leadingIcon + trailingIcon @Children slots.
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -916,3 +943,6 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | **CI auth gotcha** (§7.5): GitHub Packages' Maven registry rejects fine-grained PATs with HTTP 404 (not 401). Earlier `docs/CI_SETUP.md` told the user to make a fine-grained PAT — wrong. Fixed: docs + workflow header now mandate a classic PAT with `read:packages`; the workflow's Verify step also probes `konduit-gradle-plugin-1.0.0-caliclan.2.pom` directly so the failure mode is "PAT lacks read:packages" instead of a confusing plugin-not-found stack trace deep in Gradle. | claude |
 | 2026-05 | Batch 3.0 chips ID range: use 100–103 per the §3.3 wire-format range table (Tier 3 = 100–199). Earlier draft `Tier 3 (~16 widgets, IDs 81–150)` text in HANDOVER + plan was stale and overlapped with the Tier 2 buffer; corrected to 100–199. IDs 81–99 stay reserved as a Tier 2 additive-property buffer. | claude |
 | 2026-05 | Batch 3.0 chip slot shape: every chip has a single `leadingIcon: () -> Unit` @Children(1) slot. Trailing-icon support is property-only on InputChip (`onClose: (() -> Unit)?`) — that covers the conventional close-X behavior; FilterChip's selected-state check glyph is M3-rendered, so we suppress leadingIcon when `selected && hasIcon` to avoid icon double-up. AssistChip + FilterChip custom trailing slots are deferred (additive @Children can land later without breaking wire). | claude |
+| 2026-05 | Batch 3.1 ListItem text-as-Strings: headline / supporting / overline are `String` properties, not @Composable slots. Empty string = hide that line. Rationale: ~95% of real-world list rows are text-only labels; forcing the guest to wrap each label in a Text widget would 4x the wire payload for the common case. Headline-as-slot (rich-text headline) deferred to a future @Children(3) — additive, won't break wire. | claude |
+| 2026-05 | Batch 3.1 ListItem disabled-clickable behavior: M3 ListItem has no native `enabled` parameter. Host gates `Modifier.clickable {}` on `enabled && onClick != null` so a disabled row visually still renders but won't fire onClick. Visual disabled-state styling (greyed-out text) is NOT applied automatically — the guest can pass dimmer SchemaColors via Text styles if it wants the visual cue. Open question: bake a host-side disabled style into ListItem, or leave it to the guest? Current call: leave it. | claude |
+| 2026-05 | Batch 3.1 DropdownMenu modifier propagation: the host does NOT apply the parent modifier chain to the menu surface. M3 DropdownMenu uses a Popup that positions itself relative to its parent's coordinates; applying fillMaxWidth / padding / etc. to the menu would shift the popup, not the trigger. If a future caller needs to size or style the menu surface itself, that should land as an explicit `surfaceModifier` property (not silently via the modifier chain). | claude |

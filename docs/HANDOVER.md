@@ -189,7 +189,8 @@ All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–
 
 | Batch | Scope | IDs | Notes |
 |---|---|---|---|
-| ⏳ **3.0** | Chips (FilterChip, AssistChip, InputChip, SuggestionChip) | 100–103 | Uniform `leadingIcon` @Children(1) slot. FilterChip suppresses leadingIcon when selected (M3 auto-renders check glyph). InputChip has dedicated `onClose` Property — null hides the trailing X. |
+| ✅ **3.0** | Chips (FilterChip, AssistChip, InputChip, SuggestionChip) | 100–103 | Uniform `leadingIcon` @Children(1) slot. FilterChip suppresses leadingIcon when selected (M3 auto-renders check glyph). InputChip has dedicated `onClose` Property — null hides the trailing X. |
+| ⏳ **3.1** | List + Menus (ListItem, DropdownMenu, DropdownMenuItem) | 110–112 | First 5-effective-slot widget (ListItem: headline/supporting/overline strings + leading + trailing slots). First popup-anchored widget (DropdownMenu via Compose Popup). Empty-string short-circuits hide supporting/overline lines. ListItem gates clickable on `enabled && onClick != null` since M3 ListItem has no native enabled flag. |
 
 ## What's pending
 
@@ -203,8 +204,8 @@ All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–
 
 ### Tier 3 (~16 widgets, IDs 100–199)
 Per plan §3.3 / §4: chips, list items, flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh, shimmer, navigation rail. Earlier draft text used "81–150"; that conflicts with the authoritative range table (Tier 3 is 100–199, IDs 81–99 are the Tier 2 buffer for additive properties). Likely batches:
-- ✅ **Batch 3.0 (in progress)** — Chips: FilterChip / AssistChip / InputChip / SuggestionChip @ IDs 100–103. Single shared `leadingIcon` slot per chip; InputChip has dedicated `onClose` callback for the trailing X.
-- Batch 3.1 (next) — ListItem + DropdownMenu/MenuItem
+- ✅ **Batch 3.0** — Chips: FilterChip / AssistChip / InputChip / SuggestionChip @ IDs 100–103. Single shared `leadingIcon` slot per chip; InputChip has dedicated `onClose` callback for the trailing X.
+- ⏳ **Batch 3.1 (in progress)** — List + Menus: ListItem / DropdownMenu / DropdownMenuItem @ IDs 110–112. ListItem is the first 5-effective-slot widget; DropdownMenu introduces popup positioning via Compose's Popup primitive — the menu anchors to its parent layout (typical: wrap trigger + menu in a Box). Awaiting on-device verification.
 - ModalBottomSheet, AlertDialog, DatePicker, TimePicker
 - HorizontalPager, VerticalPager + PagerIndicator
 - PullToRefresh wrapper

@@ -26,9 +26,12 @@ import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
 import com.example.serverdrivenui.schema.compose.FilledTonalButton
 import com.example.serverdrivenui.schema.compose.AssistChip
+import com.example.serverdrivenui.schema.compose.DropdownMenu
+import com.example.serverdrivenui.schema.compose.DropdownMenuItem
 import com.example.serverdrivenui.schema.compose.FilterChip
 import com.example.serverdrivenui.schema.compose.HorizontalDivider
 import com.example.serverdrivenui.schema.compose.InputChip
+import com.example.serverdrivenui.schema.compose.ListItem
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.FloatingActionButton
@@ -831,6 +834,148 @@ class Tier1ShowcaseScreen : Screen {
                         enabled = true,
                         onClick = null,
                     ) { /* no leading icon */ }
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — List + Menus (Batch 3.1) ---
+            LazyItem {
+                Text(
+                    text = "ListItem + DropdownMenu (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // Three-line ListItem with leading avatar + trailing icon —
+            // the densest M3 list shape.
+            LazyItem {
+                ListItem(
+                    headline = "Alice Carter",
+                    supporting = "alice@example.com · Online",
+                    overline = "Recent",
+                    enabled = true,
+                    onClick = null,
+                    leadingContent = {
+                        Icon(name = SchemaIconName.Person, tint = SchemaColor.Primary)
+                    },
+                    trailingContent = {
+                        Icon(name = SchemaIconName.ArrowForward, tint = SchemaColor.OnSurfaceVariant)
+                    },
+                )
+            }
+            // Two-line ListItem (no overline).
+            LazyItem {
+                ListItem(
+                    headline = "Bob Diaz",
+                    supporting = "bob@example.com",
+                    overline = "",
+                    enabled = true,
+                    onClick = null,
+                    leadingContent = {
+                        Icon(name = SchemaIconName.Person, tint = SchemaColor.Tertiary)
+                    },
+                    trailingContent = { /* none */ },
+                )
+            }
+            // Single-line ListItem — no supporting/overline, no leading.
+            // Trailing-only content (e.g. a chevron) keeps the row tappable
+            // looking even though we don't wire onClick here.
+            LazyItem {
+                ListItem(
+                    headline = "Single-line row",
+                    supporting = "",
+                    overline = "",
+                    enabled = true,
+                    onClick = null,
+                    leadingContent = { /* none */ },
+                    trailingContent = {
+                        Icon(name = SchemaIconName.ArrowForward, tint = SchemaColor.OnSurfaceVariant)
+                    },
+                )
+            }
+            // Disabled clickable ListItem — the host wires clickable only
+            // when both onClick != null AND enabled, so this shows the
+            // "looks tappable but isn't" path. (We pass a no-op onClick to
+            // exercise the disabled-click gate; tap should do nothing.)
+            LazyItem {
+                ListItem(
+                    headline = "Disabled row (won't fire)",
+                    supporting = "Locked / not yet available",
+                    overline = "",
+                    enabled = false,
+                    onClick = { /* should never fire because enabled=false */ },
+                    leadingContent = {
+                        Icon(name = SchemaIconName.Lock, tint = SchemaColor.OnSurfaceVariant)
+                    },
+                    trailingContent = { /* none */ },
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // DropdownMenu — typical anchoring pattern: wrap the trigger
+            // (IconButton) and the menu in a Box. The popup positions
+            // itself relative to the Box's coordinates.
+            LazyItem {
+                var expanded by remember { mutableStateOf(false) }
+                var lastChoice by remember { mutableStateOf("(no menu choice yet)") }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 8, 0, 8),
+                ) {
+                    Text(
+                        text = lastChoice,
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Box(onClick = null) {
+                        IconButton(enabled = true, onClick = { expanded = true }) {
+                            Icon(name = SchemaIconName.Menu, tint = SchemaColor.OnSurface)
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = "Edit",
+                                enabled = true,
+                                onClick = {
+                                    lastChoice = "Picked: Edit"
+                                    expanded = false
+                                },
+                                leadingIcon = {
+                                    Icon(name = SchemaIconName.Edit, tint = SchemaColor.OnSurface)
+                                },
+                                trailingIcon = { /* none */ },
+                            )
+                            DropdownMenuItem(
+                                text = "Share",
+                                enabled = true,
+                                onClick = {
+                                    lastChoice = "Picked: Share"
+                                    expanded = false
+                                },
+                                leadingIcon = { /* none */ },
+                                trailingIcon = { /* none */ },
+                            )
+                            DropdownMenuItem(
+                                text = "Delete",
+                                enabled = false,
+                                onClick = {
+                                    // Disabled — won't fire even if reached.
+                                    lastChoice = "Picked: Delete"
+                                    expanded = false
+                                },
+                                leadingIcon = {
+                                    Icon(name = SchemaIconName.Delete, tint = SchemaColor.Error)
+                                },
+                                trailingIcon = { /* none */ },
+                            )
+                        }
+                    }
                 }
             }
 

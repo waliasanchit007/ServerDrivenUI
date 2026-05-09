@@ -1654,6 +1654,149 @@ class CmpSuggestionChip :
 }
 
 // ============================================================================
+// Tier 3 — List + Menus (IDs 110–112)
+//
+// ListItem maps the three text properties (headline / supporting /
+// overline) into M3's `*Content` slot lambdas; empty strings collapse
+// to null to preserve M3's natural compact layout. Slots gate on
+// `widgets.isNotEmpty()` exactly like the chips do.
+//
+// DropdownMenu wraps `material3.DropdownMenu`; the popup renders inside
+// the parent layout with default position. Typical Caliclan usage is to
+// wrap the trigger (e.g. an IconButton) and the menu in a Box so the
+// menu anchors to the trigger; the host doesn't need to do anything
+// special for this — Popup positioning handles it.
+//
+// DropdownMenuItem is a leaf — no popup machinery; it renders inside
+// the DropdownMenu's ColumnScope content lambda.
+// ============================================================================
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpListItem : com.example.serverdrivenui.schema.widget.ListItem<CmpRender> {
+    private val mod = StateModifier()
+    private var headline by mutableStateOf("")
+    private var supporting by mutableStateOf("")
+    private var overline by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingContent: Widget.Children<CmpRender> = CmpChildren()
+    override val trailingContent: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        // ListItem doesn't have a native enabled flag; gate clickable
+        // wiring on enabled so a disabled row visually still renders
+        // but won't fire onClick.
+        val rowMod = if (cb != null && enabled) {
+            composed.clickable { cb.invoke() }
+        } else composed
+        val hasLeading = (leadingContent as CmpChildren).widgets.isNotEmpty()
+        val hasTrailing = (trailingContent as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.ListItem(
+            headlineContent = { ComposeText(text = headline) },
+            // Empty-string short-circuit: surrender the slot rather
+            // than render an empty Text that pushes the row taller.
+            supportingContent = if (supporting.isNotEmpty()) {
+                { ComposeText(text = supporting) }
+            } else null,
+            overlineContent = if (overline.isNotEmpty()) {
+                { ComposeText(text = overline) }
+            } else null,
+            leadingContent = if (hasLeading) {
+                { (leadingContent as CmpChildren).render() }
+            } else null,
+            trailingContent = if (hasTrailing) {
+                { (trailingContent as CmpChildren).render() }
+            } else null,
+            modifier = rowMod,
+        )
+    }
+
+    override fun headline(headline: String) { this.headline = headline }
+    override fun supporting(supporting: String) { this.supporting = supporting }
+    override fun overline(overline: String) { this.overline = overline }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+class CmpDropdownMenu : com.example.serverdrivenui.schema.widget.DropdownMenu<CmpRender> {
+    private val mod = StateModifier()
+    private var expanded by mutableStateOf(false)
+    private var onDismissRequest by mutableStateOf<() -> Unit>({})
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        // We don't apply `incoming` (parent modifier) to DropdownMenu's
+        // own modifier — the popup positions itself relative to its
+        // parent's coordinates and a non-trivial parent modifier on the
+        // menu itself would shift the popup, not the trigger. Apply
+        // modifier to the menu surface only via mod.value where needed
+        // (currently no callers want this; pass Modifier through plain).
+        val cb = onDismissRequest
+        androidx.compose.material3.DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { cb.invoke() },
+            // No modifier propagation: the parent modifier is for the
+            // anchoring layout (the Box wrapping trigger + menu), not
+            // for the menu surface itself.
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun expanded(expanded: Boolean) { this.expanded = expanded }
+    override fun onDismissRequest(onDismissRequest: () -> Unit) {
+        this.onDismissRequest = onDismissRequest
+    }
+}
+
+class CmpDropdownMenuItem :
+    com.example.serverdrivenui.schema.widget.DropdownMenuItem<CmpRender> {
+    private val mod = StateModifier()
+    private var text by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override val trailingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        val hasLeading = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val hasTrailing = (trailingIcon as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.DropdownMenuItem(
+            text = { ComposeText(text = text) },
+            onClick = { cb?.invoke() },
+            enabled = enabled,
+            leadingIcon = if (hasLeading) {
+                { (leadingIcon as CmpChildren).render() }
+            } else null,
+            trailingIcon = if (hasTrailing) {
+                { (trailingIcon as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun text(text: String) { this.text = text }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1825,6 +1968,9 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun AssistChip() = CmpAssistChip()
     override fun InputChip() = CmpInputChip()
     override fun SuggestionChip() = CmpSuggestionChip()
+    override fun ListItem() = CmpListItem()
+    override fun DropdownMenu() = CmpDropdownMenu()
+    override fun DropdownMenuItem() = CmpDropdownMenuItem()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

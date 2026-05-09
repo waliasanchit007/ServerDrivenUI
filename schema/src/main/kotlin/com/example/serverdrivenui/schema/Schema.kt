@@ -86,6 +86,10 @@ import dev.konduit.schema.Widget
         AssistChip::class,
         InputChip::class,
         SuggestionChip::class,
+        // Tier 3 — List + Menus (IDs 110–112)
+        ListItem::class,
+        DropdownMenu::class,
+        DropdownMenuItem::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -637,6 +641,72 @@ data class SuggestionChip(
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
     @Children(1) val leadingIcon: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — List + Menus (IDs 110–112) — see KONDUIT_PLAN.md §4 Batch 3.1
+//
+// First widget batch with a popup-anchored child (DropdownMenu) and the
+// first 5-effective-slot widget (ListItem: 3 text lines + leading +
+// trailing). DropdownMenu is positioned by Compose's Popup primitive
+// relative to wherever the widget appears in its parent — typical
+// Caliclan usage is to wrap the trigger (e.g. an IconButton) and the
+// DropdownMenu in a Box, so the menu anchors to the trigger naturally.
+// ============================================================================
+
+/**
+ * Material 3 list row. Headline is required (mainline label); supporting
+ * + overline render only when non-empty (empty string = hide that line).
+ * leading + trailing slots accept any composable but are typically
+ * Icon / AsyncImage for avatars + chevrons / Switches for trailing
+ * controls. Pass `null` to onClick for a non-clickable / read-only row.
+ *
+ * Headline-as-slot (e.g. for rich-text headlines) can land later as an
+ * additive @Children(3); deferred for now since strings cover the
+ * overwhelming majority of real list rows.
+ */
+@Widget(110)
+data class ListItem(
+    @Property(1) val headline: String,
+    @Property(2) val supporting: String,
+    @Property(3) val overline: String,
+    @Property(4) val enabled: Boolean,
+    @Property(5) val onClick: (() -> Unit)?,
+    @Children(1) val leadingContent: () -> Unit,
+    @Children(2) val trailingContent: () -> Unit,
+)
+
+/**
+ * Anchored popup that overlays the screen when [expanded] is true.
+ * Position is decided by Compose's Popup machinery relative to the
+ * widget's coordinates in its parent — wrap the trigger + the menu in
+ * a Box so the menu anchors to the trigger.
+ *
+ * [onDismissRequest] fires when the user taps outside, presses back, or
+ * hits escape. The guest is responsible for flipping its `expanded`
+ * state to false in response. Children are rendered in M3's internal
+ * ColumnScope; intended children are [DropdownMenuItem] instances but
+ * any widget will render.
+ */
+@Widget(111)
+data class DropdownMenu(
+    @Property(1) val expanded: Boolean,
+    @Property(2) val onDismissRequest: () -> Unit,
+    @Children(1) val content: () -> Unit,
+)
+
+/**
+ * Single row inside a [DropdownMenu]. [text] is the row label;
+ * leadingIcon + trailingIcon are optional (empty `{}` = hide). [onClick]
+ * typically also dismisses the parent menu — the guest decides.
+ */
+@Widget(112)
+data class DropdownMenuItem(
+    @Property(1) val text: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val leadingIcon: () -> Unit,
+    @Children(2) val trailingIcon: () -> Unit,
 )
 
 // ============================================================================
