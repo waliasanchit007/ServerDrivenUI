@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
         val spec = object : dev.konduit.treehouse.TreehouseApp.Spec<SduiAppService>() {
             override val name = "sdui"
             override val manifestUrl = manifestUrlFlow.asStateFlow()
+            override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
 
             override suspend fun bindServices(
                 treehouseApp: dev.konduit.treehouse.TreehouseApp<SduiAppService>,

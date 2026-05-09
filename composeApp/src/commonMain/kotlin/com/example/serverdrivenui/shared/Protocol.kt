@@ -602,6 +602,8 @@ class SduiAppSpec(
     override val manifestUrl: Flow<String>,
     override val name: String = "sdui",
 ) : TreehouseApp.Spec<SduiAppService>() {
+    override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
+
     override suspend fun bindServices(treehouseApp: TreehouseApp<SduiAppService>, zipline: Zipline) {
         zipline.bind<HostConsole>("console", RealHostConsole())
     }

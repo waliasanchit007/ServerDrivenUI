@@ -3,6 +3,7 @@ package com.example.serverdrivenui
 import android.util.Log
 import dev.konduit.treehouse.TreehouseApp
 import app.cash.zipline.Zipline
+import com.example.serverdrivenui.schema.SduiSerializersModule
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.SduiAppService
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,8 @@ class AndroidSduiAppSpec(
     init {
         Log.d("SDUI-Host", "AndroidSduiAppSpec initialized")
     }
+
+    override val serializersModule = SduiSerializersModule
 
     override suspend fun bindServices(treehouseApp: TreehouseApp<SduiAppService>, zipline: Zipline) {
         Log.d("SDUI-Host", "bindServices called")

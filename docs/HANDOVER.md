@@ -17,7 +17,9 @@
 
 **Tier 1 verified end-to-end on BOTH Android (Galaxy S22 Ultra) and iOS sim** — all 10 widgets render, including AsyncImage via Coil + ktor2.
 
-**Batch 2.0 compile-verified on Android `assembleDebug` + iOS `linkDebugFrameworkIosSimulatorArm64` + presenter `compileDevelopmentExecutableKotlinJsZipline`. Device parity verification still pending — run on phone + sim before declaring the batch fully done.**
+**Batch 2.0 compile-verified on Android `assembleDebug` + iOS `linkDebugFrameworkIosSimulatorArm64` + presenter `compileDevelopmentExecutableKotlinJsZipline`. iOS sim parity verified: full showcase renders identically to pre-Batch-2.0 (icons, chips, list rows, AsyncImage all working). Android device parity also verified via logcat (CmpAsyncImage Success on real Galaxy S22 Ultra) — pending visual screenshot.**
+
+**Caveat:** Initial Batch 2.0 commit (`3be4c79`) shipped a white-screen bug — the `Background(SchemaColor)` modifier serializer triggered a silent `SerializationException` because Konduit codegen emits `ContextualSerializer(SchemaColor::class)` without a registered SerializersModule. Fixed in a follow-up commit by adding `SduiSerializersModule` (`:schema-types`) and plumbing it into every `TreehouseApp.Spec` + the guest's `StandardAppLifecycle.json`. See gotcha #10.
 
 **Konduit fork** (private): `https://github.com/waliasanchit007/konduit`
 - `main` at `975c9cdaa` (Phase 2 + Linux CI drop)
@@ -135,6 +137,11 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
 8. **Konduit codegen for lambda-typed modifier properties is broken on Kotlin/JS.** A `@Modifier` data class containing `val onClick: () -> Unit` (or any `Function0<Unit>`) makes the protocol-guest gen emit `ContextualSerializer(Function0<Unit>::class)` — invalid Kotlin syntax (class literal not allowed on a generic type). This bit us during Batch 2.0; we dropped the planned `Clickable` modifier and kept `onClick` as a direct `@Property` on `Box`. **Convention going forward:** click handlers / lambdas live on the widget that needs them, never on a modifier. Tier 2 buttons / IconButton / FAB will follow this rule.
 
 9. **Layout modifier classes need their own gradle module.** Konduit's `dev.konduit.generator.modifiers` plugin produces the cross-platform `*.schema.modifier.X` interfaces consumed by the generated factory. Caliclan added `:shared-modifier` for this purpose. The widget generator (`:shared-widget`) depends on it via `api(project(":shared-modifier"))` so transitive consumers (composeApp host, presenter guest, protocol modules) all see the modifier interfaces.
+
+10. **Konduit codegen emits `ContextualSerializer(MyEnum::class)` for enum fields on `@Modifier` classes — you MUST register a contextual serializer or the entire protocol batch silently fails (white screen).** This bit us hard during Batch 2.0 verification. With `Background(color: SchemaColor)` declared as a modifier, the generated `BackgroundTagAndSerializer` includes `ContextualSerializer(SchemaColor::class)`. At runtime the encode call throws `SerializationException`, which Konduit's protocol path swallows — the batch of widget changes never reaches the host, no exception surfaces in any log, the host renders an empty TreehouseContent, screen stays blank. Symptom signature: guest's compose composition runs to completion (you can println from inside lambdas and see them) but ZERO `factory.X()` calls happen on the host. Fix: define a shared `SduiSerializersModule` in `:schema-types` registering each enum used in a modifier (`contextual(SchemaColor::class, SchemaColor.serializer())`), then plumb it into BOTH:
+   - Every host-side `TreehouseApp.Spec` via `override val serializersModule = SduiSerializersModule`
+   - The guest's `StandardAppLifecycle` via `json = Json { serializersModule = SduiSerializersModule }`
+   Enums used only as widget `@Property` (not modifier fields) work fine — codegen calls `MyEnum.serializer()` directly there. Only modifier fields trigger Contextual codegen. Remember to add new enums to the module when you introduce new modifier types.
 
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 

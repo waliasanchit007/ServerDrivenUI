@@ -7,6 +7,7 @@ import dev.konduit.treehouse.StandardAppLifecycle
 import dev.konduit.treehouse.asZiplineTreehouseUi
 import dev.konduit.treehouse.ZiplineTreehouseUi
 import com.example.serverdrivenui.shared.SduiAppService
+import com.example.serverdrivenui.schema.SduiSerializersModule
 import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
 import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
@@ -18,8 +19,11 @@ import com.example.serverdrivenui.shared.HostConsole
 class SduiAppServiceImpl : SduiAppService {
     override val appLifecycle = StandardAppLifecycle(
         protocolWidgetSystemFactory = SduiSchemaProtocolWidgetSystemFactory,
-        json = Json,
-        widgetVersion = 1U
+        // Json must register SchemaColor (and any future enum used as a
+        // @Modifier field) so generated ContextualSerializer references can
+        // be resolved. See SduiSerializers.kt for the gory details.
+        json = Json { serializersModule = SduiSerializersModule },
+        widgetVersion = 1U,
     )
 
     override fun launch(): ZiplineTreehouseUi {

@@ -211,7 +211,8 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
     val spec = object : TreehouseApp.Spec<SduiAppService>() {
         override val name = "sdui"
         override val manifestUrl = manifestUrlFlow.asStateFlow()
-        
+        override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
+
         override suspend fun bindServices(
             treehouseApp: TreehouseApp<SduiAppService>,
             zipline: Zipline

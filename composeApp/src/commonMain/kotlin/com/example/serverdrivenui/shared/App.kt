@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,11 +88,14 @@ fun App(
                         KonduitErrorFallback(error = s)
                     }
                     else -> {
-                        val widgetSystem = SduiSchemaWidgetSystem(CmpWidgetFactory)
+                        // Stable identities so TreehouseContent doesn't tear down
+                        // and restart the guest session every recomposition.
+                        val widgetSystem = remember { SduiSchemaWidgetSystem(CmpWidgetFactory) }
+                        val contentSource = remember { SduiContentSource() }
                         TreehouseContent(
                             treehouseApp = treehouseApp,
                             widgetSystem = widgetSystem,
-                            contentSource = SduiContentSource(),
+                            contentSource = contentSource,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
