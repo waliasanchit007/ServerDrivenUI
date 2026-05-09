@@ -565,6 +565,43 @@ the modifier chain.)
 DropdownMenuItem: leaf row, mirrors M3 1:1. text + enabled + onClick
 properties + leadingIcon + trailingIcon @Children slots.
 
+**Batch 3.2 — Overlays** (IDs 120–121). ModalBottomSheet, AlertDialog.
+
+Visibility model — both overlays use a guest-conditional rendering
+pattern: the guest holds a Boolean and only emits the widget when
+visible. The host renders the M3 widget when present in the tree;
+when the guest stops emitting, the widget leaves the tree. Each
+widget's `onDismissRequest` fires AFTER M3's hide animation completes
+(ModalBottomSheet) or immediately (AlertDialog), so dropping the
+widget on dismiss does not truncate animations.
+
+This is a deliberate pivot away from a `visible: Boolean` property
+shape. With a property the widget would always be in the tree (just
+with conditional render output), which forces every screen to reify
+overlay slots even when they're never used. Conditional composition
+keeps the wire payload zero when overlays aren't open and matches
+idiomatic M3 usage in the guest.
+
+ModalBottomSheet: onDismissRequest + skipPartiallyExpanded @Property +
+content @Children(1). The skipPartiallyExpanded knob is wired through
+`rememberModalBottomSheetState(skipPartiallyExpanded = ...)` — keying
+the state lets the guest flip the knob between sheet openings.
+
+AlertDialog: title + text Strings + onDismissRequest @Property; icon +
+confirmButton + dismissButton @Children slots. Title/text use the same
+empty-string-hides convention as ListItem. We deliberately split
+confirmButton and dismissButton into separate @Children slots (not a
+single button-row slot) because M3 places them with specific spacing /
+order conventions; reusing M3's slots means the host doesn't reimplement
+those layout heuristics.
+
+Modifier propagation — neither overlay propagates the parent modifier
+chain to the overlay surface (same reasoning as DropdownMenu in §3.1):
+overlays are positioned by Compose's window machinery, not part of the
+parent's layout flow. fillMaxWidth / padding on the overlay would shift
+the surface inside its window, not the trigger. Surface-level styling
+should land as explicit @Property additions later if needed.
+
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
 enum class SchemaColor {
@@ -946,3 +983,6 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 3.1 ListItem text-as-Strings: headline / supporting / overline are `String` properties, not @Composable slots. Empty string = hide that line. Rationale: ~95% of real-world list rows are text-only labels; forcing the guest to wrap each label in a Text widget would 4x the wire payload for the common case. Headline-as-slot (rich-text headline) deferred to a future @Children(3) — additive, won't break wire. | claude |
 | 2026-05 | Batch 3.1 ListItem disabled-clickable behavior: M3 ListItem has no native `enabled` parameter. Host gates `Modifier.clickable {}` on `enabled && onClick != null` so a disabled row visually still renders but won't fire onClick. Visual disabled-state styling (greyed-out text) is NOT applied automatically — the guest can pass dimmer SchemaColors via Text styles if it wants the visual cue. Open question: bake a host-side disabled style into ListItem, or leave it to the guest? Current call: leave it. | claude |
 | 2026-05 | Batch 3.1 DropdownMenu modifier propagation: the host does NOT apply the parent modifier chain to the menu surface. M3 DropdownMenu uses a Popup that positions itself relative to its parent's coordinates; applying fillMaxWidth / padding / etc. to the menu would shift the popup, not the trigger. If a future caller needs to size or style the menu surface itself, that should land as an explicit `surfaceModifier` property (not silently via the modifier chain). | claude |
+| 2026-05 | Batch 3.2 overlay visibility model: ModalBottomSheet + AlertDialog use guest-conditional rendering (the guest holds a Boolean, only emits the widget when visible) instead of a `visible: Boolean` @Property. Rationale: keeps wire payload zero when overlays aren't open, matches idiomatic M3 usage in the guest, and avoids forcing every screen to reify overlay slots that are rarely used. M3 hide animations run BEFORE onDismissRequest fires, so dropping the widget on dismiss is safe. | claude |
+| 2026-05 | Batch 3.2 AlertDialog action shape: split confirmButton + dismissButton into two separate @Children slots rather than a single button-row slot. Rationale: M3 AlertDialog places confirm + dismiss with specific spacing / order conventions and the action row's layout adapts to text length; reusing M3's two-slot API means the host doesn't reimplement those layout heuristics. confirmButton is M3-required; if guest passes empty `{}`, M3 renders an empty action area — visible bug rather than host crash. | claude |
+| 2026-05 | Batch 3.2 overlay modifier propagation: neither ModalBottomSheet nor AlertDialog propagates the parent modifier chain to the overlay surface — same reason as DropdownMenu (Batch 3.1). Surface-level styling (size, scrim color, tonal elevation) should land as explicit @Property additions if/when needed. | claude |

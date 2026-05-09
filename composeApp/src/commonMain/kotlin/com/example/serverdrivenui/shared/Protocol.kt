@@ -1797,6 +1797,113 @@ class CmpDropdownMenuItem :
 }
 
 // ============================================================================
+// Tier 3 — Overlays (IDs 120–121)
+//
+// Visibility lives in the guest: when the guest stops emitting the
+// widget, the host stops rendering it. The widget's onDismissRequest
+// fires AFTER M3's internal hide animation completes (for
+// ModalBottomSheet) / immediately (for AlertDialog), so the guest can
+// safely cut the widget from the tree on dismiss without truncating
+// animations.
+//
+// We deliberately do NOT thread the parent modifier chain into either
+// overlay's surface — same reason as DropdownMenu (Batch 3.1 decisions
+// log): these are popup-style overlays positioned by Compose's window
+// machinery, not part of the parent's layout flow. fillMaxWidth /
+// padding on the overlay would shift the overlay surface inside its
+// own window, not the trigger.
+// ============================================================================
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpModalBottomSheet :
+    com.example.serverdrivenui.schema.widget.ModalBottomSheet<CmpRender> {
+    private val mod = StateModifier()
+    private var onDismissRequest by mutableStateOf<() -> Unit>({})
+    private var skipPartiallyExpanded by mutableStateOf(false)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { _ ->
+        val cb = onDismissRequest
+        // rememberModalBottomSheetState recomposes when skipPartiallyExpanded
+        // changes — keying it lets the guest flip the knob between sheet
+        // openings without stale state. (Live mid-show changes are not
+        // expected; M3 doesn't react to them either.)
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+            skipPartiallyExpanded = skipPartiallyExpanded,
+        )
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { cb.invoke() },
+            sheetState = sheetState,
+            // No parent-modifier propagation — see header comment.
+        ) {
+            // M3 ModalBottomSheet's content lambda is ColumnScope; calling
+            // render() from inside the lambda places children inside that
+            // ColumnScope so they stack vertically by default. Layout-axis
+            // overrides (rows etc.) work via children that are themselves
+            // Row widgets.
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun onDismissRequest(onDismissRequest: () -> Unit) {
+        this.onDismissRequest = onDismissRequest
+    }
+    override fun skipPartiallyExpanded(skipPartiallyExpanded: Boolean) {
+        this.skipPartiallyExpanded = skipPartiallyExpanded
+    }
+}
+
+class CmpAlertDialog : com.example.serverdrivenui.schema.widget.AlertDialog<CmpRender> {
+    private val mod = StateModifier()
+    private var title by mutableStateOf("")
+    private var text by mutableStateOf("")
+    private var onDismissRequest by mutableStateOf<() -> Unit>({})
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override val confirmButton: Widget.Children<CmpRender> = CmpChildren()
+    override val dismissButton: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { _ ->
+        val cb = onDismissRequest
+        val hasIcon = (icon as CmpChildren).widgets.isNotEmpty()
+        val hasDismiss = (dismissButton as CmpChildren).widgets.isNotEmpty()
+        // confirmButton is M3-required; we always pass the lambda. If the
+        // guest left it empty, M3 will render an empty action area —
+        // that's a guest bug surfaced visually rather than a host crash.
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { cb.invoke() },
+            confirmButton = { (confirmButton as CmpChildren).render() },
+            dismissButton = if (hasDismiss) {
+                { (dismissButton as CmpChildren).render() }
+            } else null,
+            icon = if (hasIcon) {
+                { (icon as CmpChildren).render() }
+            } else null,
+            title = if (title.isNotEmpty()) {
+                { ComposeText(text = title) }
+            } else null,
+            text = if (text.isNotEmpty()) {
+                { ComposeText(text = text) }
+            } else null,
+            // No parent-modifier propagation — see header comment.
+        )
+    }
+
+    override fun title(title: String) { this.title = title }
+    override fun text(text: String) { this.text = text }
+    override fun onDismissRequest(onDismissRequest: () -> Unit) {
+        this.onDismissRequest = onDismissRequest
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1971,6 +2078,8 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun ListItem() = CmpListItem()
     override fun DropdownMenu() = CmpDropdownMenu()
     override fun DropdownMenuItem() = CmpDropdownMenuItem()
+    override fun ModalBottomSheet() = CmpModalBottomSheet()
+    override fun AlertDialog() = CmpAlertDialog()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

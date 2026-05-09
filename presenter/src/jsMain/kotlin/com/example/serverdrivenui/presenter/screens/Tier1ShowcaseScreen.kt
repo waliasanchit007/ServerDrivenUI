@@ -25,6 +25,7 @@ import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
 import com.example.serverdrivenui.schema.compose.FilledTonalButton
+import com.example.serverdrivenui.schema.compose.AlertDialog
 import com.example.serverdrivenui.schema.compose.AssistChip
 import com.example.serverdrivenui.schema.compose.DropdownMenu
 import com.example.serverdrivenui.schema.compose.DropdownMenuItem
@@ -32,6 +33,7 @@ import com.example.serverdrivenui.schema.compose.FilterChip
 import com.example.serverdrivenui.schema.compose.HorizontalDivider
 import com.example.serverdrivenui.schema.compose.InputChip
 import com.example.serverdrivenui.schema.compose.ListItem
+import com.example.serverdrivenui.schema.compose.ModalBottomSheet
 import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.FloatingActionButton
@@ -976,6 +978,156 @@ class Tier1ShowcaseScreen : Screen {
                             )
                         }
                     }
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Overlays (Batch 3.2) ---
+            // ModalBottomSheet + AlertDialog. Both are CONDITIONALLY
+            // composed: the guest holds a Boolean and only emits the
+            // overlay widget when visible. M3 runs the dismiss animation
+            // internally before firing onDismissRequest, so cutting the
+            // widget on dismiss doesn't truncate the animation.
+            LazyItem {
+                Text(
+                    text = "Overlays (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // ModalBottomSheet trigger + last-action mirror.
+            LazyItem {
+                var showSheet by remember { mutableStateOf(false) }
+                var lastSheetAction by remember { mutableStateOf("(no sheet action yet)") }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 4, 0, 4),
+                ) {
+                    Text(
+                        text = lastSheetAction,
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Button(
+                        text = "Show sheet",
+                        enabled = true,
+                        onClick = { showSheet = true },
+                    )
+                }
+                if (showSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = {
+                            // Fired AFTER M3's hide animation runs. Safe
+                            // to remove the widget from the tree here.
+                            lastSheetAction = "Sheet dismissed (scrim/back/swipe)"
+                            showSheet = false
+                        },
+                        // skipPartiallyExpanded = true → opens fully,
+                        // no half-state. Switch to false for content
+                        // that should peek (media / map sheets).
+                        skipPartiallyExpanded = true,
+                    ) {
+                        Column(
+                            verticalArrangement = SchemaArrangement.Start,
+                            horizontalAlignment = SchemaHorizontalAlignment.Start,
+                            modifier = Modifier.fillMaxWidth().padding(24, 16, 24, 32),
+                        ) {
+                            Text(
+                                text = "Bottom sheet",
+                                color = SchemaColor.OnSurface,
+                                style = SchemaTextStyle.TitleLarge,
+                            )
+                            Spacer(width = 0, height = 8)
+                            Text(
+                                text = "Sheet content rendered inside M3's ColumnScope. Tap a button or swipe down / tap the scrim / press back to dismiss.",
+                                color = SchemaColor.OnSurfaceVariant,
+                                style = SchemaTextStyle.BodyMedium,
+                            )
+                            Spacer(width = 0, height = 16)
+                            Row(
+                                horizontalArrangement = SchemaArrangement.SpaceBetween,
+                                verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                TextButton(
+                                    text = "Cancel",
+                                    enabled = true,
+                                    onClick = {
+                                        lastSheetAction = "Sheet: Cancel"
+                                        showSheet = false
+                                    },
+                                )
+                                Button(
+                                    text = "Save",
+                                    enabled = true,
+                                    onClick = {
+                                        lastSheetAction = "Sheet: Save"
+                                        showSheet = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // AlertDialog trigger + last-action mirror.
+            LazyItem {
+                var showDialog by remember { mutableStateOf(false) }
+                var lastDialogAction by remember { mutableStateOf("(no dialog action yet)") }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(0, 4, 0, 4),
+                ) {
+                    Text(
+                        text = lastDialogAction,
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Button(
+                        text = "Show dialog",
+                        enabled = true,
+                        onClick = { showDialog = true },
+                    )
+                }
+                if (showDialog) {
+                    AlertDialog(
+                        title = "Confirm action",
+                        text = "Are you sure you want to delete this item? This cannot be undone.",
+                        onDismissRequest = {
+                            lastDialogAction = "Dialog dismissed (scrim/back)"
+                            showDialog = false
+                        },
+                        icon = {
+                            Icon(name = SchemaIconName.Warning, tint = SchemaColor.Error)
+                        },
+                        confirmButton = {
+                            TextButton(
+                                text = "Delete",
+                                enabled = true,
+                                onClick = {
+                                    lastDialogAction = "Dialog: Delete confirmed"
+                                    showDialog = false
+                                },
+                            )
+                        },
+                        dismissButton = {
+                            TextButton(
+                                text = "Cancel",
+                                enabled = true,
+                                onClick = {
+                                    lastDialogAction = "Dialog: Cancel"
+                                    showDialog = false
+                                },
+                            )
+                        },
+                    )
                 }
             }
 

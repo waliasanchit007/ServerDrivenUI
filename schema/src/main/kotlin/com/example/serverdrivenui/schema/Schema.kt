@@ -90,6 +90,9 @@ import dev.konduit.schema.Widget
         ListItem::class,
         DropdownMenu::class,
         DropdownMenuItem::class,
+        // Tier 3 — Overlays (IDs 120–121)
+        ModalBottomSheet::class,
+        AlertDialog::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -707,6 +710,65 @@ data class DropdownMenuItem(
     @Property(3) val onClick: (() -> Unit)?,
     @Children(1) val leadingIcon: () -> Unit,
     @Children(2) val trailingIcon: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — Overlays (IDs 120–121) — see KONDUIT_PLAN.md §4 Batch 3.2
+//
+// Visibility model for both widgets: the GUEST owns the visible-Boolean
+// state and conditionally composes the widget. When the guest emits the
+// widget the host renders it; when the guest omits it the widget leaves
+// the tree. Each widget's `onDismissRequest` fires when the user taps
+// the scrim / presses back / swipes (ModalBottomSheet only). The guest
+// reacts by flipping its Boolean to false on the next tick — M3 runs
+// the hide animation internally BEFORE calling onDismissRequest, so
+// cutting the widget from the tree afterwards doesn't truncate it.
+// ============================================================================
+
+/**
+ * Bottom sheet overlay anchored to the bottom edge of the window. Only
+ * present in the widget tree when visible — the guest controls
+ * visibility by conditionally composing this widget.
+ *
+ * [skipPartiallyExpanded]: when true, the sheet expands fully on first
+ * show and skips the half-expanded intermediate state. Set true for
+ * dialog-style sheets with fixed content; leave false for media or
+ * map-style sheets that should partially peek.
+ *
+ * Tonal elevation, drag handle visibility, scrim color etc. are not yet
+ * exposed — they default to M3's standard look. Add as @Property additions
+ * later without breaking wire if/when callers need them.
+ */
+@Widget(120)
+data class ModalBottomSheet(
+    @Property(1) val onDismissRequest: () -> Unit,
+    @Property(2) val skipPartiallyExpanded: Boolean,
+    @Children(1) val content: () -> Unit,
+)
+
+/**
+ * Modal alert dialog with title + body text + up to three action slots.
+ * Same visibility model as ModalBottomSheet — the guest conditionally
+ * composes this widget.
+ *
+ * [title] and [text] are String properties (empty = hide that line) for
+ * the same reason as ListItem: ~95% of dialogs have plain-string content
+ * and forcing every dialog to wrap its text in Text widgets would bloat
+ * the wire payload. Rich-text title / text can land as additive
+ * @Children(4) / @Children(5) later without breaking wire.
+ *
+ * [confirmButton] is required by M3; the guest is responsible for
+ * placing a Button there. [dismissButton] is optional (empty `{}` =
+ * hide). [icon] sits above the title when populated.
+ */
+@Widget(121)
+data class AlertDialog(
+    @Property(1) val title: String,
+    @Property(2) val text: String,
+    @Property(3) val onDismissRequest: () -> Unit,
+    @Children(1) val icon: () -> Unit,
+    @Children(2) val confirmButton: () -> Unit,
+    @Children(3) val dismissButton: () -> Unit,
 )
 
 // ============================================================================
