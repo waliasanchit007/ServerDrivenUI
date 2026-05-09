@@ -69,6 +69,15 @@ import dev.konduit.schema.Widget
         CircularProgressIndicator::class,
         Badge::class,
         Snackbar::class,
+        // Tier 2 — Navigation structure (IDs 71–78)
+        Scaffold::class,
+        TopAppBar::class,
+        LargeTopAppBar::class,
+        MediumTopAppBar::class,
+        NavigationBar::class,
+        NavigationBarItem::class,
+        TabRow::class,
+        Tab::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -446,6 +455,87 @@ data class Snackbar(
     @Property(1) val message: String,
     @Property(2) val actionLabel: String,
     @Property(3) val onActionClick: (() -> Unit)?,
+)
+
+// ============================================================================
+// Tier 2 — Navigation structure (IDs 71–78) — see KONDUIT_PLAN.md §4 Batch 2.6
+//
+// First batch with multi-slot widgets. @Children(N) tags map to named
+// slots in the host (topBar, content, etc.); the guest emits each slot's
+// children inside its corresponding lambda.
+// ============================================================================
+
+/**
+ * Material 3 Scaffold with named slots. Slot order:
+ *   topBar (1), bottomBar (2), floatingActionButton (3), content (4).
+ */
+@Widget(71)
+data class Scaffold(
+    @Children(1) val topBar: () -> Unit,
+    @Children(2) val bottomBar: () -> Unit,
+    @Children(3) val floatingActionButton: () -> Unit,
+    @Children(4) val content: () -> Unit,
+)
+
+/** Standard top app bar. */
+@Widget(72)
+data class TopAppBar(
+    @Property(1) val title: String,
+    @Children(1) val navigationIcon: () -> Unit,
+    @Children(2) val actions: () -> Unit,
+)
+
+/** Large (two-line) top app bar. */
+@Widget(73)
+data class LargeTopAppBar(
+    @Property(1) val title: String,
+    @Children(1) val navigationIcon: () -> Unit,
+    @Children(2) val actions: () -> Unit,
+)
+
+/** Medium-height top app bar. */
+@Widget(74)
+data class MediumTopAppBar(
+    @Property(1) val title: String,
+    @Children(1) val navigationIcon: () -> Unit,
+    @Children(2) val actions: () -> Unit,
+)
+
+/** Bottom navigation bar. Children should be [NavigationBarItem]s. */
+@Widget(75)
+data class NavigationBar(
+    @Children(1) val items: () -> Unit,
+)
+
+/**
+ * One slot in a [NavigationBar]. The single child is the icon
+ * (typically an [Icon] widget).
+ */
+@Widget(76)
+data class NavigationBarItem(
+    @Property(1) val selected: Boolean,
+    @Property(2) val label: String,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val icon: () -> Unit,
+)
+
+/** Tab row. Children should be [Tab]s. */
+@Widget(77)
+data class TabRow(
+    @Property(1) val selectedTabIndex: Int,
+    @Children(1) val tabs: () -> Unit,
+)
+
+/**
+ * One tab in a [TabRow]. The optional single child is a leading icon.
+ * Pass an empty children block for text-only tabs.
+ */
+@Widget(78)
+data class Tab(
+    @Property(1) val selected: Boolean,
+    @Property(2) val text: String,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val icon: () -> Unit,
 )
 
 // ============================================================================

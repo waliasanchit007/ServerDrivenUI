@@ -166,6 +166,46 @@
     <property tag="2" name="actionLabel" type="kotlin.String" />
     <event tag="3" name="onActionClick" nullable="true" />
   </widget>
+  <widget tag="71" type="com.example.serverdrivenui.schema.Scaffold">
+    <children tag="1" name="topBar" />
+    <children tag="2" name="bottomBar" />
+    <children tag="3" name="floatingActionButton" />
+    <children tag="4" name="content" />
+  </widget>
+  <widget tag="72" type="com.example.serverdrivenui.schema.TopAppBar">
+    <property tag="1" name="title" type="kotlin.String" />
+    <children tag="1" name="navigationIcon" />
+    <children tag="2" name="actions" />
+  </widget>
+  <widget tag="73" type="com.example.serverdrivenui.schema.LargeTopAppBar">
+    <property tag="1" name="title" type="kotlin.String" />
+    <children tag="1" name="navigationIcon" />
+    <children tag="2" name="actions" />
+  </widget>
+  <widget tag="74" type="com.example.serverdrivenui.schema.MediumTopAppBar">
+    <property tag="1" name="title" type="kotlin.String" />
+    <children tag="1" name="navigationIcon" />
+    <children tag="2" name="actions" />
+  </widget>
+  <widget tag="75" type="com.example.serverdrivenui.schema.NavigationBar">
+    <children tag="1" name="items" />
+  </widget>
+  <widget tag="76" type="com.example.serverdrivenui.schema.NavigationBarItem">
+    <property tag="1" name="selected" type="kotlin.Boolean" />
+    <property tag="2" name="label" type="kotlin.String" />
+    <event tag="3" name="onClick" nullable="true" />
+    <children tag="1" name="icon" />
+  </widget>
+  <widget tag="77" type="com.example.serverdrivenui.schema.TabRow">
+    <property tag="1" name="selectedTabIndex" type="kotlin.Int" />
+    <children tag="1" name="tabs" />
+  </widget>
+  <widget tag="78" type="com.example.serverdrivenui.schema.Tab">
+    <property tag="1" name="selected" type="kotlin.Boolean" />
+    <property tag="2" name="text" type="kotlin.String" />
+    <event tag="3" name="onClick" nullable="true" />
+    <children tag="1" name="icon" />
+  </widget>
   <widget tag="1000" type="com.example.serverdrivenui.schema.ScreenStack">
     <children tag="1" name="children" />
   </widget>

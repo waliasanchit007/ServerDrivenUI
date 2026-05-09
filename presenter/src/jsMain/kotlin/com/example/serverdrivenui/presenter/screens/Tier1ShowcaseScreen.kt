@@ -31,7 +31,11 @@ import com.example.serverdrivenui.schema.compose.IconButton
 import com.example.serverdrivenui.schema.compose.LazyColumn
 import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
+import com.example.serverdrivenui.schema.compose.LargeTopAppBar
 import com.example.serverdrivenui.schema.compose.LinearProgressIndicator
+import com.example.serverdrivenui.schema.compose.MediumTopAppBar
+import com.example.serverdrivenui.schema.compose.NavigationBar
+import com.example.serverdrivenui.schema.compose.NavigationBarItem
 import com.example.serverdrivenui.schema.compose.OutlinedButton
 import com.example.serverdrivenui.schema.compose.OutlinedCard
 import com.example.serverdrivenui.schema.compose.OutlinedTextField
@@ -45,7 +49,10 @@ import com.example.serverdrivenui.schema.compose.Snackbar
 import com.example.serverdrivenui.schema.compose.Spacer
 import com.example.serverdrivenui.schema.compose.Surface
 import com.example.serverdrivenui.schema.compose.Switch
+import com.example.serverdrivenui.schema.compose.Tab
+import com.example.serverdrivenui.schema.compose.TabRow
 import com.example.serverdrivenui.schema.compose.Text
+import com.example.serverdrivenui.schema.compose.TopAppBar
 import com.example.serverdrivenui.schema.compose.TextButton
 import com.example.serverdrivenui.schema.compose.TextField
 import com.example.serverdrivenui.schema.compose.background
@@ -523,6 +530,108 @@ class Tier1ShowcaseScreen : Screen {
                     onActionClick = null,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Nav structure (Batch 2.6) ---
+            LazyItem {
+                Text(
+                    text = "Navigation",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // Compact TopAppBar preview
+            LazyItem {
+                TopAppBar(
+                    title = "TopAppBar",
+                    navigationIcon = {
+                        Icon(name = SchemaIconName.Menu, tint = SchemaColor.OnSurface)
+                    },
+                    actions = {
+                        Icon(name = SchemaIconName.Search, tint = SchemaColor.OnSurface)
+                        Spacer(width = 8, height = 0)
+                        Icon(name = SchemaIconName.Settings, tint = SchemaColor.OnSurface)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // MediumTopAppBar
+            LazyItem {
+                MediumTopAppBar(
+                    title = "MediumTopAppBar",
+                    navigationIcon = {
+                        Icon(name = SchemaIconName.ArrowBack, tint = SchemaColor.OnSurface)
+                    },
+                    actions = {
+                        Icon(name = SchemaIconName.Edit, tint = SchemaColor.OnSurface)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            // LargeTopAppBar
+            LazyItem {
+                LargeTopAppBar(
+                    title = "LargeTopAppBar",
+                    navigationIcon = {
+                        Icon(name = SchemaIconName.ArrowBack, tint = SchemaColor.OnSurface)
+                    },
+                    actions = {
+                        Icon(name = SchemaIconName.Notifications, tint = SchemaColor.OnSurface)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // TabRow
+            LazyItem {
+                var tab by remember { mutableStateOf(0) }
+                TabRow(
+                    selectedTabIndex = tab,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Tab(
+                        selected = tab == 0,
+                        text = "Home",
+                        onClick = { tab = 0 },
+                    ) { Icon(name = SchemaIconName.Home, tint = SchemaColor.Primary) }
+                    Tab(
+                        selected = tab == 1,
+                        text = "Search",
+                        onClick = { tab = 1 },
+                    ) { Icon(name = SchemaIconName.Search, tint = SchemaColor.Primary) }
+                    Tab(
+                        selected = tab == 2,
+                        text = "Profile",
+                        onClick = { tab = 2 },
+                    ) { Icon(name = SchemaIconName.Person, tint = SchemaColor.Primary) }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+            // NavigationBar
+            LazyItem {
+                var nav by remember { mutableStateOf(0) }
+                NavigationBar(modifier = Modifier.fillMaxWidth()) {
+                    NavigationBarItem(
+                        selected = nav == 0,
+                        label = "Home",
+                        onClick = { nav = 0 },
+                    ) { Icon(name = SchemaIconName.Home, tint = SchemaColor.OnSurface) }
+                    NavigationBarItem(
+                        selected = nav == 1,
+                        label = "Inbox",
+                        onClick = { nav = 1 },
+                    ) { Icon(name = SchemaIconName.Email, tint = SchemaColor.OnSurface) }
+                    NavigationBarItem(
+                        selected = nav == 2,
+                        label = "Settings",
+                        onClick = { nav = 2 },
+                    ) { Icon(name = SchemaIconName.Settings, tint = SchemaColor.OnSurface) }
+                }
             }
 
             LazyItem { Spacer(width = 0, height = 32) }

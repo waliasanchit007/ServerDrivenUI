@@ -1201,6 +1201,242 @@ class CmpSnackbar : com.example.serverdrivenui.schema.widget.Snackbar<CmpRender>
 }
 
 // ============================================================================
+// Tier 2 — Navigation structure (IDs 71–78)
+// ============================================================================
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpScaffold : com.example.serverdrivenui.schema.widget.Scaffold<CmpRender> {
+    private val mod = StateModifier()
+    override val topBar: Widget.Children<CmpRender> = CmpChildren()
+    override val bottomBar: Widget.Children<CmpRender> = CmpChildren()
+    override val floatingActionButton: Widget.Children<CmpRender> = CmpChildren()
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.Scaffold(
+            modifier = composed,
+            topBar = { (topBar as CmpChildren).render() },
+            bottomBar = { (bottomBar as CmpChildren).render() },
+            floatingActionButton = { (floatingActionButton as CmpChildren).render() },
+        ) { padding ->
+            androidx.compose.foundation.layout.Box(
+                modifier = ComposeModifier.padding(padding),
+            ) {
+                (content as CmpChildren).render()
+            }
+        }
+    }
+}
+
+@Composable
+private fun renderTopAppBarSlot(slot: CmpChildren) {
+    slot.render()
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpTopAppBar : com.example.serverdrivenui.schema.widget.TopAppBar<CmpRender> {
+    private val mod = StateModifier()
+    private var title by mutableStateOf("")
+    override val navigationIcon: Widget.Children<CmpRender> = CmpChildren()
+    override val actions: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.TopAppBar(
+            title = { ComposeText(text = title) },
+            navigationIcon = { renderTopAppBarSlot(navigationIcon as CmpChildren) },
+            actions = {
+                androidx.compose.foundation.layout.Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { renderTopAppBarSlot(actions as CmpChildren) }
+            },
+            modifier = composed,
+        )
+    }
+
+    override fun title(title: String) { this.title = title }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpLargeTopAppBar : com.example.serverdrivenui.schema.widget.LargeTopAppBar<CmpRender> {
+    private val mod = StateModifier()
+    private var title by mutableStateOf("")
+    override val navigationIcon: Widget.Children<CmpRender> = CmpChildren()
+    override val actions: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.LargeTopAppBar(
+            title = { ComposeText(text = title) },
+            navigationIcon = { renderTopAppBarSlot(navigationIcon as CmpChildren) },
+            actions = {
+                androidx.compose.foundation.layout.Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { renderTopAppBarSlot(actions as CmpChildren) }
+            },
+            modifier = composed,
+        )
+    }
+
+    override fun title(title: String) { this.title = title }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpMediumTopAppBar : com.example.serverdrivenui.schema.widget.MediumTopAppBar<CmpRender> {
+    private val mod = StateModifier()
+    private var title by mutableStateOf("")
+    override val navigationIcon: Widget.Children<CmpRender> = CmpChildren()
+    override val actions: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.MediumTopAppBar(
+            title = { ComposeText(text = title) },
+            navigationIcon = { renderTopAppBarSlot(navigationIcon as CmpChildren) },
+            actions = {
+                androidx.compose.foundation.layout.Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { renderTopAppBarSlot(actions as CmpChildren) }
+            },
+            modifier = composed,
+        )
+    }
+
+    override fun title(title: String) { this.title = title }
+}
+
+class CmpNavigationBar : com.example.serverdrivenui.schema.widget.NavigationBar<CmpRender> {
+    private val mod = StateModifier()
+    override val items: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.NavigationBar(modifier = composed) {
+            (items as CmpChildren).renderInRow(this)
+        }
+    }
+}
+
+class CmpNavigationBarItem :
+    com.example.serverdrivenui.schema.widget.NavigationBarItem<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var label by mutableStateOf("")
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        // NavigationBar items provide their own RowScope inside the bar.
+        // We can't access RowScope here, so render inside a Box and trust
+        // the NavigationBar to lay out children sensibly.
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.foundation.layout.Box(modifier = composed) {
+            // Material 3 NavigationBarItem requires RowScope, but we render
+            // through the children loop in CmpNavigationBar (renderInRow)
+            // which already provides one. Wrap our content here.
+            androidx.compose.foundation.layout.Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = ComposeModifier
+                    .clickable { cb?.invoke() }
+                    .padding(8.dp),
+            ) {
+                (icon as CmpChildren).render()
+                if (label.isNotEmpty()) {
+                    ComposeText(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun label(label: String) { this.label = label }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpTabRow : com.example.serverdrivenui.schema.widget.TabRow<CmpRender> {
+    private val mod = StateModifier()
+    private var selectedTabIndex by mutableStateOf(0)
+
+    override val tabs: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.material3.TabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = composed,
+        ) {
+            (tabs as CmpChildren).render()
+        }
+    }
+
+    override fun selectedTabIndex(selectedTabIndex: Int) {
+        this.selectedTabIndex = selectedTabIndex
+    }
+}
+
+class CmpTab : com.example.serverdrivenui.schema.widget.Tab<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var text by mutableStateOf("")
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val icon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        androidx.compose.material3.Tab(
+            selected = selected,
+            onClick = { cb?.invoke() },
+            text = if (text.isNotEmpty()) {
+                { ComposeText(text = text) }
+            } else null,
+            icon = if ((icon as CmpChildren).widgets.isNotEmpty()) {
+                { (icon as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun text(text: String) { this.text = text }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1358,6 +1594,14 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun CircularProgressIndicator() = CmpCircularProgressIndicator()
     override fun Badge() = CmpBadge()
     override fun Snackbar() = CmpSnackbar()
+    override fun Scaffold() = CmpScaffold()
+    override fun TopAppBar() = CmpTopAppBar()
+    override fun LargeTopAppBar() = CmpLargeTopAppBar()
+    override fun MediumTopAppBar() = CmpMediumTopAppBar()
+    override fun NavigationBar() = CmpNavigationBar()
+    override fun NavigationBarItem() = CmpNavigationBarItem()
+    override fun TabRow() = CmpTabRow()
+    override fun Tab() = CmpTab()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 
