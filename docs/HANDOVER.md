@@ -224,8 +224,26 @@ Single `./gradlew konduit:dev` command + clean Logcat formatting.
 
 | Repo | Branch / tag | Local path |
 |---|---|---|
-| Caliclan (this) | `claude/vigilant-euclid-681447` (Tier 1 + all 8 Tier 2 batches landed; PR #1 open) | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
-| Konduit | `main` at `975c9cdaa`; tag `v1.0.0-caliclan.2` published | `~/AndroidStudioProjects/konduit/` |
+| Caliclan (this) | active dev on `konduit-main` (= tip of `claude/vigilant-euclid-681447`); frozen Redwood-era snapshot at `redwood-baseline` (`1d76527`); PR #1 open against `main` | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
+| Konduit | `main` at `975c9cdaa`; tag `v1.0.0-caliclan.2` published to GitHub Packages | `~/AndroidStudioProjects/konduit/` |
+
+### Branch policy
+
+- **`konduit-main`** — the active branch. All new work targets it.
+- **`redwood-baseline`** — read-only frozen snapshot of pre-fork
+  Caliclan running on upstream `app.cash.redwood`. Don't push to it; it
+  exists so anyone can read the project's pre-Konduit state without
+  digging through git history.
+- **`main`** — currently aliases `redwood-baseline`. Will be
+  fast-forwarded to `konduit-main` when we cut the next release; until
+  then PR #1 (which targets `main`) is the only thing keeping the two
+  branches reconciled. Decision pending: either redirect PR #1 to
+  `konduit-main` and keep `main` as the long-term Redwood baseline, or
+  merge PR #1 and use `redwood-baseline` as the canonical name for the
+  pre-fork snapshot.
+- **`claude/vigilant-euclid-681447`** — historical work branch; kept
+  alive as long as PR #1 references it but can be deleted once PR #1
+  closes.
 
 ## Key files to read
 
@@ -248,14 +266,16 @@ For Batch 2.0 specifically, also inspect:
 
 ## Suggested next session prompt
 
-> Continue Konduit / Caliclan work. Read `docs/HANDOVER.md` and `docs/KONDUIT_PLAN.md` first.
+> Continue Konduit / Caliclan work. Read `docs/HANDOVER.md`, `docs/KONDUIT_PLAN.md`, and `docs/CI_SETUP.md` first.
 >
-> Tier 1 + all 8 Tier 2 batches are landed and verified on Android (Galaxy S22 Ultra) + iOS sim (iPhone 16 Pro). 40 widgets + 10 layout modifiers shipped.
+> Tier 1 + all 8 Tier 2 batches are landed and verified on Android (Galaxy S22 Ultra) + iOS sim (iPhone 16 Pro). 40 widgets + 10 layout modifiers shipped. CI workflow added at `.github/workflows/ci.yml`.
 >
-> First task: add the Caliclan CI build gate (§7.5) — `.github/workflows/ci.yml` running `assembleDebug` + `linkDebugFrameworkIosSimulatorArm64` + `compileDevelopmentExecutableKotlinJsZipline` on macOS. Lock in the verification surface we built up by hand.
+> Branch reorg already done: `konduit-main` is the active branch; `redwood-baseline` is a frozen snapshot of pre-fork Caliclan; PR #1 still targets `main` from the historical `claude/vigilant-euclid-681447` branch. Pick one of these and act:
+>   (a) Retarget PR #1 to `konduit-main` and keep `main` aliased to `redwood-baseline` long-term, OR
+>   (b) Merge PR #1 to `main` (so `main` becomes the active branch) and treat `redwood-baseline` as the read-only history.
 >
-> Second task: rebase / merge PR #1 onto main, push the now-final batch sequence, and tag a checkpoint (e.g. `caliclan-tier-2`).
+> First task: confirm `KONDUIT_READ_TOKEN` repo secret is set (per `docs/CI_SETUP.md`) and the green CI run lands. Without that secret CI fails fast at the verify-token step.
 >
-> Third task: Tier 3 brainstorm. Open questions in HANDOVER under "Tier 3" — chips, sheets, dialogs, pagers, pull-to-refresh. Pick a 2-3 widget starter batch to validate the pattern continues to scale before committing to a full Tier 3 plan.
+> Second task: Tier 3 brainstorm. Open questions in HANDOVER under "Tier 3" — chips, sheets, dialogs, pagers, pull-to-refresh. Pick a 2-3 widget starter batch to validate the pattern continues to scale before committing to a full Tier 3 plan.
 >
 > Read the gotchas list in HANDOVER.md before touching anything — gotchas 8 (lambda-in-modifier broken), 9 (`:shared-modifier` module wiring), and 10 (SduiSerializersModule for enum-in-modifier) are the load-bearing ones for any new schema work.
