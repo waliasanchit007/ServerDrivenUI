@@ -192,7 +192,7 @@ All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–
 - [x] All Tier 2 batches landed and verified on device.
 
 ### Caliclan CI
-- [ ] Add `.github/workflows/ci.yml` — see plan §7.5. Should run `:androidApp:assembleDebug` + `:composeApp:linkDebugFrameworkIosSimulatorArm64` + `:presenter:compileDevelopmentExecutableKotlinJsZipline` on macOS-only.
+- [x] `.github/workflows/ci.yml` runs the three verification tasks on macOS. **Setup required:** add `KONDUIT_READ_TOKEN` repo secret — see `docs/CI_SETUP.md`.
 
 ### Tier 3 (~16 widgets, IDs 81–150)
 Per plan §4: chips, list items, flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh, shimmer, navigation rail. Re-spec'd after Tier 2 settles. Likely batches:
