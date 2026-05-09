@@ -25,7 +25,11 @@ import com.example.serverdrivenui.schema.compose.Column
 import com.example.serverdrivenui.schema.compose.ElevatedButton
 import com.example.serverdrivenui.schema.compose.ExtendedFloatingActionButton
 import com.example.serverdrivenui.schema.compose.FilledTonalButton
+import com.example.serverdrivenui.schema.compose.AssistChip
+import com.example.serverdrivenui.schema.compose.FilterChip
 import com.example.serverdrivenui.schema.compose.HorizontalDivider
+import com.example.serverdrivenui.schema.compose.InputChip
+import com.example.serverdrivenui.schema.compose.SuggestionChip
 import com.example.serverdrivenui.schema.compose.VerticalDivider
 import com.example.serverdrivenui.schema.compose.FloatingActionButton
 import com.example.serverdrivenui.schema.compose.Icon
@@ -697,6 +701,136 @@ class Tier1ShowcaseScreen : Screen {
                         color = SchemaColor.OnSurface,
                         style = SchemaTextStyle.BodyMedium,
                     )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Chips (Batch 3.0) ---
+            LazyItem {
+                Text(
+                    text = "Chips (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // FilterChip row — each chip toggles independently. M3
+            // auto-renders a check glyph when selected, so we omit the
+            // leading icon in the selected branch (matches the host's
+            // hasIcon && !selected gate in CmpFilterChip).
+            LazyItem {
+                var fav by remember { mutableStateOf(false) }
+                var price by remember { mutableStateOf(true) }
+                var open by remember { mutableStateOf(false) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    FilterChip(
+                        selected = fav,
+                        label = "Favorites",
+                        enabled = true,
+                        onClick = { fav = !fav },
+                    ) { Icon(name = SchemaIconName.Favorite, tint = SchemaColor.OnSurface) }
+                    FilterChip(
+                        selected = price,
+                        label = "Under \$50",
+                        enabled = true,
+                        onClick = { price = !price },
+                    ) { /* no leading icon */ }
+                    FilterChip(
+                        selected = open,
+                        label = "Open now",
+                        enabled = true,
+                        onClick = { open = !open },
+                    ) { /* no leading icon */ }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // AssistChip row — non-toggleable action shortcuts. Two with
+            // a leading icon, one without, plus a disabled state.
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    AssistChip(
+                        label = "Edit",
+                        enabled = true,
+                        onClick = null,
+                    ) { Icon(name = SchemaIconName.Edit, tint = SchemaColor.OnSurface) }
+                    AssistChip(
+                        label = "Share",
+                        enabled = true,
+                        onClick = null,
+                    ) { /* no leading icon */ }
+                    AssistChip(
+                        label = "Disabled",
+                        enabled = false,
+                        onClick = null,
+                    ) { Icon(name = SchemaIconName.Lock, tint = SchemaColor.OnSurface) }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // InputChip row — exercises onClose dismissal. Tapping the
+            // trailing X removes the chip from the list, demonstrating
+            // that the host correctly hides the X when onClose is null
+            // (the third chip below has no close affordance).
+            LazyItem {
+                var tokens by remember {
+                    mutableStateOf(listOf("alice@example.com", "bob@example.com", "carol@example.com"))
+                }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    tokens.forEachIndexed { idx, email ->
+                        InputChip(
+                            selected = false,
+                            label = email,
+                            enabled = true,
+                            onClick = null,
+                            // Last chip is "pinned" — no close affordance.
+                            onClose = if (idx < tokens.lastIndex) {
+                                { tokens = tokens.toMutableList().also { it.removeAt(idx) } }
+                            } else null,
+                        ) { Icon(name = SchemaIconName.Person, tint = SchemaColor.OnSurface) }
+                    }
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // SuggestionChip row — hint-style affordances. Real apps wire
+            // onClick to populate a query / shortcut a flow; here we just
+            // show the visual.
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceEvenly,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    SuggestionChip(
+                        label = "Recent",
+                        enabled = true,
+                        onClick = null,
+                    ) { /* no leading icon */ }
+                    SuggestionChip(
+                        label = "Trending",
+                        enabled = true,
+                        onClick = null,
+                    ) { Icon(name = SchemaIconName.Star, tint = SchemaColor.OnSurface) }
+                    SuggestionChip(
+                        label = "Nearby",
+                        enabled = true,
+                        onClick = null,
+                    ) { /* no leading icon */ }
                 }
             }
 

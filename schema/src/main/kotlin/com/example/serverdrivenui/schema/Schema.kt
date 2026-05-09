@@ -81,6 +81,11 @@ import dev.konduit.schema.Widget
         // Tier 2 — Misc (IDs 79–80)
         HorizontalDivider::class,
         VerticalDivider::class,
+        // Tier 3 — Chips (IDs 100–103)
+        FilterChip::class,
+        AssistChip::class,
+        InputChip::class,
+        SuggestionChip::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -563,6 +568,75 @@ data class HorizontalDivider(
 data class VerticalDivider(
     @Property(1) val thicknessDp: Int,
     @Property(2) val color: SchemaColor,
+)
+
+// ============================================================================
+// Tier 3 — Chips (IDs 100–103) — see KONDUIT_PLAN.md §4 Batch 3.0
+//
+// Material 3 chip family. All four share a single leadingIcon slot
+// (@Children(1)) so the wire shape is uniform; the guest passes an empty
+// `{}` lambda when no icon is desired. Trailing-icon support is
+// FilterChip/InputChip-only on the host side: InputChip exposes a
+// dedicated `onClose` callback (its conventional close-X behavior), and
+// FilterChip auto-renders a check mark when selected. Custom trailing
+// content for AssistChip and FilterChip is deferred — additive @Children
+// can land later without breaking wire format.
+// ============================================================================
+
+/**
+ * Toggleable chip used to filter content. The host renders a check mark
+ * automatically when [selected] is true; the leadingIcon slot is shown
+ * to the left of the label when [selected] is false (Material 3 default
+ * behavior).
+ */
+@Widget(100)
+data class FilterChip(
+    @Property(1) val selected: Boolean,
+    @Property(2) val label: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onClick: (() -> Unit)?,
+    @Children(1) val leadingIcon: () -> Unit,
+)
+
+/**
+ * Action chip — non-toggleable, mirrors a button's contract. Use for
+ * "Take action" affordances (e.g. "Save", "Open").
+ */
+@Widget(101)
+data class AssistChip(
+    @Property(1) val label: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val leadingIcon: () -> Unit,
+)
+
+/**
+ * Chip representing a discrete entered value (think: a token in a search
+ * field or a recipient pill). [onClose] fires when the user taps the
+ * trailing close affordance the host renders automatically.
+ *
+ * Note: leaving [onClose] null hides the close icon entirely.
+ */
+@Widget(102)
+data class InputChip(
+    @Property(1) val selected: Boolean,
+    @Property(2) val label: String,
+    @Property(3) val enabled: Boolean,
+    @Property(4) val onClick: (() -> Unit)?,
+    @Property(5) val onClose: (() -> Unit)?,
+    @Children(1) val leadingIcon: () -> Unit,
+)
+
+/**
+ * Suggestion chip — non-toggleable, hint-style affordance the user can
+ * tap to populate a query / shortcut a flow.
+ */
+@Widget(103)
+data class SuggestionChip(
+    @Property(1) val label: String,
+    @Property(2) val enabled: Boolean,
+    @Property(3) val onClick: (() -> Unit)?,
+    @Children(1) val leadingIcon: () -> Unit,
 )
 
 // ============================================================================

@@ -1487,6 +1487,173 @@ class CmpVerticalDivider :
 }
 
 // ============================================================================
+// Tier 3 — Chips (IDs 100–103)
+//
+// All four chips share a single leadingIcon @Children(1) slot. We render
+// the slot as Material 3's `leadingIcon` lambda only when the guest
+// actually placed widgets in it — otherwise we pass `null` so the chip
+// uses its compact "label-only" layout. FilterChip auto-renders a check
+// glyph when selected (M3 default) which subsumes leadingIcon, so we
+// short-circuit to null in the selected branch to avoid icon double-up.
+// InputChip's onClose maps to the trailingIcon lambda; null hides the X.
+// ============================================================================
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var label by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.FilterChip(
+            selected = selected,
+            onClick = { cb?.invoke() },
+            label = { ComposeText(text = label) },
+            enabled = enabled,
+            // M3 renders a check glyph when selected; surrender the
+            // leadingIcon slot in that branch so we don't stack two icons.
+            leadingIcon = if (hasIcon && !selected) {
+                { (leadingIcon as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun label(label: String) { this.label = label }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRender> {
+    private val mod = StateModifier()
+    private var label by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.AssistChip(
+            onClick = { cb?.invoke() },
+            label = { ComposeText(text = label) },
+            enabled = enabled,
+            leadingIcon = if (hasIcon) {
+                { (leadingIcon as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun label(label: String) { this.label = label }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRender> {
+    private val mod = StateModifier()
+    private var selected by mutableStateOf(false)
+    private var label by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var onClose by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val click = onClick
+        val close = onClose
+        val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.InputChip(
+            selected = selected,
+            onClick = { click?.invoke() },
+            label = { ComposeText(text = label) },
+            enabled = enabled,
+            // FilterChip's check-glyph branch logic doesn't apply to
+            // InputChip — M3 InputChip doesn't auto-render a selected
+            // glyph; the avatar/icon slot is always honored.
+            leadingIcon = if (hasIcon) {
+                { (leadingIcon as CmpChildren).render() }
+            } else null,
+            // Conventional X-to-dismiss; null hides the trailing slot.
+            trailingIcon = if (close != null) {
+                {
+                    androidx.compose.material3.Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Filled.Close,
+                        contentDescription = "Close",
+                        modifier = ComposeModifier
+                            .size(androidx.compose.material3.InputChipDefaults.IconSize)
+                            .clickable { close.invoke() },
+                    )
+                }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun selected(selected: Boolean) { this.selected = selected }
+    override fun label(label: String) { this.label = label }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun onClose(onClose: (() -> Unit)?) { this.onClose = onClose }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class CmpSuggestionChip :
+    com.example.serverdrivenui.schema.widget.SuggestionChip<CmpRender> {
+    private val mod = StateModifier()
+    private var label by mutableStateOf("")
+    private var enabled by mutableStateOf(true)
+    private var onClick by mutableStateOf<(() -> Unit)?>(null)
+
+    override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cb = onClick
+        val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        androidx.compose.material3.SuggestionChip(
+            onClick = { cb?.invoke() },
+            label = { ComposeText(text = label) },
+            enabled = enabled,
+            icon = if (hasIcon) {
+                { (leadingIcon as CmpChildren).render() }
+            } else null,
+            modifier = composed,
+        )
+    }
+
+    override fun label(label: String) { this.label = label }
+    override fun enabled(enabled: Boolean) { this.enabled = enabled }
+    override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -1654,6 +1821,10 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun Tab() = CmpTab()
     override fun HorizontalDivider() = CmpHorizontalDivider()
     override fun VerticalDivider() = CmpVerticalDivider()
+    override fun FilterChip() = CmpFilterChip()
+    override fun AssistChip() = CmpAssistChip()
+    override fun InputChip() = CmpInputChip()
+    override fun SuggestionChip() = CmpSuggestionChip()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

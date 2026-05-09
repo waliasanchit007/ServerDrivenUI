@@ -185,6 +185,12 @@ Five corrections agreed before Tier 2 starts:
 
 All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–80 + 10 layout modifiers.
 
+## Tier 3 batch order — see `KONDUIT_PLAN.md` §4 (Phase 3 Tier 3)
+
+| Batch | Scope | IDs | Notes |
+|---|---|---|---|
+| ⏳ **3.0** | Chips (FilterChip, AssistChip, InputChip, SuggestionChip) | 100–103 | Uniform `leadingIcon` @Children(1) slot. FilterChip suppresses leadingIcon when selected (M3 auto-renders check glyph). InputChip has dedicated `onClose` Property — null hides the trailing X. |
+
 ## What's pending
 
 ### Caliclan branch
@@ -192,12 +198,13 @@ All 8 Tier 2 batches landed and verified. Tier 2 totals: 30 widgets at IDs 21–
 - [x] All Tier 2 batches landed and verified on device.
 
 ### Caliclan CI
-- [x] `.github/workflows/ci.yml` runs the three verification tasks on macOS. **Setup required:** add `KONDUIT_READ_TOKEN` repo secret — see `docs/CI_SETUP.md`.
+- [x] `.github/workflows/ci.yml` runs the three verification tasks on macOS.
+- [x] **CI auth gotcha discovered**: GitHub Packages' Maven registry rejects fine-grained PATs with HTTP 404 (not 401), so a token with the wrong type looks like a missing artifact. `docs/CI_SETUP.md` and the workflow header now explicitly require a **classic** PAT with `read:packages`. The Verify step also probes `konduit-gradle-plugin-1.0.0-caliclan.2.pom` directly so the failure mode is legible.
 
-### Tier 3 (~16 widgets, IDs 81–150)
-Per plan §4: chips, list items, flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh, shimmer, navigation rail. Re-spec'd after Tier 2 settles. Likely batches:
-- Chips (FilterChip, AssistChip, InputChip, SuggestionChip)
-- ListItem + DropdownMenu/MenuItem
+### Tier 3 (~16 widgets, IDs 100–199)
+Per plan §3.3 / §4: chips, list items, flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh, shimmer, navigation rail. Earlier draft text used "81–150"; that conflicts with the authoritative range table (Tier 3 is 100–199, IDs 81–99 are the Tier 2 buffer for additive properties). Likely batches:
+- ✅ **Batch 3.0 (in progress)** — Chips: FilterChip / AssistChip / InputChip / SuggestionChip @ IDs 100–103. Single shared `leadingIcon` slot per chip; InputChip has dedicated `onClose` callback for the trailing X.
+- Batch 3.1 (next) — ListItem + DropdownMenu/MenuItem
 - ModalBottomSheet, AlertDialog, DatePicker, TimePicker
 - HorizontalPager, VerticalPager + PagerIndicator
 - PullToRefresh wrapper
@@ -224,7 +231,7 @@ Single `./gradlew konduit:dev` command + clean Logcat formatting.
 
 | Repo | Branch / tag | Local path |
 |---|---|---|
-| Caliclan (this) | active dev on `konduit-main` (= tip of `claude/vigilant-euclid-681447`); frozen Redwood-era snapshot at `redwood-baseline` (`1d76527`); PR #1 open against `main` | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
+| Caliclan (this) | active dev on `konduit-main` (= default branch, = tip of `claude/vigilant-euclid-681447`); frozen Redwood-era snapshot at `redwood-baseline` (`1d76527`); PR #1 closed (its head SHA matched `konduit-main` after the branch reorg — work was already there) | `~/AndroidStudioProjects/ServerDrivenUI/.claude/worktrees/vigilant-euclid-681447/` |
 | Konduit | `main` at `975c9cdaa`; tag `v1.0.0-caliclan.2` published to GitHub Packages | `~/AndroidStudioProjects/konduit/` |
 
 ### Branch policy

@@ -523,9 +523,20 @@ schema generator already supports this — verify upstream pattern.
 **Batch 2.7 — Misc closeout** (IDs 79–80)
 HorizontalDivider, VerticalDivider. Trivial.
 
-**Tier 3 — Extended** (~16 widgets, IDs 81–150): chips, list items,
-flow layouts, animations, sheets, dialogs, pagers, pull-to-refresh,
-shimmer, navigation rail. Same: re-spec'd after Tier 2.
+**Tier 3 — Extended** (~16 widgets, IDs 100–199 per the §3.3 range
+table): chips, list items, flow layouts, animations, sheets, dialogs,
+pagers, pull-to-refresh, shimmer, navigation rail. Same: re-spec'd
+after Tier 2. (An earlier draft of this section said "81–150"; that
+overlapped with Tier 2's 21–80 + 19-id buffer for additive properties
+and contradicted the wire-format range table — corrected to 100–199.)
+
+**Batch 3.0 — Chips** (IDs 100–103) — first Tier 3 batch. FilterChip,
+AssistChip, InputChip, SuggestionChip. Uniform shape: each chip has a
+`label: String` property + a single `leadingIcon: () -> Unit` slot
+(@Children(1)); the guest passes `{}` when no icon is wanted and the
+host renders the chip in label-only mode. FilterChip + InputChip add a
+`selected: Boolean` property; InputChip adds an `onClose: (() -> Unit)?`
+property — null hides the trailing close affordance entirely.
 
 **SchemaColor / SchemaTextStyle (defined as part of Tier 1):**
 ```kotlin
@@ -902,3 +913,6 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Batch 2.6 multi-slot widgets: Konduit's `@Children(N)` already supports multiple named children groups (one per tag). Scaffold uses 4 slots (topBar/bottomBar/floatingActionButton/content); TopAppBars use 2 (navigationIcon/actions). No schema-generator changes needed. | claude |
 | 2026-05 | Batch 2.6 NavigationBarItem: `material3.NavigationBarItem` requires `RowScope` from its parent. Render hand-rolled column (icon + label) for now; promote to native widget when scope-typed @Children land in Konduit. | claude |
 | 2026-05 | **Tier 2 complete**. 30 widgets at IDs 21–80 + 10 layout modifiers shipped across 8 batches (2.0 through 2.7) plus the SerializersModule fix. Verified end-to-end on Android (Galaxy S22 Ultra) + iOS sim (iPhone 16 Pro). | walsan679 |
+| 2026-05 | **CI auth gotcha** (§7.5): GitHub Packages' Maven registry rejects fine-grained PATs with HTTP 404 (not 401). Earlier `docs/CI_SETUP.md` told the user to make a fine-grained PAT — wrong. Fixed: docs + workflow header now mandate a classic PAT with `read:packages`; the workflow's Verify step also probes `konduit-gradle-plugin-1.0.0-caliclan.2.pom` directly so the failure mode is "PAT lacks read:packages" instead of a confusing plugin-not-found stack trace deep in Gradle. | claude |
+| 2026-05 | Batch 3.0 chips ID range: use 100–103 per the §3.3 wire-format range table (Tier 3 = 100–199). Earlier draft `Tier 3 (~16 widgets, IDs 81–150)` text in HANDOVER + plan was stale and overlapped with the Tier 2 buffer; corrected to 100–199. IDs 81–99 stay reserved as a Tier 2 additive-property buffer. | claude |
+| 2026-05 | Batch 3.0 chip slot shape: every chip has a single `leadingIcon: () -> Unit` @Children(1) slot. Trailing-icon support is property-only on InputChip (`onClose: (() -> Unit)?`) — that covers the conventional close-X behavior; FilterChip's selected-state check glyph is M3-rendered, so we suppress leadingIcon when `selected && hasIcon` to avoid icon double-up. AssistChip + FilterChip custom trailing slots are deferred (additive @Children can land later without breaking wire). | claude |
