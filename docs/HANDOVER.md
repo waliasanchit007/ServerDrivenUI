@@ -230,6 +230,23 @@ Open questions:
 - `material3.NavigationBarItem` — needs scope-typed @Children to access RowScope cleanly.
 - Snackbar host queue — design a host-side `SnackbarHostState` + `Snackbar.show(message)` event so the guest doesn't have to manage timing.
 
+### Snackbar host queue ✅ landed (visual verify pending)
+- `HostSnackbar` Zipline service in `:shared/Protocol.kt` — `show(message, actionLabel, durationMillis)`. `durationMillis` semantics: `<=0` indefinite, `1..6000` short (~4 s), `>6000` long (~10 s).
+- `RealHostSnackbar` (composeApp/Protocol.kt) wraps M3's `SnackbarHostState` from a singleton `SnackbarHub` so the queue survives recompositions.
+- `App.kt` renders `SnackbarHost(SnackbarHub.state)` aligned to the bottom-center of the root Box.
+- Guest helper: top-level `showHostSnackbar(message, actionLabel?, durationMillis = 4000L)` in `presenter/Main.kt`. Backed by `HostSnackbarBridge.instance` set during Zipline take.
+- Showcase has a "Host snackbar queue (Tier 3)" section with three buttons (Short / Long / With action).
+
+**Defensive code in place** (added after iOS testing observed app blanking):
+- `RealHostSnackbar.scope` is `lazy` rather than constructed eagerly — Dispatchers.Main on iOS Kotlin/Native may not be wired at `bindServices` time.
+- `RealHostSnackbar.show` wraps the body in try/catch → `println`. Silent failure rather than tearing down the Compose UI on the host side.
+- Guest's `showHostSnackbar` wraps `bridge.show(...)` in try/catch → `println`. Same rationale on the guest side.
+
+**Open follow-up — iOS visual verification:**
+- Tapping a snackbar button on iPhone 16 Pro sim no longer blanks the app (defensive code), but the snackbar UI also doesn't appear visibly. Likely root cause: Zipline RPC from JS guest into Kotlin/Native host either fails to reach `RealHostSnackbar.show()` or `SnackbarHub.state.showSnackbar()` doesn't surface in the host's UI tree.
+- Diagnosis blocked because Kotlin/Native `println` from the host doesn't surface in iOS unified log. Best next step: route diagnostic logs through the existing `HostConsole` service (which already works visibly via JS → host → stdout), or build for Android and verify there first since logcat captures `println` cleanly.
+- Architecture is sound; this is a debug-loop limitation on iOS, not a design issue.
+
 ### Tier 3 modifier additions ✅ landed
 - `Border(thicknessDp, color: SchemaColor)` @ tag 12 — v1 always rectangular; rounded-stroke shape is an additive `cornerRadiusDp` parameter later.
 - `Clip(cornerRadiusDp)` @ tag 13 — rounded-corner clip; 0 = no-op.

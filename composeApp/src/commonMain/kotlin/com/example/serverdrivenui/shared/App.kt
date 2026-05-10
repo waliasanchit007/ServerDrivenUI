@@ -107,6 +107,16 @@ fun App(
                     enabled = showDevOverlay,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
+
+                // Host-side snackbar queue. The guest enqueues messages
+                // via the HostSnackbar Zipline service (see RealHostSnackbar
+                // in Protocol.kt + the SnackbarHub singleton). Anchored to
+                // the bottom-center of the root Box so it overlays whatever
+                // the Treehouse content rendered.
+                androidx.compose.material3.SnackbarHost(
+                    hostState = SnackbarHub.state,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
+import com.example.serverdrivenui.presenter.showHostSnackbar
 import com.example.serverdrivenui.schema.SchemaArrangement
 import com.example.serverdrivenui.schema.SchemaColor
 import com.example.serverdrivenui.schema.SchemaHorizontalAlignment
@@ -1637,6 +1638,67 @@ class Tier1ShowcaseScreen : Screen {
                             .clip(cornerRadiusDp = 8)
                             .background(SchemaColor.Primary)
                             .padding(8, 4, 8, 4),
+                    )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Host snackbar queue ---
+            // Per Batch 2.5 decisions log: the inline `Snackbar` widget
+            // (Tier 2) is for static demo; the recommended pattern is
+            // `showHostSnackbar()` which posts an event onto the host's
+            // queue. Three buttons exercise short / long / with-action
+            // variants. Tap multiple in quick succession — the host
+            // queues them FIFO via M3's SnackbarHostState mutex.
+            LazyItem {
+                Text(
+                    text = "Host snackbar queue (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 4) }
+            LazyItem {
+                Text(
+                    text = "Calls showHostSnackbar() instead of rendering a widget. Tap several in a row — host queues FIFO via M3's SnackbarHostState.",
+                    color = SchemaColor.OnSurfaceVariant,
+                    style = SchemaTextStyle.BodySmall,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Button(
+                        text = "Short",
+                        enabled = true,
+                        onClick = {
+                            showHostSnackbar(message = "Saved to drafts")
+                        },
+                    )
+                    Button(
+                        text = "Long",
+                        enabled = true,
+                        onClick = {
+                            showHostSnackbar(
+                                message = "Upload failed — check your connection.",
+                                durationMillis = 8000L,
+                            )
+                        },
+                    )
+                    Button(
+                        text = "With action",
+                        enabled = true,
+                        onClick = {
+                            showHostSnackbar(
+                                message = "Item deleted",
+                                actionLabel = "Undo",
+                            )
+                        },
                     )
                 }
             }

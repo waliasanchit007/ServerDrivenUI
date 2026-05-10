@@ -48,6 +48,7 @@ import com.example.serverdrivenui.schema.modifier.Width as MWidth
 import com.example.serverdrivenui.schema.modifier.WrapContentHeight as MWrapContentHeight
 import com.example.serverdrivenui.schema.modifier.WrapContentWidth as MWrapContentWidth
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 private typealias CmpRender = @Composable (ComposeModifier) -> Unit
 
@@ -2714,6 +2715,83 @@ class RealHostConsole : HostConsole {
     }
 }
 
+/**
+ * Single shared SnackbarHostState that the host's root UI hooks into via
+ * `SnackbarHost(SnackbarHub.state)` (see App.kt) and that the
+ * [RealHostSnackbar] Zipline service writes into.
+ *
+ * Singleton because:
+ *   1. The host's UI tree may recompose, but the snackbar queue must
+ *      survive across recompositions.
+ *   2. The Zipline service binding runs in `bindServices` BEFORE the
+ *      Compose UI mounts; we need a stable reference to hand the queue
+ *      to the service. A singleton sidesteps the lifecycle ordering
+ *      problem entirely.
+ *
+ * Trade-off: only one root UI can host snackbars at a time. For multi-
+ * window apps (desktop) we'd need a per-window state holder routed
+ * through composition locals; not relevant for Caliclan today.
+ */
+object SnackbarHub {
+    val state: androidx.compose.material3.SnackbarHostState =
+        androidx.compose.material3.SnackbarHostState()
+}
+
+/**
+ * Maps Zipline guest calls to M3 SnackbarHostState.showSnackbar. Owns
+ * an internal coroutine scope so the suspending showSnackbar call runs
+ * off the Zipline thread.
+ *
+ * SnackbarHostState.showSnackbar SUSPENDS until the snackbar is
+ * dismissed (by next show, by timeout, or by action press). Each call
+ * to RealHostSnackbar.show() spawns a coroutine; M3 internally
+ * serializes them via a Mutex so calls naturally queue FIFO. No extra
+ * queue state needed on our side.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
+    // Lazy scope — defer Dispatchers.Main resolution until first show()
+    // call, NOT at construction. On iOS Kotlin/Native, accessing
+    // Dispatchers.Main during bindServices() (which runs before the
+    // Compose UI mounts and may run before the main coroutine
+    // dispatcher is fully wired) can throw IllegalStateException.
+    // SupervisorJob keeps the scope alive across individual showSnackbar
+    // coroutine completions; failures in one snackbar don't tear down
+    // the whole queue.
+    private val scope by lazy {
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.Dispatchers.Main +
+                kotlinx.coroutines.SupervisorJob(),
+        )
+    }
+
+    override fun show(message: String, actionLabel: String?, durationMillis: Long) {
+        // Defensive try/catch — a throw out of a Zipline-bound method on
+        // the host side can propagate to the guest in confusing ways
+        // (silent UI tear-down on iOS, observed empirically). Better to
+        // swallow + log here and let subsequent calls keep working.
+        try {
+            val duration = when {
+                durationMillis <= 0L -> androidx.compose.material3.SnackbarDuration.Indefinite
+                durationMillis <= 6000L -> androidx.compose.material3.SnackbarDuration.Short
+                else -> androidx.compose.material3.SnackbarDuration.Long
+            }
+            scope.launch {
+                // Result intentionally discarded — guest can't react to action
+                // presses in v1 (no callback wire-up). Adding a result callback
+                // is an additive change for later.
+                SnackbarHub.state.showSnackbar(
+                    message = message,
+                    actionLabel = actionLabel,
+                    duration = duration,
+                )
+            }
+        } catch (t: Throwable) {
+            println("RealHostSnackbar.show($message) failed: ${t.message}")
+        }
+    }
+}
+
 class SduiAppSpec(
     override val manifestUrl: Flow<String>,
     override val name: String = "sdui",
@@ -2722,6 +2800,7 @@ class SduiAppSpec(
 
     override suspend fun bindServices(treehouseApp: TreehouseApp<SduiAppService>, zipline: Zipline) {
         zipline.bind<HostConsole>("console", RealHostConsole())
+        zipline.bind<com.example.serverdrivenui.shared.HostSnackbar>("snackbar", RealHostSnackbar())
     }
 
     override fun create(zipline: Zipline): SduiAppService {

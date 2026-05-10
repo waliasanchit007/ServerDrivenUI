@@ -11,6 +11,7 @@ import com.example.serverdrivenui.schema.SduiSerializersModule
 import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
 import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.HostSnackbar
 
 /**
  * SduiAppService implementation - Entry point for the Zipline app.
@@ -41,9 +42,56 @@ class SduiAppServiceImpl : SduiAppService {
     override fun close() {}
 }
 
+/**
+ * Guest-side bridge to the host's snackbar queue. The host binds a
+ * `HostSnackbar` Zipline service (see RealHostSnackbar in composeApp's
+ * Protocol.kt); this object holds the bound instance so the guest can
+ * post snackbars from anywhere via [showHostSnackbar].
+ *
+ * Single-process singleton: there's exactly one Zipline runtime per
+ * guest, so a top-level holder is fine. Visible to all `:presenter`
+ * code (not just Main.kt) for showcase / app code to call.
+ */
+object HostSnackbarBridge {
+    var instance: HostSnackbar? = null
+}
+
+/**
+ * Top-level helper: enqueue a snackbar message on the host. No-op (with
+ * a log) if called before the host binding completes — that should only
+ * happen during very early bootstrap. Standard call sites (button
+ * onClicks, async completions) always hit this after binding is done.
+ *
+ * [durationMillis] semantics:
+ *   - <= 0 → indefinite (host displays until dismissed by another show()
+ *     or the user taps the action button if present)
+ *   - 1..6000 → short (~4 s, M3 default)
+ *   - > 6000 → long (~10 s)
+ */
+fun showHostSnackbar(
+    message: String,
+    actionLabel: String? = null,
+    durationMillis: Long = 4000L,
+) {
+    val bridge = HostSnackbarBridge.instance
+    if (bridge == null) {
+        println("showHostSnackbar called before HostSnackbar bound: $message")
+        return
+    }
+    // Defensive try/catch — a throw out of a Zipline RPC on the guest
+    // side can disrupt the surrounding Compose recomposition (observed
+    // empirically as a blank screen on iOS). Swallow + log so the guest
+    // UI stays alive even if the host-side service misbehaves.
+    try {
+        bridge.show(message, actionLabel, durationMillis)
+    } catch (t: Throwable) {
+        println("showHostSnackbar bridge call threw for '$message': ${t.message}")
+    }
+}
+
 fun main() {
     val zipline = Zipline.get()
-    
+
     // Bind host console for logging
     var hostConsole: HostConsole? = null
     try {
@@ -51,6 +99,14 @@ fun main() {
         println("Zipline JS: HostConsole bound successfully")
     } catch (e: Throwable) {
         println("Zipline JS: Failed to take host console: ${e.message}")
+    }
+
+    // Bind host snackbar queue.
+    try {
+        HostSnackbarBridge.instance = zipline.take<HostSnackbar>("snackbar")
+        println("Zipline JS: HostSnackbar bound successfully")
+    } catch (e: Throwable) {
+        println("Zipline JS: Failed to take host snackbar: ${e.message}")
     }
 
     // Capture original console for fallback
