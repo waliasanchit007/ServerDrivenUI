@@ -2709,11 +2709,12 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
 // Services
 // ============================================================================
 
-class RealHostConsole : HostConsole {
-    override fun log(message: String) {
-        println("JS: $message")
-    }
-}
+// Deleted: `RealHostConsole` (commonMain HostConsole impl). Both platforms
+// ship their own console impls — Android: AndroidRealHostConsole (logs via
+// android.util.Log so messages land in logcat); iOS: IosRealHostConsole
+// (logs via println which goes to stderr, captured by Xcode console). A
+// single commonMain impl can't reach either platform's preferred log sink,
+// so consolidation isn't a win here.
 
 /**
  * Single shared SnackbarHostState that the host's root UI hooks into via
@@ -2792,18 +2793,11 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
     }
 }
 
-class SduiAppSpec(
-    override val manifestUrl: Flow<String>,
-    override val name: String = "sdui",
-) : TreehouseApp.Spec<SduiAppService>() {
-    override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
-
-    override suspend fun bindServices(treehouseApp: TreehouseApp<SduiAppService>, zipline: Zipline) {
-        zipline.bind<HostConsole>("console", RealHostConsole())
-        zipline.bind<com.example.serverdrivenui.shared.HostSnackbar>("snackbar", RealHostSnackbar())
-    }
-
-    override fun create(zipline: Zipline): SduiAppService {
-        return zipline.take<SduiAppService>("app")
-    }
-}
+// NOTE: there used to be an `SduiAppSpec` class here that bound HostConsole
+// + HostSnackbar — but it was never referenced from either platform entry
+// point. Both Android (MainActivity.kt) and iOS (MainViewController.kt)
+// instantiate their own anonymous `TreehouseApp.Spec<SduiAppService>()`,
+// each binding services platform-locally (Android: AndroidRealHostConsole;
+// iOS: IosRealHostConsole; both: RealHostSnackbar from below). The dead
+// class was deleted in the snackbar bind-site fix; if you re-add a shared
+// Spec helper later, ensure both platforms switch to it in the same diff.

@@ -213,20 +213,36 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         override val manifestUrl = manifestUrlFlow.asStateFlow()
         override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
 
+        // Strong refs to bound host services. Konduit/Zipline does NOT
+        // retain services internally — see konduit-treehouse-host
+        // EventListener.kt#serviceLeaked: "Invoked when a service is
+        // garbage collected without being closed." Anonymous instances
+        // passed inline to `bind(...)` become GC-eligible the moment
+        // bindServices returns; first guest call then errors with
+        // "no such service (service closed?)". Hold them as `val`
+        // properties of the Spec to keep them alive for its lifetime.
+        //
+        // Note: this Spec mirrors the AndroidMain Spec in MainActivity.kt;
+        // both must wire the same set of services (any divergence shows
+        // up as platform-specific guest crashes).
+        private val iosHostConsole = IosRealHostConsole()
+        private val iosHostSnackbar = RealHostSnackbar()
+
         override suspend fun bindServices(
             treehouseApp: TreehouseApp<SduiAppService>,
             zipline: Zipline
         ) {
             println("SDUI-iOS: bindServices called")
-            
-            // Only bind console for logging
-            zipline.bind<HostConsole>("console", IosRealHostConsole())
+
+            zipline.bind<HostConsole>("console", iosHostConsole)
             println("SDUI-iOS: console bound")
-            
-            // No NavigationService or RouteService needed!
-            // Guest handles all navigation internally via BackHandler widget
+
+            // Snackbar: see Android Spec for the architecture rationale.
+            // Both platforms must bind the same set of services.
+            zipline.bind<HostSnackbar>("snackbar", iosHostSnackbar)
+            println("SDUI-iOS: snackbar bound")
         }
-        
+
         override fun create(zipline: Zipline): SduiAppService {
             return zipline.take<SduiAppService>("app")
         }

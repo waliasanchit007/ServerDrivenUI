@@ -12,6 +12,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.serverdrivenui.shared.App
 import com.example.serverdrivenui.shared.SduiAppService
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.HostSnackbar
+import com.example.serverdrivenui.shared.RealHostSnackbar
 import com.example.serverdrivenui.shared.DevConfig
 import com.example.serverdrivenui.shared.HotReloadManager
 import dev.konduit.treehouse.TreehouseAppFactory
@@ -32,6 +34,18 @@ import androidx.compose.runtime.getValue
 import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
 
 import androidx.lifecycle.lifecycleScope
+
+/**
+ * Android HostConsole impl. Routes guest console output through
+ * `android.util.Log` so messages land in logcat under the SDUI-JS tag.
+ * (commonMain can't do this — it doesn't have android.util.Log on the
+ * classpath. iOS has its own equivalent IosRealHostConsole.)
+ */
+class AndroidRealHostConsole : HostConsole {
+    override fun log(message: String) {
+        Log.d("SDUI-JS", message)
+    }
+}
 
 /**
  * Main Activity for Android.
@@ -85,18 +99,40 @@ class MainActivity : ComponentActivity() {
             override val manifestUrl = manifestUrlFlow.asStateFlow()
             override val serializersModule = com.example.serverdrivenui.schema.SduiSerializersModule
 
+            // Strong refs to bound host services. Konduit/Zipline does NOT
+            // retain services internally — see konduit-treehouse-host
+            // EventListener.kt#serviceLeaked: "Invoked when a service is
+            // garbage collected without being closed." Anonymous instances
+            // passed inline to `bind(...)` become GC-eligible the moment
+            // bindServices returns; first guest call then errors with
+            // "no such service (service closed?)". Hold them as `val`
+            // properties of the Spec to keep them alive for its lifetime.
+            //
+            // The Spec instance is itself rooted by `treehouseAppFactory.create`
+            // via the returned TreehouseApp, which lives as long as MainActivity.
+            private val androidHostConsole = AndroidRealHostConsole()
+            private val androidHostSnackbar = RealHostSnackbar()
+
             override suspend fun bindServices(
                 treehouseApp: dev.konduit.treehouse.TreehouseApp<SduiAppService>,
                 zipline: Zipline
             ) {
                 Log.d("SDUI-Host", "bindServices called")
-                
-                // Only bind console for logging
-                zipline.bind<HostConsole>("console", AndroidRealHostConsole())
+
+                zipline.bind<HostConsole>("console", androidHostConsole)
                 Log.d("SDUI-Host", "console service bound")
-                
-                // No NavigationService or RouteService needed!
-                // Guest handles all navigation internally via BackHandler widget
+
+                // Snackbar: guest calls showHostSnackbar(message) → Zipline RPC
+                // → RealHostSnackbar (in commonMain Protocol.kt) → M3
+                // SnackbarHostState (SnackbarHub) → SnackbarHost composable
+                // (anchored in App.kt). All four pieces must be present;
+                // before this line was added, the bind only happened in a
+                // commonMain SduiAppSpec class that was never referenced
+                // (dead code), so guest take() got a proxy that 404'd at
+                // first use. See decisions log entry "Batch 3.x snackbar
+                // bind-site fix" in KONDUIT_PLAN.md.
+                zipline.bind<HostSnackbar>("snackbar", androidHostSnackbar)
+                Log.d("SDUI-Host", "snackbar service bound")
             }
 
             override fun create(zipline: Zipline): SduiAppService {

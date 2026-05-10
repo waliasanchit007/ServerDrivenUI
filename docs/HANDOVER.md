@@ -242,10 +242,12 @@ Open questions:
 - `RealHostSnackbar.show` wraps the body in try/catch → `println`. Silent failure rather than tearing down the Compose UI on the host side.
 - Guest's `showHostSnackbar` wraps `bridge.show(...)` in try/catch → `println`. Same rationale on the guest side.
 
-**Open follow-up — iOS visual verification:**
-- Tapping a snackbar button on iPhone 16 Pro sim no longer blanks the app (defensive code), but the snackbar UI also doesn't appear visibly. Likely root cause: Zipline RPC from JS guest into Kotlin/Native host either fails to reach `RealHostSnackbar.show()` or `SnackbarHub.state.showSnackbar()` doesn't surface in the host's UI tree.
-- Diagnosis blocked because Kotlin/Native `println` from the host doesn't surface in iOS unified log. Best next step: route diagnostic logs through the existing `HostConsole` service (which already works visibly via JS → host → stdout), or build for Android and verify there first since logcat captures `println` cleanly.
-- Architecture is sound; this is a debug-loop limitation on iOS, not a design issue.
+**Bind-site bug fixed (2026-05-11):**
+- The original snackbar commit added the `zipline.bind<HostSnackbar>(...)` call to a commonMain `SduiAppSpec` class that was **never referenced from either platform entry point**. Both `androidApp/MainActivity.kt` and `composeApp/iosMain/MainViewController.kt` instantiate their own anonymous `TreehouseApp.Spec<SduiAppService>()`, each binding only `console`. The snackbar bind was dead code.
+- Symptom: `take<HostSnackbar>("snackbar")` succeeds (returns a proxy), but every guest call errors with `no such service (service closed?)` — the guest side has no way to know the host never bound it. Confirmed on Android via logcat (`"available services: ... console, ... (no snackbar)"`).
+- Fix: snackbar bind now lives in both platform Specs (with strong refs as class-field properties to dodge `serviceLeaked`). Dead code removed: `androidApp/AndroidSduiAppSpec.kt` deleted entirely; `SduiAppSpec` and `RealHostConsole` removed from `composeApp/commonMain/Protocol.kt`.
+- Architecturally still platform-divergent — Android uses `AndroidRealHostConsole` (logs via `android.util.Log`), iOS uses `IosRealHostConsole` (logs via `println` → stderr). Both share `RealHostSnackbar` from commonMain since it talks to commonMain's `SnackbarHub`.
+- **On-device verification still pending** as of this write-up because the test device's wifi was flaky during the debug loop. Re-test after restart.
 
 ### Tier 3 modifier additions ✅ landed
 - `Border(thicknessDp, color: SchemaColor)` @ tag 12 — v1 always rectangular; rounded-stroke shape is an additive `cornerRadiusDp` parameter later.
