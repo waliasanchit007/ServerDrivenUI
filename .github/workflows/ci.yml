@@ -86,8 +86,12 @@ jobs:
           echo ""
           echo "=== Konduit Maven artifact probe ==="
           probe="https://maven.pkg.github.com/waliasanchit007/konduit/dev/konduit/konduit-gradle-plugin/1.0.0-caliclan.2/konduit-gradle-plugin-1.0.0-caliclan.2.pom"
-          status=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "$probe")
-          echo "Probe $probe → HTTP $status"
+          # -L follows redirects: GitHub Packages returns 302 → CDN location
+          # for the actual artifact bytes. Without -L we'd see the 302 and
+          # think the artifact is missing. Gradle's resolver follows
+          # redirects natively, so this matches what Gradle will see.
+          status=$(curl -L -s -o /dev/null -w "%{http_code}" -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "$probe")
+          echo "Probe $probe → HTTP $status (after following redirects)"
           if [ "$status" != "200" ]; then
             echo "::error ::Konduit Maven probe failed (HTTP $status). Check the X-OAuth-Scopes line above:"
             echo "::error ::  - Empty / no header => fine-grained PAT (cannot read GH Packages Maven). Regenerate as classic."
