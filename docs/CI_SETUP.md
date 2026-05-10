@@ -24,40 +24,74 @@ needs an explicit Personal Access Token.
 
 ### One-time setup
 
-1. **Create the PAT.**  Go to
-   <https://github.com/settings/tokens> → _Generate new token (classic)_.
+1. **Create the PAT.** Open this exact URL — it goes to the
+   **classic** tokens page (the legacy UI, not the fine-grained one):
 
-   > **Important:** must be a **classic** PAT, *not* a fine-grained one.
-   > Fine-grained tokens cannot read Maven packages from GitHub Packages —
-   > only npm / Container / RubyGems are supported there. A fine-grained
-   > token returns HTTP 404 (not 401) on Maven endpoints, which makes the
-   > failure look like a missing artifact instead of an auth issue.
+   <https://github.com/settings/tokens/new>
 
-   - Scopes: only **`read:packages`** is required. (You can leave every
-     other scope unchecked — the token doesn't need `repo`, `workflow`,
-     etc. to fetch Maven artifacts.)
-   - Expiry: 1 year is fine for now; rotate later.
+   > **Important:** must be a **classic** PAT, *not* fine-grained.
+   > Fine-grained tokens *cannot* read Maven packages from GitHub
+   > Packages — only npm / Container / RubyGems are supported there.
+   > A fine-grained token returns HTTP 404 (not 401) on Maven endpoints,
+   > which makes the failure look like a missing artifact instead of an
+   > auth issue.
+   >
+   > How to tell which kind you made:
+   > - Classic: the page title says "New personal access token (classic)"
+   >   and offers a checkbox grid of scopes (`repo`, `workflow`,
+   >   `read:packages`, …).
+   > - Fine-grained: the page title says "New fine-grained personal
+   >   access token" and asks you to pick repository access + permission
+   >   categories (Contents, Packages, …) with read/write dropdowns. **If
+   >   you see this page, back out and use the URL above.**
 
-2. **Add it to Caliclan as a repository secret.**  Open the Caliclan
-   repo settings:
+   - Note (description field): something like `caliclan-read-packages`.
+   - Expiry: 1 year is fine; rotate later.
+   - Scopes: tick only **`read:packages`**. The other scopes can stay
+     unchecked — the token doesn't need `repo`, `workflow`, etc. to
+     fetch Maven artifacts.
+   - Click **Generate token** and copy the `ghp_…` value.
+
+2. **Verify the token before saving it as a secret.** Run this from any
+   terminal (replace `ghp_…` with what you just copied):
+
+   ```bash
+   curl -s -i -u "waliasanchit007:ghp_…" https://api.github.com/user \
+     | awk 'BEGIN{IGNORECASE=1} /^HTTP\/|^x-oauth-scopes/{print}'
+   ```
+
+   - **Expected** for a classic PAT with `read:packages`:
+
+     ```
+     HTTP/2 200
+     x-oauth-scopes: read:packages
+     ```
+
+   - **Wrong (fine-grained):** `HTTP/2 200` shows but the
+     `x-oauth-scopes` line is **missing entirely**. Regenerate via the
+     URL above.
+   - **Wrong (classic but missing scope):** `x-oauth-scopes:` line is
+     present but empty or doesn't include `read:packages`.
+
+3. **Add it to Caliclan as a repository secret.** Open Caliclan's repo
+   settings:
 
    <https://github.com/waliasanchit007/ServerDrivenUI/settings/secrets/actions>
 
-   _New repository secret_:
+   _New repository secret_ (or _Update_ if `KONDUIT_READ_TOKEN` already
+   exists):
 
    - **Name:** `KONDUIT_READ_TOKEN`
    - **Value:** the PAT from step 1
 
-3. **Re-run the workflow.**  Pushing any commit (or hitting _Re-run all
-   jobs_ on a previous run) will pick up the new secret.
+4. **Re-run CI.** Push any commit, or hit _Re-run all jobs_ on the
+   latest run.
 
-If the secret is missing the workflow fails fast with a clear error in
-the _Verify Konduit read token is present_ step. The same step also
-probes `konduit-gradle-plugin-1.0.0-caliclan.2.pom` directly, so a
-token that's present but lacks `read:packages` (e.g. a fine-grained
-PAT) fails here too with a 404 → "PAT lacks read:packages" message,
-rather than producing a confusing _plugin not found_ stack trace deep
-in Gradle plugin resolution.
+If the secret is missing or wrong, the workflow fails fast in the
+_Verify Konduit read token is present + can read packages_ step. The
+step prints the response headers from `/user` (so you can see the
+token's scope inline) followed by a Maven artifact probe with a 404
+triage tree pointing at the most likely cause.
 
 ## Local development
 
