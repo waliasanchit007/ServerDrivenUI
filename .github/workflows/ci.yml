@@ -59,20 +59,42 @@ jobs:
 
       # Konduit token sanity check — fail fast with a clear message
       # rather than letting Gradle hit a 401 and produce a noisy error.
-      # Also probes GH Packages so a token that's present but lacks
-      # `read:packages` on waliasanchit007/konduit fails here, not deep in
-      # a plugin-resolution stack trace.
+      # We probe two things and surface BOTH so a 404 has a clear cause:
+      #   1. /user — succeeds for ANY classic PAT regardless of scopes.
+      #      Response includes X-OAuth-Scopes header listing the token's
+      #      effective scopes (fine-grained PATs return EMPTY, classic
+      #      PATs list scopes like "read:packages, repo, ..."). This is
+      #      the gold-standard "what is this token actually capable of"
+      #      check.
+      #   2. The Maven artifact pom — same as before; 404 here AFTER /user
+      #      succeeds means scopes are wrong (or repo access missing).
       - name: Verify Konduit read token is present + can read packages
         run: |
           if [ -z "$GITHUB_TOKEN" ]; then
             echo "::error ::KONDUIT_READ_TOKEN secret is missing — see .github/workflows/ci.yml header for setup"
             exit 1
           fi
+
+          echo "=== Token diagnostic via /user ==="
+          # -i prints headers; we grep the OAuth headers + the HTTP status
+          # line. A fine-grained PAT will show empty X-OAuth-Scopes.
+          curl -s -i -u "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+            "https://api.github.com/user" \
+            | awk 'BEGIN{IGNORECASE=1} /^HTTP\/|^x-oauth-scopes|^x-accepted-oauth-scopes|^x-github-token-type/{print}' \
+            || true
+
+          echo ""
+          echo "=== Konduit Maven artifact probe ==="
           probe="https://maven.pkg.github.com/waliasanchit007/konduit/dev/konduit/konduit-gradle-plugin/1.0.0-caliclan.2/konduit-gradle-plugin-1.0.0-caliclan.2.pom"
           status=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "$probe")
           echo "Probe $probe → HTTP $status"
           if [ "$status" != "200" ]; then
-            echo "::error ::KONDUIT_READ_TOKEN cannot read konduit-gradle-plugin-1.0.0-caliclan.2.pom (HTTP $status). Verify the PAT has 'read:packages' scope on waliasanchit007/konduit."
+            cat <<'EOF' >&2
+::error ::Konduit Maven probe failed. Check the X-OAuth-Scopes line above:
+::error ::  - Empty / no header → fine-grained PAT (cannot read GH Packages Maven). Regenerate as classic.
+::error ::  - Present but missing 'read:packages' → add the scope to the PAT.
+::error ::  - Includes 'read:packages' → token is fine; the artifact may have been deleted or the user lacks access to the konduit repo.
+EOF
             exit 1
           fi
 
