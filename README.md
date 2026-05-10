@@ -25,7 +25,7 @@ and new features land on `konduit-main` only.
 - **56 server-rendered widgets**: 10 Tier 1 (foundation) + 30 Tier 2
   (M3 essentials) + 16 Tier 3 (chips, list+menus, overlays, pagers,
   pull-to-refresh, large-screen nav, pickers). IDs 1–171.
-- 10 layout modifiers (padding, size, fillMaxSize, background, weight, …).
+- 16 layout modifiers (padding, size, fillMax*, background, weight, alpha, **border, clip, clipCircle, wrapContent*, aspectRatio**).
 - Hot-reload dev loop via Zipline + a 1-shot dev server.
 - Verified end-to-end on real Android + iOS sim — see the showcase in
   `presenter/src/jsMain/.../screens/Tier1ShowcaseScreen.kt` and the

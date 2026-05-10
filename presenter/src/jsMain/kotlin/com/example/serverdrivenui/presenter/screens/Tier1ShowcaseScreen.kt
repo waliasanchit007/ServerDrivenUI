@@ -77,12 +77,17 @@ import com.example.serverdrivenui.schema.compose.TopAppBar
 import com.example.serverdrivenui.schema.compose.TextButton
 import com.example.serverdrivenui.schema.compose.TextField
 import com.example.serverdrivenui.schema.compose.background
+import com.example.serverdrivenui.schema.compose.aspectRatio
+import com.example.serverdrivenui.schema.compose.border
+import com.example.serverdrivenui.schema.compose.clip
+import com.example.serverdrivenui.schema.compose.clipCircle
 import com.example.serverdrivenui.schema.compose.fillMaxHeight
 import com.example.serverdrivenui.schema.compose.fillMaxSize
 import com.example.serverdrivenui.schema.compose.fillMaxWidth
 import com.example.serverdrivenui.schema.compose.height
 import com.example.serverdrivenui.schema.compose.padding
 import com.example.serverdrivenui.schema.compose.size
+import com.example.serverdrivenui.schema.compose.wrapContentWidth
 import dev.konduit.Modifier
 
 /**
@@ -1516,6 +1521,122 @@ class Tier1ShowcaseScreen : Screen {
                             showTimePicker = false
                         },
                         onDismissRequest = { showTimePicker = false },
+                    )
+                }
+            }
+
+            LazyItem { Spacer(width = 0, height = 24) }
+
+            // --- Tier 3 — Modifier additions (border, clip, wrap, aspect) ---
+            LazyItem {
+                Text(
+                    text = "Modifier additions (Tier 3)",
+                    color = SchemaColor.OnSurface,
+                    style = SchemaTextStyle.TitleMedium,
+                )
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // Border + Clip combination — rounded card with a stroke.
+            // Note: in v1 Border is rectangular, so the stroke renders as
+            // a rectangle around the rounded clip (the corner stroke is
+            // clipped away). Use Card / OutlinedCard widgets when you want
+            // the stroke to follow rounded corners.
+            LazyItem {
+                Box(
+                    onClick = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80)
+                        .clip(cornerRadiusDp = 16)
+                        .background(SchemaColor.SecondaryContainer)
+                        .border(thicknessDp = 2, color = SchemaColor.Primary)
+                        .padding(16, 16, 16, 16),
+                ) {
+                    Text(
+                        text = "Clip(16) + Border(2dp Primary)",
+                        color = SchemaColor.OnSecondaryContainer,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // ClipCircle — circular avatar. Pair with a square Size so
+            // the inscribed circle isn't elliptical.
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.Start,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Box(
+                        onClick = null,
+                        modifier = Modifier
+                            .size(width = 64, height = 64)
+                            .clipCircle()
+                            .background(SchemaColor.Primary),
+                    ) {
+                        // No content — solid circle. A real avatar would
+                        // place an AsyncImage here.
+                    }
+                    Spacer(width = 16, height = 0)
+                    Text(
+                        text = "ClipCircle() + Size(64×64)",
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // AspectRatio — 16:9 widescreen frame. fillMaxWidth gives
+            // Compose the width axis; aspectRatio derives the height.
+            LazyItem {
+                Box(
+                    onClick = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(ratio = 16.0 / 9.0)
+                        .clip(cornerRadiusDp = 8)
+                        .background(SchemaColor.Tertiary),
+                ) {
+                    Text(
+                        text = "AspectRatio(16/9)",
+                        color = SchemaColor.OnTertiary,
+                        style = SchemaTextStyle.BodyMedium,
+                        modifier = Modifier.padding(12, 12, 12, 12),
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // WrapContentWidth — text inside a fillMaxWidth Row that
+            // shrinks to its content rather than stretching. Helps when
+            // you want a "tag-style" element inside a wider container.
+            LazyItem {
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SchemaColor.SurfaceVariant)
+                        .padding(12, 12, 12, 12),
+                ) {
+                    Text(
+                        text = "Container fills width",
+                        color = SchemaColor.OnSurfaceVariant,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                    Text(
+                        text = "tag",
+                        color = SchemaColor.OnPrimary,
+                        style = SchemaTextStyle.LabelSmall,
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .clip(cornerRadiusDp = 8)
+                            .background(SchemaColor.Primary)
+                            .padding(8, 4, 8, 4),
                     )
                 }
             }

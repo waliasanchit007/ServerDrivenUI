@@ -3,6 +3,7 @@
 package com.example.serverdrivenui.shared
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn as ComposeLazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier as ComposeModifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -30,7 +32,11 @@ import app.cash.zipline.Zipline
 import com.example.serverdrivenui.schema.*
 import com.example.serverdrivenui.schema.widget.*
 import com.example.serverdrivenui.schema.modifier.Alpha as MAlpha
+import com.example.serverdrivenui.schema.modifier.AspectRatio as MAspectRatio
 import com.example.serverdrivenui.schema.modifier.Background as MBackground
+import com.example.serverdrivenui.schema.modifier.Border as MBorder
+import com.example.serverdrivenui.schema.modifier.Clip as MClip
+import com.example.serverdrivenui.schema.modifier.ClipCircle as MClipCircle
 import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
@@ -39,6 +45,8 @@ import com.example.serverdrivenui.schema.modifier.Padding as MPadding
 import com.example.serverdrivenui.schema.modifier.Size as MSize
 import com.example.serverdrivenui.schema.modifier.Weight as MWeight
 import com.example.serverdrivenui.schema.modifier.Width as MWidth
+import com.example.serverdrivenui.schema.modifier.WrapContentHeight as MWrapContentHeight
+import com.example.serverdrivenui.schema.modifier.WrapContentWidth as MWrapContentWidth
 import kotlinx.coroutines.flow.Flow
 
 private typealias CmpRender = @Composable (ComposeModifier) -> Unit
@@ -166,6 +174,12 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
 private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifier {
     var m = base
     var bgSchemaColor: SchemaColor? = null
+    // Border state hoisted same way as Background — `toComposeColor()`
+    // is @Composable and can't run inside the (non-composable)
+    // forEachUnscoped lambda. Latest Border in the chain wins (matches
+    // Background semantics; documented in KDoc).
+    var borderThicknessDp: Int = 0
+    var borderSchemaColor: SchemaColor? = null
     forEachUnscoped { el ->
         when (el) {
             is MFillMaxSize -> m = m.fillMaxSize()
@@ -183,10 +197,26 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MBackground -> bgSchemaColor = el.color
             is MAlpha -> m = m.alpha(el.value.toFloat())
             is MWeight -> { /* applied by parent Row/Column */ }
+            // Tier 3 modifier additions (tags 12–17). Clip / WrapContent /
+            // AspectRatio apply inline; Border defers (composable color
+            // resolution) and is applied after the loop along with bg.
+            is MBorder -> {
+                borderThicknessDp = el.thicknessDp
+                borderSchemaColor = el.color
+            }
+            is MClip -> if (el.cornerRadiusDp > 0) {
+                m = m.clip(androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp))
+            }
+            is MClipCircle -> m = m.clip(androidx.compose.foundation.shape.CircleShape)
+            is MWrapContentWidth -> m = m.wrapContentWidth()
+            is MWrapContentHeight -> m = m.wrapContentHeight()
+            is MAspectRatio -> m = m.aspectRatio(el.ratio.toFloat())
         }
     }
     val bg = bgSchemaColor
     if (bg != null) m = m.background(bg.toComposeColor())
+    val bColor = borderSchemaColor
+    if (bColor != null) m = m.border(borderThicknessDp.dp, bColor.toComposeColor())
     return m
 }
 
@@ -2663,6 +2693,15 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun FillMaxHeight(value: CmpRender, modifier: MFillMaxHeight) {}
     override fun FillMaxSize(value: CmpRender, modifier: MFillMaxSize) {}
     override fun Alpha(value: CmpRender, modifier: MAlpha) {}
+    // Tier 3 modifier additions (tags 12–17). Same no-op pattern as
+    // every other modifier callback — actual application happens via
+    // applyToCompose reading from the widget's modifier chain.
+    override fun Border(value: CmpRender, modifier: MBorder) {}
+    override fun Clip(value: CmpRender, modifier: MClip) {}
+    override fun ClipCircle(value: CmpRender, modifier: MClipCircle) {}
+    override fun WrapContentWidth(value: CmpRender, modifier: MWrapContentWidth) {}
+    override fun WrapContentHeight(value: CmpRender, modifier: MWrapContentHeight) {}
+    override fun AspectRatio(value: CmpRender, modifier: MAspectRatio) {}
 }
 
 // ============================================================================

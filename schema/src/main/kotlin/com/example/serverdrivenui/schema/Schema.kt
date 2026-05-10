@@ -121,6 +121,13 @@ import dev.konduit.schema.Widget
         FillMaxHeight::class,
         FillMaxSize::class,
         Alpha::class,
+        // Tier 3 modifier additions (tags 12–17)
+        Border::class,
+        Clip::class,
+        ClipCircle::class,
+        WrapContentWidth::class,
+        WrapContentHeight::class,
+        AspectRatio::class,
     ],
 )
 interface SduiSchema
@@ -1095,6 +1102,69 @@ object FillMaxSize
 /** Render at the given alpha (0.0..1.0). */
 @Modifier(11)
 data class Alpha(val value: Double)
+
+// ============================================================================
+// Tier 3 modifier additions (tags 12–17) — see KONDUIT_PLAN.md §8.3 follow-ups
+//
+// All Tier 3 modifiers stay UNSCOPED (any widget can apply any of them).
+// Border is always rectangular in v1 — rounded borders need an additive
+// `Border(thicknessDp, color, cornerRadiusDp)` later (additive, won't break
+// wire). For now, use Card / OutlinedCard widgets when you need a rounded
+// stroke + container together.
+//
+// Ordering caveat: Compose modifier chains are order-sensitive. The host
+// applies these in the order the guest appended them; standard Compose
+// rules apply (e.g. clip BEFORE background to clip the fill). The existing
+// Background special-case (always applied last to layer correctly with
+// fillMax / size) is preserved.
+// ============================================================================
+
+/**
+ * Rectangular stroke around the widget's outer bounds. v1 is always a
+ * rectangle — rounded borders require an additive shape parameter later.
+ */
+@Modifier(12)
+data class Border(val thicknessDp: Int, val color: SchemaColor)
+
+/**
+ * Clip the widget to a rounded-rectangle shape with [cornerRadiusDp]
+ * radius. 0 = no-op (sharp corners). Use for rounded cards, pill-shaped
+ * buttons (radius == height/2), and other rounded containers.
+ */
+@Modifier(13)
+data class Clip(val cornerRadiusDp: Int)
+
+/**
+ * Clip the widget to a perfect circle inscribed in its bounding box.
+ * Use for avatar-style images and circular buttons. The widget should
+ * be sized to a square (Size with equal width/height, or AspectRatio(1.0)
+ * + a width constraint) so the circle isn't elliptical.
+ */
+@Modifier(14)
+object ClipCircle
+
+/**
+ * Allow the widget to size itself to its content along the width axis,
+ * even if its parent imposed a wider min-width constraint. Inverse of
+ * [FillMaxWidth] for cases where you want the widget to be only as wide
+ * as it needs to be inside a wider parent.
+ */
+@Modifier(15)
+object WrapContentWidth
+
+/** Vertical analog of [WrapContentWidth]. */
+@Modifier(16)
+object WrapContentHeight
+
+/**
+ * Constrain the widget so width/height = [ratio]. 1.0 → square; > 1 →
+ * wider than tall; < 1 → taller than wide. Pair with [FillMaxWidth] (or
+ * [Width]) so Compose has one explicit dimension to compute the other
+ * against — `Modifier.fillMaxWidth().aspectRatio(16.0/9)` gives a
+ * widescreen frame.
+ */
+@Modifier(17)
+data class AspectRatio(val ratio: Double)
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/

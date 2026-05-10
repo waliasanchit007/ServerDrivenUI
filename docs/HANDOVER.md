@@ -230,11 +230,18 @@ Open questions:
 - `material3.NavigationBarItem` — needs scope-typed @Children to access RowScope cleanly.
 - Snackbar host queue — design a host-side `SnackbarHostState` + `Snackbar.show(message)` event so the guest doesn't have to manage timing.
 
-### Tier 3 modifier additions to consider
-- `border(thicknessDp, color: SchemaColor)`
-- `clip(shape: SchemaShape)` — needs SchemaShape enum
-- `wrapContentWidth() / wrapContentHeight()`
-- `aspectRatio(ratio: Float)`
+### Tier 3 modifier additions ✅ landed
+- `Border(thicknessDp, color: SchemaColor)` @ tag 12 — v1 always rectangular; rounded-stroke shape is an additive `cornerRadiusDp` parameter later.
+- `Clip(cornerRadiusDp)` @ tag 13 — rounded-corner clip; 0 = no-op.
+- `ClipCircle` @ tag 14 — perfect circle inscribed in widget bounds.
+- `WrapContentWidth` / `WrapContentHeight` @ tags 15 / 16.
+- `AspectRatio(ratio: Double)` @ tag 17.
+
+Total modifier count: 16 (10 original + 6 Tier 3). Tag 7 still unused (was reserved for Clickable that didn't ship — see gotcha #8).
+
+### Open Tier 3 modifier follow-ups
+- Rounded `Border` — additive `cornerRadiusDp` parameter. Today the `Border` stroke renders as a rectangle around any clip-rounded shape, so corner pixels get clipped away. Workaround: use Card / OutlinedCard widgets, or wait for the additive parameter.
+- `RoundedCorners` shape parameter for `Background` so a colored fill can match a clipped shape without needing both Clip and Background to overlap perfectly. (Not strictly necessary — Compose's clip applies to subsequent fills, so chain order works today.)
 
 ### Phase 5 — Rest of dev tooling
 Single `./gradlew konduit:dev` command + clean Logcat formatting.
