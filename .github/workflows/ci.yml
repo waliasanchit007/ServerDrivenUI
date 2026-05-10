@@ -89,12 +89,10 @@ jobs:
           status=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "$probe")
           echo "Probe $probe → HTTP $status"
           if [ "$status" != "200" ]; then
-            cat <<'EOF' >&2
-::error ::Konduit Maven probe failed. Check the X-OAuth-Scopes line above:
-::error ::  - Empty / no header → fine-grained PAT (cannot read GH Packages Maven). Regenerate as classic.
-::error ::  - Present but missing 'read:packages' → add the scope to the PAT.
-::error ::  - Includes 'read:packages' → token is fine; the artifact may have been deleted or the user lacks access to the konduit repo.
-EOF
+            echo "::error ::Konduit Maven probe failed (HTTP $status). Check the X-OAuth-Scopes line above:"
+            echo "::error ::  - Empty / no header => fine-grained PAT (cannot read GH Packages Maven). Regenerate as classic."
+            echo "::error ::  - Present but missing 'read:packages' => add the scope to the PAT."
+            echo "::error ::  - Includes 'read:packages' => token is fine; the artifact may have been deleted or the user lacks access to the konduit repo."
             exit 1
           fi
 
