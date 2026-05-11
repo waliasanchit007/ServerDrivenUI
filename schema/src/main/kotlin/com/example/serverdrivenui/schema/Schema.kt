@@ -1120,11 +1120,23 @@ data class Alpha(val value: Double)
 // ============================================================================
 
 /**
- * Rectangular stroke around the widget's outer bounds. v1 is always a
- * rectangle — rounded borders require an additive shape parameter later.
+ * Stroke around the widget's outer bounds. [cornerRadiusDp] = 0 (the
+ * default for backward compatibility) renders a rectangular stroke;
+ * positive values render a rounded-rectangle stroke that matches a
+ * sibling Clip(cornerRadiusDp) — the typical pattern for rounded cards
+ * with an outline.
+ *
+ * Note: Konduit's modifier wire format embeds field defaults via
+ * kotlinx.serialization, so adding [cornerRadiusDp] with a default is
+ * additive. Older payloads (without the field) decode to 0 = the
+ * previous rectangular behavior.
  */
 @Modifier(12)
-data class Border(val thicknessDp: Int, val color: SchemaColor)
+data class Border(
+    val thicknessDp: Int,
+    val color: SchemaColor,
+    val cornerRadiusDp: Int = 0,
+)
 
 /**
  * Clip the widget to a rounded-rectangle shape with [cornerRadiusDp]

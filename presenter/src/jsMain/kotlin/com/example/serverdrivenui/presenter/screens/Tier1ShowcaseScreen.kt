@@ -1551,11 +1551,17 @@ class Tier1ShowcaseScreen : Screen {
                         .height(80)
                         .clip(cornerRadiusDp = 16)
                         .background(SchemaColor.SecondaryContainer)
-                        .border(thicknessDp = 2, color = SchemaColor.Primary)
+                        // Rounded-stroke variant of Border (added in the
+                        // rounded-Border follow-up). cornerRadiusDp must
+                        // match the sibling clip() above for the stroke
+                        // to align with the clipped fill. Setting it to 0
+                        // (the default) keeps the original rectangular
+                        // behavior — backward compatible.
+                        .border(thicknessDp = 2, color = SchemaColor.Primary, cornerRadiusDp = 16)
                         .padding(16, 16, 16, 16),
                 ) {
                     Text(
-                        text = "Clip(16) + Border(2dp Primary)",
+                        text = "Clip(16) + rounded Border(2dp Primary, r=16)",
                         color = SchemaColor.OnSecondaryContainer,
                         style = SchemaTextStyle.BodyMedium,
                     )
@@ -1690,6 +1696,30 @@ class Tier1ShowcaseScreen : Screen {
                             )
                         },
                     )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 8) }
+
+            // "With action" demo wired to the onResult callback (added
+            // after Phase 5 by the snackbar action-result follow-up).
+            // Tapping Undo flips lastUndoResult to true; letting the
+            // snackbar time out / get dismissed flips it to false.
+            LazyItem {
+                var lastUndoResult by remember { mutableStateOf<Boolean?>(null) }
+                Row(
+                    horizontalArrangement = SchemaArrangement.SpaceBetween,
+                    verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = when (lastUndoResult) {
+                            null -> "(no Undo result yet)"
+                            true -> "Last result: Undo tapped ✓"
+                            false -> "Last result: dismissed (no action)"
+                        },
+                        color = SchemaColor.OnSurface,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
                     Button(
                         text = "With action",
                         enabled = true,
@@ -1697,6 +1727,9 @@ class Tier1ShowcaseScreen : Screen {
                             showHostSnackbar(
                                 message = "Item deleted",
                                 actionLabel = "Undo",
+                                onResult = { actionPerformed ->
+                                    lastUndoResult = actionPerformed
+                                },
                             )
                         },
                     )

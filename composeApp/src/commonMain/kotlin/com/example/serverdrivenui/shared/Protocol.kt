@@ -181,6 +181,10 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
     // Background semantics; documented in KDoc).
     var borderThicknessDp: Int = 0
     var borderSchemaColor: SchemaColor? = null
+    // Border corner radius — added in the rounded-Border follow-up. 0 =
+    // sharp rectangle (the original Border behavior); >0 = rounded
+    // stroke matching a sibling Clip(cornerRadiusDp).
+    var borderCornerRadiusDp: Int = 0
     forEachUnscoped { el ->
         when (el) {
             is MFillMaxSize -> m = m.fillMaxSize()
@@ -204,6 +208,7 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MBorder -> {
                 borderThicknessDp = el.thicknessDp
                 borderSchemaColor = el.color
+                borderCornerRadiusDp = el.cornerRadiusDp
             }
             is MClip -> if (el.cornerRadiusDp > 0) {
                 m = m.clip(androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp))
@@ -217,7 +222,16 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
     val bg = bgSchemaColor
     if (bg != null) m = m.background(bg.toComposeColor())
     val bColor = borderSchemaColor
-    if (bColor != null) m = m.border(borderThicknessDp.dp, bColor.toComposeColor())
+    if (bColor != null) {
+        // RoundedCornerShape(0.dp) is equivalent to RectangleShape, so we
+        // can always pass a RoundedCornerShape — no need to branch on
+        // whether cornerRadiusDp is zero.
+        m = m.border(
+            width = borderThicknessDp.dp,
+            color = bColor.toComposeColor(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(borderCornerRadiusDp.dp),
+        )
+    }
     return m
 }
 
@@ -2767,30 +2781,63 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
     }
 
     override fun show(message: String, actionLabel: String?, durationMillis: Long) {
-        // Defensive try/catch — a throw out of a Zipline-bound method on
-        // the host side can propagate to the guest in confusing ways
-        // (silent UI tear-down on iOS, observed empirically). Better to
-        // swallow + log here and let subsequent calls keep working.
+        // Fire-and-forget variant: result is discarded. Defensive
+        // try/catch — a throw out of a Zipline-bound method on the host
+        // side can propagate to the guest in confusing ways (silent UI
+        // tear-down on iOS, observed empirically). Better to swallow +
+        // log here and let subsequent calls keep working.
         try {
-            val duration = when {
-                durationMillis <= 0L -> androidx.compose.material3.SnackbarDuration.Indefinite
-                durationMillis <= 6000L -> androidx.compose.material3.SnackbarDuration.Short
-                else -> androidx.compose.material3.SnackbarDuration.Long
-            }
             scope.launch {
-                // Result intentionally discarded — guest can't react to action
-                // presses in v1 (no callback wire-up). Adding a result callback
-                // is an additive change for later.
                 SnackbarHub.state.showSnackbar(
                     message = message,
                     actionLabel = actionLabel,
-                    duration = duration,
+                    duration = mapDuration(durationMillis),
                 )
             }
         } catch (t: Throwable) {
             println("RealHostSnackbar.show($message) failed: ${t.message}")
         }
     }
+
+    override fun showWithResult(
+        message: String,
+        actionLabel: String?,
+        durationMillis: Long,
+        onResult: (Boolean) -> Unit,
+    ) {
+        try {
+            scope.launch {
+                val result = SnackbarHub.state.showSnackbar(
+                    message = message,
+                    actionLabel = actionLabel,
+                    duration = mapDuration(durationMillis),
+                )
+                // Inner try/catch — onResult is a guest-side lambda
+                // proxied over Zipline; if the guest's callback throws
+                // (or has been disposed because the guest screen
+                // unmounted), we DON'T want that to kill our coroutine
+                // scope or surface as a bigger failure.
+                try {
+                    onResult(result == androidx.compose.material3.SnackbarResult.ActionPerformed)
+                } catch (t: Throwable) {
+                    println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+                }
+            }
+        } catch (t: Throwable) {
+            println("RealHostSnackbar.showWithResult($message) failed: ${t.message}")
+        }
+    }
+
+    /**
+     * durationMillis → M3 SnackbarDuration. Same buckets the original
+     * show() used; extracted so both methods agree exactly.
+     */
+    private fun mapDuration(durationMillis: Long): androidx.compose.material3.SnackbarDuration =
+        when {
+            durationMillis <= 0L -> androidx.compose.material3.SnackbarDuration.Indefinite
+            durationMillis <= 6000L -> androidx.compose.material3.SnackbarDuration.Short
+            else -> androidx.compose.material3.SnackbarDuration.Long
+        }
 }
 
 // NOTE: there used to be an `SduiAppSpec` class here that bound HostConsole

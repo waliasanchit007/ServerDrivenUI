@@ -230,11 +230,11 @@ Open questions:
 - `material3.NavigationBarItem` — needs scope-typed @Children to access RowScope cleanly.
 - Snackbar host queue — design a host-side `SnackbarHostState` + `Snackbar.show(message)` event so the guest doesn't have to manage timing.
 
-### Snackbar host queue ✅ landed (visual verify pending)
-- `HostSnackbar` Zipline service in `:shared/Protocol.kt` — `show(message, actionLabel, durationMillis)`. `durationMillis` semantics: `<=0` indefinite, `1..6000` short (~4 s), `>6000` long (~10 s).
+### Snackbar host queue ✅ landed + verified
+- `HostSnackbar` Zipline service in `:shared/Protocol.kt` — `show(message, actionLabel, durationMillis)` for fire-and-forget; `showWithResult(message, actionLabel, durationMillis, onResult)` to learn whether the user tapped the action button (`onResult(true)` = ActionPerformed, `onResult(false)` = Dismissed). `durationMillis` semantics: `<=0` indefinite, `1..6000` short (~4 s), `>6000` long (~10 s).
 - `RealHostSnackbar` (composeApp/Protocol.kt) wraps M3's `SnackbarHostState` from a singleton `SnackbarHub` so the queue survives recompositions.
 - `App.kt` renders `SnackbarHost(SnackbarHub.state)` aligned to the bottom-center of the root Box.
-- Guest helper: top-level `showHostSnackbar(message, actionLabel?, durationMillis = 4000L)` in `presenter/Main.kt`. Backed by `HostSnackbarBridge.instance` set during Zipline take.
+- Guest helper: top-level `showHostSnackbar(message, actionLabel?, durationMillis = 4000L, onResult?)` in `presenter/Main.kt`. Backed by `HostSnackbarBridge.instance` set during Zipline take. Routes to the cheaper fire-and-forget `show()` when `onResult` is null; otherwise calls `showWithResult()` so the callback fires.
 - Showcase has a "Host snackbar queue (Tier 3)" section with three buttons (Short / Long / With action).
 
 **Defensive code in place** (added after iOS testing observed app blanking):
@@ -250,7 +250,7 @@ Open questions:
 - **On-device verification still pending** as of this write-up because the test device's wifi was flaky during the debug loop. Re-test after restart.
 
 ### Tier 3 modifier additions ✅ landed
-- `Border(thicknessDp, color: SchemaColor)` @ tag 12 — v1 always rectangular; rounded-stroke shape is an additive `cornerRadiusDp` parameter later.
+- `Border(thicknessDp, color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 12 — `cornerRadiusDp` shipped in the rounded-Border follow-up; default 0 keeps the original rectangular behavior, positive values render a rounded stroke that matches a sibling `Clip(cornerRadiusDp)`.
 - `Clip(cornerRadiusDp)` @ tag 13 — rounded-corner clip; 0 = no-op.
 - `ClipCircle` @ tag 14 — perfect circle inscribed in widget bounds.
 - `WrapContentWidth` / `WrapContentHeight` @ tags 15 / 16.
@@ -259,7 +259,7 @@ Open questions:
 Total modifier count: 16 (10 original + 6 Tier 3). Tag 7 still unused (was reserved for Clickable that didn't ship — see gotcha #8).
 
 ### Open Tier 3 modifier follow-ups
-- Rounded `Border` — additive `cornerRadiusDp` parameter. Today the `Border` stroke renders as a rectangle around any clip-rounded shape, so corner pixels get clipped away. Workaround: use Card / OutlinedCard widgets, or wait for the additive parameter.
+- ✅ Rounded `Border` — additive `cornerRadiusDp: Int = 0` parameter shipped. `Border(thicknessDp = 2, color = SchemaColor.Primary, cornerRadiusDp = 16)` now renders a rounded stroke matching a sibling `Clip(16)`. Backward-compatible: omit `cornerRadiusDp` (or pass 0) for the original rectangular behavior. Konduit's modifier codegen + kotlinx.serialization accept default values on `@Modifier` data classes (verified end-to-end).
 - `RoundedCorners` shape parameter for `Background` so a colored fill can match a clipped shape without needing both Clip and Background to overlap perfectly. (Not strictly necessary — Compose's clip applies to subsequent fills, so chain order works today.)
 
 ### Phase 5 — Rest of dev tooling ✅ landed

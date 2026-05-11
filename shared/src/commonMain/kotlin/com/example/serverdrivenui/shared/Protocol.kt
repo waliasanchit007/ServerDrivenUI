@@ -38,11 +38,33 @@ interface HostConsole : ZiplineService {
  *   - 1..6000  → Short  (~4 s — M3 default).
  *   - > 6000  → Long   (~10 s).
  *
- * [actionLabel] is the optional trailing action button label. Today the
- * guest can't react to action presses (no callback wire-up); the host
- * dismisses the snackbar on press. Adding a result callback is an
- * additive change for later.
+ * [actionLabel] is the optional trailing action button label. The host
+ * dismisses the snackbar on press. The fire-and-forget [show] discards
+ * the M3 SnackbarResult; use [showWithResult] to learn whether the user
+ * tapped the action.
  */
 interface HostSnackbar : ZiplineService {
     fun show(message: String, actionLabel: String?, durationMillis: Long)
+
+    /**
+     * Same as [show], but [onResult] fires when the snackbar is
+     * dismissed:
+     *   - true  → user tapped the action button (M3 `ActionPerformed`).
+     *   - false → snackbar timed out, was swiped away, or was dismissed
+     *             by a subsequent show() (M3 `Dismissed`).
+     *
+     * If [actionLabel] is null the action button is hidden, in which
+     * case [onResult] always receives false.
+     *
+     * Why a separate method rather than adding an `onResult` parameter
+     * to [show]: ZiplineService method signatures are wire format —
+     * adding a parameter to [show] would break old guests calling new
+     * hosts and vice versa. Adding a new method is additive.
+     */
+    fun showWithResult(
+        message: String,
+        actionLabel: String?,
+        durationMillis: Long,
+        onResult: (Boolean) -> Unit,
+    )
 }

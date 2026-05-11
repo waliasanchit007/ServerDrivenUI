@@ -67,11 +67,20 @@ object HostSnackbarBridge {
  *     or the user taps the action button if present)
  *   - 1..6000 → short (~4 s, M3 default)
  *   - > 6000 → long (~10 s)
+ *
+ * [onResult] is the optional action-result callback. Fires AFTER the
+ * snackbar is dismissed:
+ *   - true  → user tapped the action button.
+ *   - false → timeout, swipe, or superseded by a later show().
+ * Null actionLabel implies no action button; onResult will only ever
+ * receive false in that case (and you can omit it). When onResult is
+ * null this routes through the cheaper fire-and-forget HostSnackbar.show.
  */
 fun showHostSnackbar(
     message: String,
     actionLabel: String? = null,
     durationMillis: Long = 4000L,
+    onResult: ((Boolean) -> Unit)? = null,
 ) {
     val bridge = HostSnackbarBridge.instance
     if (bridge == null) {
@@ -83,7 +92,11 @@ fun showHostSnackbar(
     // empirically as a blank screen on iOS). Swallow + log so the guest
     // UI stays alive even if the host-side service misbehaves.
     try {
-        bridge.show(message, actionLabel, durationMillis)
+        if (onResult != null) {
+            bridge.showWithResult(message, actionLabel, durationMillis, onResult)
+        } else {
+            bridge.show(message, actionLabel, durationMillis)
+        }
     } catch (t: Throwable) {
         println("showHostSnackbar bridge call threw for '$message': ${t.message}")
     }
