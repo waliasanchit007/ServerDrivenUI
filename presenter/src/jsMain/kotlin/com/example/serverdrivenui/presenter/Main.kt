@@ -93,7 +93,23 @@ fun showHostSnackbar(
     // UI stays alive even if the host-side service misbehaves.
     try {
         if (onResult != null) {
-            bridge.showWithResult(message, actionLabel, durationMillis, onResult)
+            // Wrap the lambda in a SnackbarResultCallback ZiplineService
+            // — Zipline can't marshal raw function types across the
+            // QuickJS boundary, only @Serializable values and
+            // ZiplineService proxies. Host calls .close() after firing
+            // onResult, so this impl is single-use.
+            bridge.showWithResult(
+                message, actionLabel, durationMillis,
+                object : com.example.serverdrivenui.shared.SnackbarResultCallback {
+                    override fun onResult(actionPerformed: Boolean) {
+                        try {
+                            onResult(actionPerformed)
+                        } catch (t: Throwable) {
+                            println("showHostSnackbar onResult lambda threw for '$message': ${t.message}")
+                        }
+                    }
+                },
+            )
         } else {
             bridge.show(message, actionLabel, durationMillis)
         }

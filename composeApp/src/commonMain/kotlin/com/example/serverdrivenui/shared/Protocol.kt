@@ -2817,28 +2817,41 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
         message: String,
         actionLabel: String?,
         durationMillis: Long,
-        onResult: (Boolean) -> Unit,
+        callback: com.example.serverdrivenui.shared.SnackbarResultCallback,
     ) {
+        // Always close the callback proxy exactly once, even on the error
+        // paths — otherwise it leaks the Zipline service binding and we
+        // get spurious `serviceLeaked` warnings.
+        var closed = false
+        fun closeOnce() {
+            if (closed) return
+            closed = true
+            try { callback.close() } catch (_: Throwable) { /* already gone */ }
+        }
         try {
             scope.launch {
-                val result = SnackbarHub.state.showSnackbar(
-                    message = message,
-                    actionLabel = actionLabel,
-                    duration = mapDuration(durationMillis),
-                )
-                // Inner try/catch — onResult is a guest-side lambda
-                // proxied over Zipline; if the guest's callback throws
-                // (or has been disposed because the guest screen
-                // unmounted), we DON'T want that to kill our coroutine
-                // scope or surface as a bigger failure.
                 try {
-                    onResult(result == androidx.compose.material3.SnackbarResult.ActionPerformed)
-                } catch (t: Throwable) {
-                    println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+                    val result = SnackbarHub.state.showSnackbar(
+                        message = message,
+                        actionLabel = actionLabel,
+                        duration = mapDuration(durationMillis),
+                    )
+                    // Inner try/catch — callback.onResult crosses the
+                    // Zipline boundary; if the guest impl throws (or its
+                    // screen unmounted) we DON'T want that to kill our
+                    // coroutine scope.
+                    try {
+                        callback.onResult(result == androidx.compose.material3.SnackbarResult.ActionPerformed)
+                    } catch (t: Throwable) {
+                        println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+                    }
+                } finally {
+                    closeOnce()
                 }
             }
         } catch (t: Throwable) {
             println("RealHostSnackbar.showWithResult($message) failed: ${t.message}")
+            closeOnce()
         }
     }
 

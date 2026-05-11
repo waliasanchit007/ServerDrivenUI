@@ -22,6 +22,31 @@ interface HostConsole : ZiplineService {
 }
 
 /**
+ * Callback `ZiplineService` for [HostSnackbar.showWithResult]. The guest
+ * implements this, passes the implementation into `showWithResult(...)`,
+ * and the host invokes [onResult] when the snackbar resolves.
+ *
+ * Why a service instead of a `(Boolean) -> Unit` lambda parameter: Zipline
+ * can only marshal across the QuickJS boundary values that are either
+ * (a) `@Serializable`, or (b) `ZiplineService` proxies. A raw function-typed
+ * parameter is neither — the codegen accepts the signature at compile time
+ * but the runtime proxy fails to construct, which is the bug that broke
+ * snackbars in commit 62ccff1.
+ *
+ * Lifecycle: the host calls [close] after invoking [onResult] exactly once,
+ * so the guest impl doesn't have to manage its own ref. The guest is free
+ * to share a single instance across calls — Zipline scopes the proxy.
+ */
+interface SnackbarResultCallback : ZiplineService {
+    /**
+     * @param actionPerformed true if the user tapped the action button
+     *   (M3 `ActionPerformed`); false if the snackbar timed out, was
+     *   swiped away, or was dismissed by a subsequent show().
+     */
+    fun onResult(actionPerformed: Boolean)
+}
+
+/**
  * Host-side snackbar queue. The guest calls [show] to enqueue a message;
  * the host displays it via M3's `SnackbarHostState` (FIFO queue, dismissed
  * by the next show or after [durationMillis]).
@@ -65,6 +90,6 @@ interface HostSnackbar : ZiplineService {
         message: String,
         actionLabel: String?,
         durationMillis: Long,
-        onResult: (Boolean) -> Unit,
+        callback: SnackbarResultCallback,
     )
 }
