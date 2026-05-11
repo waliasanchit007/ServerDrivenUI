@@ -98,12 +98,21 @@ fun showHostSnackbar(
             // QuickJS boundary, only @Serializable values and
             // ZiplineService proxies. Host calls .close() after firing
             // onResult, so this impl is single-use.
+            //
+            // Alias the outer lambda to a fresh name BEFORE the object
+            // expression. Inside `object : SnackbarResultCallback`, the
+            // override is also named `onResult` and shadows the outer
+            // parameter — writing `onResult(actionPerformed)` from inside
+            // the override resolves to the override itself (infinite
+            // recursion → stack overflow → app crash). We hit this in
+            // commit 7c259ac when the Undo tap dropped the app.
+            val resultLambda = onResult
             bridge.showWithResult(
                 message, actionLabel, durationMillis,
                 object : com.example.serverdrivenui.shared.SnackbarResultCallback {
                     override fun onResult(actionPerformed: Boolean) {
                         try {
-                            onResult(actionPerformed)
+                            resultLambda(actionPerformed)
                         } catch (t: Throwable) {
                             println("showHostSnackbar onResult lambda threw for '$message': ${t.message}")
                         }
