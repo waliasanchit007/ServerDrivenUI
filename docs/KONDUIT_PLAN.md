@@ -832,26 +832,47 @@ heap.
 **Deliverable:** All presenter screens migrated to facade imports. Diff
 shows only import-line changes, zero logic changes.
 
-### Phase 5 — Dev tooling rest
-**Tasks (5b + 5c from v1):**
-1. **5b Single dev command** — `./gradlew konduit:dev` chains:
-   - `:presenter:jsBrowserDevelopmentExecutable --continuous`
-   - `:dev-server:run`
-   - Tails Logcat with Konduit filter
-2. **5c Clean Logcat output** — custom `EventListener` formats events:
-   ```
-   D/Konduit: ⬇ Downloading manifest...
-   D/Konduit: ✓ Loaded HomeScreen (1.2s, fresh)
-   D/Konduit: 🔄 Reloading HomeScreen (file changed)
-   E/Konduit: ✕ HomeScreen crashed at HomeScreen.kt:47
-   ```
-   Source maps enabled in presenter:
-   ```kotlin
-   zipline { sourceMapEnabled = true }
-   ```
+### Phase 5 — Dev tooling rest ✅ landed
 
-**Deliverable:** Dev workflow is one command. Logcat is readable. File:line
-in stack traces.
+**5b — Single dev command.** `./gradlew konduitDev` (or `bin/konduit-dev`)
+orchestrates the full loop. The Gradle task is just an `Exec` shim around
+`bin/konduit-dev` because Gradle is awkward at long-running parallel
+processes. The script:
+- Starts `:presenter:compileDevelopmentExecutableKotlinJsZipline --continuous`
+  in the background. Output to `$TMPDIR/konduit-dev-$$/compile.log`.
+- If `adb` is on PATH and a device is connected, tails
+  `adb logcat -s Konduit:* SDUI-Zipline:* SDUI-Host:* SDUI-JS:* SDUI:*`
+  to a sibling log file. Auto-skips if no device (e.g. iOS-only sessions).
+- Runs `:dev-server:run` in the foreground. Ctrl-C tears down the
+  background processes via the EXIT trap.
+
+`bin/konduit-dev --no-logs` skips the logcat tail explicitly.
+
+**5c — Clean Logcat output.** New `KonduitDevLog` class
+(`composeApp/.../shared/KonduitDevLog.kt`) tracks lifecycle timing
+across Zipline events and emits a curated stream on a single `Konduit`
+tag. Both platform EventListeners feed it alongside their existing
+low-level `SDUI-Zipline` debug streams (kept for diagnostics like the
+snackbar bug we just fixed). Sample output:
+
+```
+D/Konduit: ⬇ Downloading manifest from https://…/manifest.zipline.json
+D/Konduit: 📦 Manifest ready — 32 modules
+D/Konduit: ✓ Loaded sdui (842ms)
+W/Konduit: ⚠ Service leaked: 'snackbar' was garbage-collected without close(). Hold a strong reference on the host side (val field, not anonymous arg).
+E/Konduit: ✕ Code load failed: Failed to connect to /192.168.1.10:8080
+```
+
+Filter to just the curated stream:
+
+- Android: `adb logcat -s Konduit:*`
+- iOS: prefix `Konduit/` so `grep '^Konduit/'` against the Xcode
+  console works (no level concept on stdout).
+
+Source maps (`zipline { sourceMapEnabled = true }`) NOT yet enabled —
+deferred until we hit a guest crash that's hard to triangulate. The
+Konduit Logcat formatter already surfaces the lifecycle phase + cause
+message; line numbers from JS stack traces would be additive on top.
 
 ### Phase 6 — Standalone library principles (NOT a phase, just guardrails)
 
@@ -1155,3 +1176,5 @@ Track every decision that resolves an ambiguity. Append-only.
 | 2026-05 | Snackbar iOS visual verification deferred: clicking the showcase Short/Long/With-action buttons no longer blanks the iOS sim (defensive try/catch works), but the snackbar UI also doesn't visibly appear. Root cause not yet pinned because Kotlin/Native `println` doesn't surface in iOS unified log. Best next step: route diagnostics through the existing HostConsole service (which already works visibly via JS → host → stdout), or test on Android first where logcat captures `println` cleanly. Architecture is sound; this is a debug-loop limitation. | claude |
 | 2026-05 | **Snackbar bind-site bug fixed** (Android-first debug paid off): the snackbar invisibility on iOS was NOT iOS-specific; it reproduced identically on Android. The original snackbar commit added `zipline.bind<HostSnackbar>(...)` to a `SduiAppSpec` class in commonMain that **was never referenced from either platform entry point**. `androidApp/MainActivity.kt` and `composeApp/iosMain/MainViewController.kt` both instantiate their own anonymous `TreehouseApp.Spec<SduiAppService>()`, each binding only `console`. The snackbar bind was dead code and the guest's `take<HostSnackbar>("snackbar")` returned a proxy that 404'd at first invocation with `no such service (service closed?)`. Fix: snackbar bind now lives in BOTH platform Specs (with strong refs as class-field properties to also dodge `serviceLeaked`). Dead code deleted: `androidApp/AndroidSduiAppSpec.kt` (entire file) + `SduiAppSpec` and `RealHostConsole` classes from `composeApp/commonMain/Protocol.kt`. Lesson: when adding a new host service, grep both platform entry points; the commonMain Spec class isn't on the call path. | claude |
 | 2026-05 | Snackbar service strong-ref retention: Konduit's `EventListener.serviceLeaked` is documented "Invoked when a service is garbage collected without being closed." Anonymous instances passed inline to `zipline.bind(...)` become GC-eligible the moment `bindServices` returns. Both platform Specs now hold `private val androidHostSnackbar = RealHostSnackbar()` (or `iosHostSnackbar`) as field properties so the instance lives as long as the Spec — which is rooted by the TreehouseApp returned from `treehouseAppFactory.create`. Same pattern applied to the platform HostConsole impls for symmetry. | claude |
+| 2026-05 | **Phase 5b — single dev command** shipped as `bin/konduit-dev` + `./gradlew konduitDev`. Bash script orchestrates the long-running parallel processes (continuous guest compile + dev-server + optional logcat tail) with an EXIT trap to clean up background pids. Gradle task is just an `Exec` shim — Gradle's task graph isn't well-suited to long-running parallel processes, but exposing the entry point via Gradle keeps the canonical `./gradlew X` invocation pattern consistent. | claude |
+| 2026-05 | **Phase 5c — clean Logcat** shipped as `KonduitDevLog` (commonMain) + wiring in both platform EventListeners. Curated stream on `Konduit` tag (Android) / `Konduit/{D,W,E}` prefix (iOS) sits ALONGSIDE the existing low-level `SDUI-Zipline` debug stream. The raw stream is intentionally kept — it's what let us pinpoint the snackbar bind-site bug (`available services: console, ...` proved snackbar was never bound). The Konduit stream optimizes for "what's happening right now" readability; the raw stream optimizes for postmortem diagnosis. Both have their place. | claude |

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Konduit dev loop — single command per Phase 5b in docs/KONDUIT_PLAN.md.
+#
+# What it does (in this order):
+#   1. Starts the guest .zipline continuous compile in the background.
+#      Gradle re-runs `compileDevelopmentExecutableKotlinJsZipline`
+#      whenever a presenter source file changes.
+#   2. If adb is available AND a device is connected, opens a third
+#      terminal-equivalent (in the background of THIS process) tailing
+#      logcat filtered to the Konduit + SDUI tags.
+#   3. Runs the dev-server in the foreground. ktor-netty serves the
+#      .zipline + manifest and accepts hot-reload websocket pings; the
+#      script blocks here until you Ctrl-C.
+#
+# Cleanup: the EXIT trap kills the background compile and the logcat
+# tail so the script leaves no zombie processes behind.
+#
+# Manual / non-script equivalent (three terminals):
+#   T1: ./gradlew :presenter:compileDevelopmentExecutableKotlinJsZipline --continuous
+#   T2: ./gradlew :dev-server:run
+#   T3: adb logcat -s Konduit:* SDUI-Zipline:* SDUI-Host:* SDUI-JS:*
+#
+# Usage:
+#   bin/konduit-dev            # full loop
+#   bin/konduit-dev --no-logs  # skip logcat tail (e.g. iOS-only sessions)
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+# ---- arg parsing ----
+TAIL_LOGS=1
+for arg in "$@"; do
+  case "$arg" in
+    --no-logs) TAIL_LOGS=0 ;;
+    -h|--help)
+      sed -n '2,28p' "$0"  # print the usage block
+      exit 0
+      ;;
+    *)
+      echo "konduit-dev: unknown arg '$arg' (try --help)" >&2
+      exit 2
+      ;;
+  esac
+done
+
+# ---- background pids tracked for cleanup ----
+COMPILE_PID=""
+LOGCAT_PID=""
+LOG_DIR="${TMPDIR:-/tmp}/konduit-dev-$$"
+mkdir -p "$LOG_DIR"
+
+cleanup() {
+  if [[ -n "$COMPILE_PID" ]] && kill -0 "$COMPILE_PID" 2>/dev/null; then
+    echo
+    echo "[konduit-dev] stopping continuous compile (pid $COMPILE_PID)"
+    kill "$COMPILE_PID" 2>/dev/null || true
+    # Give Gradle a moment to release the daemon then force-kill if needed.
+    sleep 1
+    kill -9 "$COMPILE_PID" 2>/dev/null || true
+  fi
+  if [[ -n "$LOGCAT_PID" ]] && kill -0 "$LOGCAT_PID" 2>/dev/null; then
+    echo "[konduit-dev] stopping logcat tail (pid $LOGCAT_PID)"
+    kill "$LOGCAT_PID" 2>/dev/null || true
+  fi
+  echo "[konduit-dev] background logs: $LOG_DIR"
+}
+trap cleanup EXIT INT TERM
+
+echo "[konduit-dev] starting continuous guest compile (background)..."
+./gradlew :presenter:compileDevelopmentExecutableKotlinJsZipline --continuous \
+  > "$LOG_DIR/compile.log" 2>&1 &
+COMPILE_PID=$!
+echo "[konduit-dev]   compile pid=$COMPILE_PID, logging to $LOG_DIR/compile.log"
+
+if (( TAIL_LOGS )); then
+  if command -v adb >/dev/null 2>&1; then
+    if adb get-state >/dev/null 2>&1; then
+      echo "[konduit-dev] tailing Android logcat (Konduit + SDUI tags)..."
+      # -s sets a tag whitelist; * matches all priority levels.
+      # Konduit:* is the curated Phase 5c stream; the SDUI-* tags are the
+      # raw debug streams kept for diagnostics. Other app logs are dropped.
+      adb logcat -v brief -s Konduit:* SDUI-Zipline:* SDUI-Host:* SDUI-JS:* SDUI:* \
+        > "$LOG_DIR/logcat.log" 2>&1 &
+      LOGCAT_PID=$!
+      echo "[konduit-dev]   logcat pid=$LOGCAT_PID, logging to $LOG_DIR/logcat.log"
+      echo "[konduit-dev]   tail with: tail -f $LOG_DIR/logcat.log"
+    else
+      echo "[konduit-dev] adb sees no device; skipping logcat tail"
+    fi
+  else
+    echo "[konduit-dev] adb not on PATH; skipping logcat tail"
+  fi
+fi
+
+echo "[konduit-dev] starting dev-server (foreground; Ctrl-C to stop everything)..."
+echo
+./gradlew :dev-server:run

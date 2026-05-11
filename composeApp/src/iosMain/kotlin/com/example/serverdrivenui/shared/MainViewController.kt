@@ -128,6 +128,22 @@ private val hotReloadManager = HotReloadManager()
  * and the dev banner.
  */
 private object IosKonduitEventListener : EventListener() {
+    /**
+     * Phase 5c — curated lifecycle log on the "Konduit/" prefix. Sits
+     * alongside the raw "SDUI-iOS-Zipline" debug stream below. iOS
+     * doesn't have logcat-style level routing; we encode the level in
+     * the prefix so a `grep '^Konduit/'` against the Xcode console
+     * filters cleanly.
+     */
+    private val konduitLog = KonduitDevLog { level, message ->
+        val prefix = when (level) {
+            KonduitLogLevel.D -> "Konduit/D"
+            KonduitLogLevel.W -> "Konduit/W"
+            KonduitLogLevel.E -> "Konduit/E"
+        }
+        println("$prefix: $message")
+    }
+
     override fun ziplineCreated(zipline: Zipline) {
         println("SDUI-iOS-Zipline: ziplineCreated")
     }
@@ -140,13 +156,20 @@ private object IosKonduitEventListener : EventListener() {
         println("SDUI-iOS-Zipline: takeService name=$name")
     }
 
+    override fun serviceLeaked(name: String) {
+        println("SDUI-iOS-Zipline: serviceLeaked name=$name")
+        konduitLog.serviceLeaked(name)
+    }
+
     override fun codeLoadSuccess(manifest: ZiplineManifest, zipline: Zipline, startValue: Any?) {
         println("SDUI-iOS-Zipline: codeLoadSuccess: modules=${manifest.modules.keys.size}")
+        konduitLog.codeLoadSuccess(applicationName = "sdui")
         KonduitDevController.reportLoadSuccess(fresh = true)
     }
 
     override fun codeLoadFailed(exception: Exception, startValue: Any?) {
         println("SDUI-iOS-Zipline: codeLoadFailed: ${exception.message}")
+        konduitLog.codeLoadFailed(exception.message)
         KonduitDevController.reportError(
             message = "Guest code load failed",
             detail = exception.message,
@@ -155,24 +178,39 @@ private object IosKonduitEventListener : EventListener() {
 
     override fun downloadStart(url: String): Any? {
         println("SDUI-iOS-Zipline: downloadStart: $url")
+        if (url.endsWith("manifest.zipline.json")) {
+            konduitLog.manifestDownloadStart(url)
+        }
         KonduitDevController.reportDownloadStart()
         return null
     }
 
     override fun downloadFailed(url: String, exception: Exception, startValue: Any?) {
         println("SDUI-iOS-Zipline: downloadFailed: $url, ${exception.message}")
+        konduitLog.downloadFailed(url, exception.message)
         KonduitDevController.reportError(
             message = "Manifest download failed",
             detail = "$url\n${exception.message}",
         )
     }
 
+    override fun manifestReady(manifest: ZiplineManifest) {
+        println("SDUI-iOS-Zipline: manifestReady: modules=${manifest.modules.keys.size}")
+        konduitLog.manifestReady(manifest.modules.size)
+    }
+
     override fun manifestParseFailed(exception: Exception) {
         println("SDUI-iOS-Zipline: manifestParseFailed: ${exception.message}")
+        konduitLog.manifestParseFailed(exception.message)
         KonduitDevController.reportError(
             message = "Manifest parse failed",
             detail = exception.message,
         )
+    }
+
+    override fun uncaughtException(exception: Throwable) {
+        println("SDUI-iOS-Zipline: uncaughtException: ${exception.message}")
+        konduitLog.uncaughtException(exception.message)
     }
 }
 

@@ -262,8 +262,21 @@ Total modifier count: 16 (10 original + 6 Tier 3). Tag 7 still unused (was reser
 - Rounded `Border` — additive `cornerRadiusDp` parameter. Today the `Border` stroke renders as a rectangle around any clip-rounded shape, so corner pixels get clipped away. Workaround: use Card / OutlinedCard widgets, or wait for the additive parameter.
 - `RoundedCorners` shape parameter for `Background` so a colored fill can match a clipped shape without needing both Clip and Background to overlap perfectly. (Not strictly necessary — Compose's clip applies to subsequent fills, so chain order works today.)
 
-### Phase 5 — Rest of dev tooling
-Single `./gradlew konduit:dev` command + clean Logcat formatting.
+### Phase 5 — Rest of dev tooling ✅ landed
+
+**5b — single dev command.** `./gradlew konduitDev` (or `bin/konduit-dev`) starts the continuous guest compile in the background, optionally tails Android logcat (auto-skips if no device), and runs the dev-server in the foreground. Ctrl-C tears it all down via an EXIT trap. Task is in the "Konduit" group; see `bin/konduit-dev --help` for flags (e.g. `--no-logs` for iOS-only sessions).
+
+**5c — clean Logcat formatting.** New `KonduitDevLog` class (commonMain) tracks lifecycle timing across Zipline events and emits a curated stream on a single `Konduit` tag. Both `SDUIZiplineEventListener` (Android) and `IosKonduitEventListener` (iOS) feed it alongside their existing low-level `SDUI-Zipline` debug streams, so the raw debug output is still available for diagnostics like the snackbar bug we just chased. Sample output during a normal load:
+
+```
+D/Konduit: ⬇ Downloading manifest from https://…/manifest.zipline.json
+D/Konduit: 📦 Manifest ready — 32 modules
+D/Konduit: ✓ Loaded sdui (842ms)
+W/Konduit: ⚠ Service leaked: 'snackbar' was garbage-collected without close(). Hold a strong reference on the host side (val field, not anonymous arg).
+E/Konduit: ✕ Code load failed: Failed to connect to /192.168.1.10:8080
+```
+
+To see only the curated stream: `adb logcat -s Konduit:*`.
 
 ### Phase 4 — Compose Facade
 **Deferred** per course correction §7.4. Revisit only if Konduit goes public OR a developer onboarding survey says imports are confusing.

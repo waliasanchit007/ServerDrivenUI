@@ -193,6 +193,19 @@ object SDUIZiplineEventListenerFactory : EventListener.Factory {
 }
 
 object SDUIZiplineEventListener : EventListener() {
+    /**
+     * Phase 5c — curated lifecycle log on the "Konduit" tag. Sits
+     * alongside the raw "SDUI-Zipline" debug stream below; you can
+     * `adb logcat -s Konduit` to see only the curated view.
+     */
+    private val konduitLog = com.example.serverdrivenui.shared.KonduitDevLog { level, message ->
+        when (level) {
+            com.example.serverdrivenui.shared.KonduitLogLevel.D -> Log.d("Konduit", message)
+            com.example.serverdrivenui.shared.KonduitLogLevel.W -> Log.w("Konduit", message)
+            com.example.serverdrivenui.shared.KonduitLogLevel.E -> Log.e("Konduit", message)
+        }
+    }
+
     override fun ziplineCreated(zipline: Zipline) {
         Log.d("SDUI-Zipline", "ziplineCreated")
     }
@@ -207,15 +220,18 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun serviceLeaked(name: String) {
         Log.w("SDUI-Zipline", "serviceLeaked name=$name")
+        konduitLog.serviceLeaked(name)
     }
 
     override fun codeLoadSuccess(manifest: ZiplineManifest, zipline: Zipline, startValue: Any?) {
         Log.d("SDUI-Zipline", "codeLoadSuccess: modules=${manifest.modules.keys}")
+        konduitLog.codeLoadSuccess(applicationName = "sdui")
         com.example.serverdrivenui.shared.KonduitDevController.reportLoadSuccess(fresh = true)
     }
 
     override fun codeLoadFailed(exception: Exception, startValue: Any?) {
         Log.e("SDUI-Zipline", "codeLoadFailed: ${exception.message}", exception)
+        konduitLog.codeLoadFailed(exception.message)
         com.example.serverdrivenui.shared.KonduitDevController.reportError(
             message = "Guest code load failed",
             detail = exception.message,
@@ -224,6 +240,12 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun downloadStart(url: String): Any? {
         Log.d("SDUI-Zipline", "downloadStart: $url")
+        // Only treat the manifest URL as a "download start" for the
+        // curated stream — module downloads are too noisy and aren't
+        // a useful lifecycle signal at this level.
+        if (url.endsWith("manifest.zipline.json")) {
+            konduitLog.manifestDownloadStart(url)
+        }
         com.example.serverdrivenui.shared.KonduitDevController.reportDownloadStart()
         return null
     }
@@ -234,6 +256,7 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun downloadFailed(url: String, exception: Exception, startValue: Any?) {
         Log.e("SDUI-Zipline", "downloadFailed: $url, error=${exception.message}", exception)
+        konduitLog.downloadFailed(url, exception.message)
         com.example.serverdrivenui.shared.KonduitDevController.reportError(
             message = "Manifest download failed",
             detail = "$url\n${exception.message}",
@@ -242,10 +265,12 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun manifestReady(manifest: ZiplineManifest) {
         Log.d("SDUI-Zipline", "manifestReady: modules=${manifest.modules.keys.size}")
+        konduitLog.manifestReady(manifest.modules.size)
     }
 
     override fun manifestParseFailed(exception: Exception) {
         Log.e("SDUI-Zipline", "manifestParseFailed: ${exception.message}", exception)
+        konduitLog.manifestParseFailed(exception.message)
         com.example.serverdrivenui.shared.KonduitDevController.reportError(
             message = "Manifest parse failed",
             detail = exception.message,
@@ -263,5 +288,6 @@ object SDUIZiplineEventListener : EventListener() {
 
     override fun uncaughtException(exception: Throwable) {
         Log.e("SDUI-Zipline", "uncaughtException: ${exception.message}", exception)
+        konduitLog.uncaughtException(exception.message)
     }
 }
