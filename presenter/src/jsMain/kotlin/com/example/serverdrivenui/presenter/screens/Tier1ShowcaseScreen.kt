@@ -1539,10 +1539,10 @@ class Tier1ShowcaseScreen : Screen {
             LazyItem { Spacer(width = 0, height = 8) }
 
             // Border + Clip combination — rounded card with a stroke.
-            // Note: in v1 Border is rectangular, so the stroke renders as
-            // a rectangle around the rounded clip (the corner stroke is
-            // clipped away). Use Card / OutlinedCard widgets when you want
-            // the stroke to follow rounded corners.
+            // Clip handles content clipping (so child Text would clip too
+            // if it overflowed); Background+Border each carry their own
+            // cornerRadiusDp so the fill paints rounded and the stroke
+            // follows the same curve.
             LazyItem {
                 Box(
                     onClick = null,
@@ -1550,7 +1550,7 @@ class Tier1ShowcaseScreen : Screen {
                         .fillMaxWidth()
                         .height(80)
                         .clip(cornerRadiusDp = 16)
-                        .background(SchemaColor.SecondaryContainer)
+                        .background(SchemaColor.SecondaryContainer, cornerRadiusDp = 16)
                         // Rounded-stroke variant of Border (added in the
                         // rounded-Border follow-up). cornerRadiusDp must
                         // match the sibling clip() above for the stroke
@@ -1561,8 +1561,31 @@ class Tier1ShowcaseScreen : Screen {
                         .padding(16, 16, 16, 16),
                 ) {
                     Text(
-                        text = "Clip(16) + rounded Border(2dp Primary, r=16)",
+                        text = "Clip(16) + Background(r=16) + Border(2dp Primary, r=16)",
                         color = SchemaColor.OnSecondaryContainer,
+                        style = SchemaTextStyle.BodyMedium,
+                    )
+                }
+            }
+            LazyItem { Spacer(width = 0, height = 12) }
+
+            // Rounded Background WITHOUT Clip — proves Background's own
+            // cornerRadiusDp paints the fill rounded even when no sibling
+            // Clip is present. The Text won't clip to the curve (no Clip),
+            // but the fill itself shows the rounded shape. Useful when you
+            // want a rounded color block but don't need to clip overflow.
+            LazyItem {
+                Box(
+                    onClick = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64)
+                        .background(SchemaColor.SurfaceVariant, cornerRadiusDp = 12)
+                        .padding(16, 16, 16, 16),
+                ) {
+                    Text(
+                        text = "Background(r=12), no Clip — fill paints rounded",
+                        color = SchemaColor.OnSurfaceVariant,
                         style = SchemaTextStyle.BodyMedium,
                     )
                 }

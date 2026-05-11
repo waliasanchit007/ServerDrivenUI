@@ -175,6 +175,10 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
 private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifier {
     var m = base
     var bgSchemaColor: SchemaColor? = null
+    // Background corner radius — added in the rounded-Background follow-up.
+    // 0 = rectangular fill (the original behavior); >0 = rounded fill of
+    // that radius. Same additive-with-default pattern as Border.
+    var bgCornerRadiusDp: Int = 0
     // Border state hoisted same way as Background — `toComposeColor()`
     // is @Composable and can't run inside the (non-composable)
     // forEachUnscoped lambda. Latest Border in the chain wins (matches
@@ -199,7 +203,10 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MSize -> m = m.size(width = el.width.dp, height = el.height.dp)
             is MWidth -> m = m.width(el.value.dp)
             is MHeight -> m = m.height(el.value.dp)
-            is MBackground -> bgSchemaColor = el.color
+            is MBackground -> {
+                bgSchemaColor = el.color
+                bgCornerRadiusDp = el.cornerRadiusDp
+            }
             is MAlpha -> m = m.alpha(el.value.toFloat())
             is MWeight -> { /* applied by parent Row/Column */ }
             // Tier 3 modifier additions (tags 12–17). Clip / WrapContent /
@@ -220,7 +227,14 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
         }
     }
     val bg = bgSchemaColor
-    if (bg != null) m = m.background(bg.toComposeColor())
+    if (bg != null) {
+        // RoundedCornerShape(0.dp) ≡ RectangleShape — single code path,
+        // no branch needed for the rectangular case (same trick as Border).
+        m = m.background(
+            color = bg.toComposeColor(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(bgCornerRadiusDp.dp),
+        )
+    }
     val bColor = borderSchemaColor
     if (bColor != null) {
         // RoundedCornerShape(0.dp) is equivalent to RectangleShape, so we

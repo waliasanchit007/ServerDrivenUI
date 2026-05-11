@@ -1079,9 +1079,17 @@ data class Width(val value: Int)  // dp
 @Modifier(4)
 data class Height(val value: Int)  // dp
 
-/** Solid background fill. SchemaColor.Transparent renders as no background. */
+/**
+ * Solid background fill. SchemaColor.Transparent renders as no background.
+ *
+ * [cornerRadiusDp] = 0 (the default for backward compatibility) paints a
+ * rectangular fill; >0 paints a rounded fill of that radius. The fill shape
+ * is independent of any sibling Clip — when you want both rounded fill AND
+ * clipped content, set Clip(cornerRadiusDp) too. Adding the param is wire-
+ * additive: existing manifests serialize the default and round-trip cleanly.
+ */
 @Modifier(5)
-data class Background(val color: SchemaColor)
+data class Background(val color: SchemaColor, val cornerRadiusDp: Int = 0)
 
 /** Flex weight along the parent's main axis. Only meaningful in Row/Column. */
 @Modifier(6)
@@ -1107,16 +1115,18 @@ data class Alpha(val value: Double)
 // Tier 3 modifier additions (tags 12–17) — see KONDUIT_PLAN.md §8.3 follow-ups
 //
 // All Tier 3 modifiers stay UNSCOPED (any widget can apply any of them).
-// Border is always rectangular in v1 — rounded borders need an additive
-// `Border(thicknessDp, color, cornerRadiusDp)` later (additive, won't break
-// wire). For now, use Card / OutlinedCard widgets when you need a rounded
-// stroke + container together.
+// Border and Background both support `cornerRadiusDp` (default 0 = the
+// original rectangular behavior) — the additive-with-default pattern keeps
+// older payloads decoding cleanly. Card / OutlinedCard widgets remain a
+// good choice when you want a Material-styled container instead of
+// hand-composing clip+bg+border.
 //
 // Ordering caveat: Compose modifier chains are order-sensitive. The host
 // applies these in the order the guest appended them; standard Compose
 // rules apply (e.g. clip BEFORE background to clip the fill). The existing
-// Background special-case (always applied last to layer correctly with
-// fillMax / size) is preserved.
+// Background and Border special-cases (always applied last after the loop,
+// so they layer correctly with fillMax / size and resolve color in a
+// composable scope) are preserved.
 // ============================================================================
 
 /**

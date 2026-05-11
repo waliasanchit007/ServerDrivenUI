@@ -250,6 +250,7 @@ Open questions:
 - **On-device verification still pending** as of this write-up because the test device's wifi was flaky during the debug loop. Re-test after restart.
 
 ### Tier 3 modifier additions ✅ landed
+- `Background(color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 5 — `cornerRadiusDp` shipped in the rounded-Background follow-up; default 0 keeps the original rectangular fill, positive values paint a rounded fill of that radius. Independent of any sibling `Clip` (use Clip when you also need to clip overflow).
 - `Border(thicknessDp, color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 12 — `cornerRadiusDp` shipped in the rounded-Border follow-up; default 0 keeps the original rectangular behavior, positive values render a rounded stroke that matches a sibling `Clip(cornerRadiusDp)`.
 - `Clip(cornerRadiusDp)` @ tag 13 — rounded-corner clip; 0 = no-op.
 - `ClipCircle` @ tag 14 — perfect circle inscribed in widget bounds.
@@ -260,7 +261,7 @@ Total modifier count: 16 (10 original + 6 Tier 3). Tag 7 still unused (was reser
 
 ### Open Tier 3 modifier follow-ups
 - ✅ Rounded `Border` — additive `cornerRadiusDp: Int = 0` parameter shipped. `Border(thicknessDp = 2, color = SchemaColor.Primary, cornerRadiusDp = 16)` now renders a rounded stroke matching a sibling `Clip(16)`. Backward-compatible: omit `cornerRadiusDp` (or pass 0) for the original rectangular behavior. Konduit's modifier codegen + kotlinx.serialization accept default values on `@Modifier` data classes (verified end-to-end).
-- `RoundedCorners` shape parameter for `Background` so a colored fill can match a clipped shape without needing both Clip and Background to overlap perfectly. (Not strictly necessary — Compose's clip applies to subsequent fills, so chain order works today.)
+- ✅ Rounded `Background` — additive `cornerRadiusDp: Int = 0` parameter shipped using the same pattern. `Background(SchemaColor.SurfaceVariant, cornerRadiusDp = 12)` paints a rounded fill on its own (no Clip required). When you also want clipped content (e.g. an image inside the rounded card), still chain `Clip(cornerRadiusDp)` — Background's shape only affects the fill, not the children.
 
 ### Phase 5 — Rest of dev tooling ✅ landed
 
