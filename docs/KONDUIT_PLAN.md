@@ -869,10 +869,18 @@ Filter to just the curated stream:
 - iOS: prefix `Konduit/` so `grep '^Konduit/'` against the Xcode
   console works (no level concept on stdout).
 
-Source maps (`zipline { sourceMapEnabled = true }`) NOT yet enabled —
-deferred until we hit a guest crash that's hard to triangulate. The
-Konduit Logcat formatter already surfaces the lifecycle phase + cause
-message; line numbers from JS stack traces would be additive on top.
+Source maps — closed as "not actually a Zipline 1.24 feature." The
+Zipline gradle plugin's `ZiplineExtension` exposes `stripLineNumbers`
+(default `false` — line numbers ARE retained in QuickJS bytecode) and
+`optimizeForDeveloperExperience()` / `optimizeForSmallArtifactSize()`
+presets that toggle line numbers + Terser, but NOT a `.kt`→QuickJS
+source-map pipeline. So guest stack traces give us **QuickJS bytecode
+line numbers** today, which is what the `KonduitDevLog` formatter
+surfaces, not Kotlin source lines. Full source mapping would need a
+Zipline upstream contribution (or fork) to embed Kotlin/JS source maps
+into the .zipline blob and symbolicate at throw time. Not worth that
+investment until/unless we hit a guest crash the lifecycle formatter
+can't triangulate.
 
 ### Phase 6 — Standalone library principles (NOT a phase, just guardrails)
 
