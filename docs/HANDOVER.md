@@ -249,7 +249,12 @@ Open questions:
 - Symptom: `take<HostSnackbar>("snackbar")` succeeds (returns a proxy), but every guest call errors with `no such service (service closed?)` — the guest side has no way to know the host never bound it. Confirmed on Android via logcat (`"available services: ... console, ... (no snackbar)"`).
 - Fix: snackbar bind now lives in both platform Specs (with strong refs as class-field properties to dodge `serviceLeaked`). Dead code removed: `androidApp/AndroidSduiAppSpec.kt` deleted entirely; `SduiAppSpec` and `RealHostConsole` removed from `composeApp/commonMain/Protocol.kt`.
 - Architecturally still platform-divergent — Android uses `AndroidRealHostConsole` (logs via `android.util.Log`), iOS uses `IosRealHostConsole` (logs via `println` → stderr). Both share `RealHostSnackbar` from commonMain since it talks to commonMain's `SnackbarHub`.
-- **On-device verification still pending** as of this write-up because the test device's wifi was flaky during the debug loop. Re-test after restart.
+
+**ZiplineService callback regression + fix (2026-05-11):**
+- After fixing the bind-site bug we added `showWithResult` with an `(Boolean) -> Unit` lambda parameter. Build was green but the guest's `take<HostSnackbar>` silently failed on proxy construction because Zipline only marshals `@Serializable` values or `ZiplineService` proxies — see gotcha #11. Guest bridge was null, every snackbar fizzled.
+- Fix #1 (commit `7c259ac`): introduce `SnackbarResultCallback : ZiplineService` with `onResult(actionPerformed: Boolean)`. Host closes the proxy after firing once.
+- Fix #2 (commit `cb06a60`): the anonymous `SnackbarResultCallback` impl on the guest had a name-shadowing bug — calling `onResult(actionPerformed)` from inside the override resolves to the override itself, not the outer lambda parameter → infinite self-recursion → StackOverflow on Undo tap → app crash. Aliased the outer lambda to `resultLambda` before the object expression.
+- **Verified end-to-end on Android device (2026-05-11)**: tap "With action" → "Item deleted" + "Undo" snackbar appears; tap "Undo" → mirror text updates to `"Last result: Undo tapped ✓"`. Both the `show()` queue path and the `showWithResult()` round-trip work.
 
 ### Tier 3 modifier additions ✅ landed
 - `Background(color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 5 — `cornerRadiusDp` shipped in the rounded-Background follow-up; default 0 keeps the original rectangular fill, positive values paint a rounded fill of that radius. Independent of any sibling `Clip` (use Clip when you also need to clip overflow).

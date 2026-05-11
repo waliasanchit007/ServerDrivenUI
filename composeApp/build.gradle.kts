@@ -10,6 +10,14 @@ plugins {
 }
 
 kotlin {
+    // Suppress the `expect/actual classes are in Beta` warning on
+    // HotReloadManager — the API is stable enough for our internal
+    // dev-tooling use and the warning fired on every Android + iOS
+    // compile. KT-61573 tracks the feature graduating from Beta.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "com.example.serverdrivenui.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()

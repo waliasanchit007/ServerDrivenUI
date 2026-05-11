@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn as ComposeLazyColumn
 import androidx.compose.foundation.lazy.LazyRow as ComposeLazyRow
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon as ComposeIcon
@@ -146,8 +147,12 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.Menu -> Icons.Filled.Menu
     SchemaIconName.Close -> Icons.Filled.Close
     SchemaIconName.Add -> Icons.Filled.Add
-    SchemaIconName.ArrowBack -> Icons.Filled.ArrowBack
-    SchemaIconName.ArrowForward -> Icons.Filled.ArrowForward
+    // AutoMirrored variants flip horizontally under RTL layouts — the
+    // M3 deprecation note on Icons.Filled.ArrowBack/ArrowForward points
+    // here. Semantics are identical for LTR (our only target today),
+    // and free RTL correctness later.
+    SchemaIconName.ArrowBack -> Icons.AutoMirrored.Filled.ArrowBack
+    SchemaIconName.ArrowForward -> Icons.AutoMirrored.Filled.ArrowForward
     SchemaIconName.Person -> Icons.Filled.Person
     SchemaIconName.Notifications -> Icons.Filled.Notifications
     SchemaIconName.Email -> Icons.Filled.Email
