@@ -2799,6 +2799,28 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
         )
     }
 
+    /**
+     * Zipline's thread-confined dispatcher. Set by the Spec's bindServices
+     * once the TreehouseApp is available, e.g.
+     * `iosHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline`.
+     *
+     * Why this matters (gotcha #12 root cause, 2026-05-12): Zipline's
+     * QuickJS instance is single-thread confined. Any outbound call to a
+     * guest ZiplineService — including `callback.onResult(...)` — MUST be
+     * issued from this dispatcher. Calling from any other thread (e.g.
+     * Dispatchers.Main, which our scope uses to drive the M3 Snackbar UI)
+     * crashes with `QuickJsException: stack overflow` on iOS Kotlin/Native.
+     * JVM-backed Zipline silently tolerates the wrong thread by luck.
+     * See cashapp/zipline#1429 + #1592.
+     *
+     * Nullable + var (not constructor-injected) because the Spec creates
+     * RealHostSnackbar as a field BEFORE TreehouseApp exists; bindServices
+     * is the first hook that has access to the dispatchers. If callers
+     * forget to wire it, `showWithResult` falls back to the buggy direct
+     * call and the iOS K/N crash returns — a println warns at that point.
+     */
+    var ziplineDispatcher: kotlinx.coroutines.CoroutineDispatcher? = null
+
     override fun show(message: String, actionLabel: String?, durationMillis: Long) {
         // Fire-and-forget variant: result is discarded. Defensive
         // try/catch — a throw out of a Zipline-bound method on the host
@@ -2824,39 +2846,66 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
         durationMillis: Long,
         callback: com.example.serverdrivenui.shared.SnackbarResultCallback,
     ) {
-        // Always close the callback proxy exactly once, even on the error
-        // paths — otherwise it leaks the Zipline service binding and we
-        // get spurious `serviceLeaked` warnings.
-        var closed = false
-        fun closeOnce() {
-            if (closed) return
-            closed = true
-            try { callback.close() } catch (_: Throwable) { /* already gone */ }
-        }
         try {
             scope.launch {
-                try {
+                // Show the snackbar on Dispatchers.Main (current coroutine
+                // context). M3 SnackbarHostState.showSnackbar is a suspend
+                // that lives on the UI thread.
+                val actionPerformed = try {
                     val result = SnackbarHub.state.showSnackbar(
                         message = message,
                         actionLabel = actionLabel,
                         duration = mapDuration(durationMillis),
                     )
-                    // Inner try/catch — callback.onResult crosses the
-                    // Zipline boundary; if the guest impl throws (or its
-                    // screen unmounted) we DON'T want that to kill our
-                    // coroutine scope.
-                    try {
-                        callback.onResult(result == androidx.compose.material3.SnackbarResult.ActionPerformed)
-                    } catch (t: Throwable) {
-                        println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+                    result == androidx.compose.material3.SnackbarResult.ActionPerformed
+                } catch (t: Throwable) {
+                    println("RealHostSnackbar.showWithResult($message) showSnackbar threw: ${t.message}")
+                    false
+                }
+
+                // Both callback.onResult AND callback.close are outbound
+                // Zipline calls and MUST be issued from the zipline-confined
+                // dispatcher (gotcha #12). If we forget to hop, iOS K/N
+                // crashes with QuickJsException: stack overflow; JVM tolerates
+                // it by luck. Group both ZiplineService touches inside a
+                // single withContext to amortize the dispatch hop.
+                val zd = ziplineDispatcher
+                if (zd != null) {
+                    kotlinx.coroutines.withContext(zd) {
+                        invokeAndClose(message, callback, actionPerformed)
                     }
-                } finally {
-                    closeOnce()
+                } else {
+                    println("RealHostSnackbar.showWithResult($message): WARN — ziplineDispatcher not set, calling onResult on current thread (will crash on iOS K/N).")
+                    invokeAndClose(message, callback, actionPerformed)
                 }
             }
         } catch (t: Throwable) {
             println("RealHostSnackbar.showWithResult($message) failed: ${t.message}")
-            closeOnce()
+            // We couldn't even launch — best-effort close on the calling
+            // thread; if that crashes, so be it.
+            try { callback.close() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Single-pass invoke + close, intended to run on the zipline dispatcher.
+     * Splits out so both the "happy path" and the "no dispatcher wired"
+     * fallback share the same try/catch + close shape.
+     */
+    private fun invokeAndClose(
+        message: String,
+        callback: com.example.serverdrivenui.shared.SnackbarResultCallback,
+        actionPerformed: Boolean,
+    ) {
+        try {
+            callback.onResult(actionPerformed)
+        } catch (t: Throwable) {
+            println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+        } finally {
+            // Always close the proxy exactly once — otherwise it leaks the
+            // Zipline service binding and we get spurious `serviceLeaked`
+            // warnings.
+            try { callback.close() } catch (_: Throwable) { /* already gone */ }
         }
     }
 

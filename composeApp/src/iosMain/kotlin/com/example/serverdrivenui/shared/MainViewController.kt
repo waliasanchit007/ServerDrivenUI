@@ -275,6 +275,13 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             zipline.bind<HostConsole>("console", iosHostConsole)
             println("SDUI-iOS: console bound")
 
+            // Wire the zipline-confined dispatcher into RealHostSnackbar
+            // BEFORE binding the service — see gotcha #12. Without this,
+            // callback.onResult crashes iOS K/N with QuickJsException:
+            // stack overflow because the outbound proxy call must happen
+            // on Zipline's owning thread, not Dispatchers.Main.
+            iosHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+
             // Snackbar: see Android Spec for the architecture rationale.
             // Both platforms must bind the same set of services.
             zipline.bind<HostSnackbar>("snackbar", iosHostSnackbar)

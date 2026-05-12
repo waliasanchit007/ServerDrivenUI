@@ -13,7 +13,7 @@ composeMultiplatform = "1.8.0"
 junit = "4.13.2"
 kotlin = "2.1.0"
 redwood = "1.0.0-caliclan.2"
-zipline = "1.24.0"
+zipline = "1.26.0"
 okhttp = "4.12.0"
 ktor = "2.3.12"
 

@@ -122,6 +122,14 @@ class MainActivity : ComponentActivity() {
                 zipline.bind<HostConsole>("console", androidHostConsole)
                 Log.d("SDUI-Host", "console service bound")
 
+                // Wire the zipline-confined dispatcher before binding. The
+                // showWithResult callback path crosses the QuickJS boundary
+                // and MUST be invoked from this dispatcher — see gotcha #12
+                // in HANDOVER. JVM Zipline tolerates the wrong thread by
+                // luck, iOS K/N reliably stack-overflows. Wire it on both
+                // platforms so the code path is identical.
+                androidHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+
                 // Snackbar: guest calls showHostSnackbar(message) → Zipline RPC
                 // → RealHostSnackbar (in commonMain Protocol.kt) → M3
                 // SnackbarHostState (SnackbarHub) → SnackbarHost composable

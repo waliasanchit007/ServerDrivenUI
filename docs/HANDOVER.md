@@ -158,7 +158,39 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
 
 11. **Zipline `ZiplineService` methods can declare `(T) -> Unit` lambda parameters — and the build succeeds — but the runtime proxy fails to construct on the guest side, leaving `take<T>()` silently null.** Zipline marshals values across the QuickJS boundary in exactly two flavors: `@Serializable` values, or `ZiplineService` proxies. A raw function-typed parameter (or return) is neither. Symptom: host's `bindService` log line appears fine, the guest's `take<T>(name)` doesn't throw an observable exception (the catch fires before the host-console polyfill is installed so the failure println goes to a dropped Zipline stdout), and every later call to the service uses a null bridge → silent no-op. We shipped this bug in commit `62ccff1` (the original `HostSnackbar.showWithResult(... onResult: (Boolean) -> Unit)`) and the regression broke the snackbar queue end-to-end despite `bindServices` still showing `snackbar service bound`. Fix: declare a callback `ZiplineService` (e.g. `SnackbarResultCallback` with `fun onResult(actionPerformed: Boolean)`), make the host method take that, and the guest wraps the user lambda in an anonymous impl. Lifecycle: host must `callback.close()` after invoking, or the proxy leaks (`serviceLeaked` warning).
 
-12. **Zipline host→guest callback dispatch crashes with `QuickJsException: stack overflow` on iOS Kotlin/Native (zipline 1.24.0).** Once you have a `ZiplineService` callback (per gotcha #11), calling its method from the host crosses the boundary into QuickJS — and on iOS K/N this dispatch reliably throws stack overflow inside `app.cash.zipline.QuickJs.toKotlinInstanceOrNull` while unwrapping the call result. The user's guest-side method body **never runs** — verified by reducing the callback to a single println and watching it not appear in iOS sim logs. Same code runs fine on Android (JVM-backed Zipline). Repro from the snackbar showcase: tap "With action" → snackbar shows → host calls `callback.onResult(false)` → stack overflow surfaces in host log as `RealHostSnackbar.showWithResult(...) onResult callback threw: QuickJsException: stack overflow`. **Practical implication:** on iOS, prefer fire-and-forget `ZiplineService` methods (no return, no callback) until we either bump Zipline (the upstream may have fixed this in a newer release we haven't tested) or PR a fix into the Konduit-forked Zipline. The bug is platform-specific to iOS K/N — not in the wire format, schema, or our code.
+12. **Outbound calls to a `ZiplineService` proxy MUST be issued from Zipline's thread-confined dispatcher, NOT from `Dispatchers.Main` (or any other arbitrary dispatcher). On iOS Kotlin/Native this crashes reliably with `QuickJsException: stack overflow` inside `QuickJs.toKotlinInstanceOrNull`; on JVM it tolerates the wrong thread by luck.**
+
+    **Repro:** the original `RealHostSnackbar.showWithResult(...)` launched a `Dispatchers.Main` coroutine to drive the M3 snackbar UI, then called `callback.onResult(...)` directly from that coroutine. On iOS K/N: `QuickJsException: stack overflow`, user's `onResult` body never runs. On Android: works fine.
+
+    **Root cause** (cashapp/zipline #1429, #1592): each `TreehouseApp` owns a thread-confined `dispatchers.zipline` — that's the single thread QuickJS runs on. Any outbound call into the JS guest (`callback.onResult(...)`, `callback.close()`, `flow.value`, etc.) must execute on that dispatcher. JVM-backed Zipline silently accepts the wrong thread; iOS K/N's stricter threading reliably blows up inside the QuickJS call dispatch.
+
+    **Fix:** wire the dispatcher into the host service and `withContext(...)` around every outbound proxy call:
+    ```kotlin
+    // commonMain RealHostSnackbar:
+    var ziplineDispatcher: CoroutineDispatcher? = null
+    // ...
+    scope.launch {
+        val actionPerformed = SnackbarHub.state.showSnackbar(...)  // Dispatchers.Main
+        withContext(ziplineDispatcher!!) {   // ← hop to Zipline thread
+            try { callback.onResult(actionPerformed) }
+            finally { callback.close() }     // close() is ALSO an outbound call
+        }
+    }
+    // Spec.bindServices (both Android + iOS):
+    androidHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+    zipline.bind<HostSnackbar>("snackbar", androidHostSnackbar)
+    ```
+
+    **Verification (2026-05-12, Pixel 9 + iPhone 17 Pro sim):**
+    - iOS sim: diagnostic auto-trigger fires snackbar, callback round-trips, `DIAGNOSTIC: onResult lambda invoked with actionPerformed=false` confirmed in console. No QuickJsException.
+    - Pixel 9 emulator: same diagnostic, same success. No regression.
+
+    **Investigation false leads** (recorded so we don't repeat them):
+    - Bumping Zipline 1.24 → 1.25 (issue #1618 Unit-return adapter fix) — orthogonal, doesn't fix this. We kept 1.25.0 anyway since it's a legit upstream improvement, but the dispatcher hop is what actually closes the bug.
+    - Changing `onResult` return type from `Unit` to `Boolean` — orthogonal, bug is not Unit-related.
+    - QuickJS `maxStackSize` (defaults to 512 KiB on both K/N and JVM) — not a size issue. The "stack overflow" is QuickJS's internal recursion-depth guard tripping because the call dispatch on the wrong thread re-enters itself.
+
+    **Generalization for future ZiplineService callbacks:** any host service that receives a `ZiplineService` callback or returns one (StateFlow, Flow, custom service) MUST hop to `treehouseApp.dispatchers.zipline` before invoking proxy methods. The pattern: store the dispatcher when binding the service, `withContext(...)` around every proxy touch. Add this to every new HostX service — it's not optional, it's a hard correctness requirement on iOS.
 
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 
@@ -258,12 +290,13 @@ Open questions:
 - Fix #2 (commit `cb06a60`): the anonymous `SnackbarResultCallback` impl on the guest had a name-shadowing bug — calling `onResult(actionPerformed)` from inside the override resolves to the override itself, not the outer lambda parameter → infinite self-recursion → StackOverflow on Undo tap → app crash. Aliased the outer lambda to `resultLambda` before the object expression.
 - **Verified end-to-end on Android device (2026-05-11)**: tap "With action" → "Item deleted" + "Undo" snackbar appears; tap "Undo" → mirror text updates to `"Last result: Undo tapped ✓"`. Both the `show()` queue path and the `showWithResult()` round-trip work.
 
-**iOS sim verification (2026-05-12) — partial:**
-- `show()` works end-to-end on iOS. Tapping "Long" rendered `"Upload failed — check your connection."` snackbar at the bottom of the screen exactly as on Android.
-- `showWithResult()` callback dispatch **crashes inside Zipline's iOS QuickJS machinery** with `app.cash.zipline.QuickJsException: stack overflow`. Repro: tap "With action" → snackbar appears → host's `callback.onResult(false)` outbound call → Zipline `OutboundCallHandler.callInternal` → `InboundCallChannel.call` → QuickJS throws stack overflow inside `toKotlinInstanceOrNull`. The user's onResult lambda **never executes** — confirmed by replacing the lambda body with a single `println` and observing it doesn't appear in logs. So this is a Zipline / Kotlin-Native cross-boundary dispatch bug, not anything in our application code.
-- Android (JVM-backed Zipline) is unaffected — same code path, no crash.
-- Workaround on iOS: use `show()` (fire-and-forget) instead of `showWithResult()` until we either upgrade Zipline (currently 1.24.0 in the Konduit fork) or PR a fix upstream. The wire format / API surface is right; only the iOS K/N runtime path is broken.
-- This is now gotcha #12.
+**iOS sim verification (2026-05-12) — fixed:**
+- Initial state: `show()` worked on iOS but `showWithResult()` callback crashed with `QuickJsException: stack overflow` (logged as gotcha #12 partial). Spent a session bumping Zipline 1.24 → 1.25 → 1.26 and trying Unit-vs-Boolean return-type workarounds; none fixed it.
+- Root cause found via cashapp/zipline #1429 + #1592: outbound calls to a ZiplineService proxy must execute on `treehouseApp.dispatchers.zipline` (the QuickJS-confined thread). Our snackbar coroutine ran on `Dispatchers.Main` to drive the M3 SnackbarHostState, then called `callback.onResult(...)` and `callback.close()` directly from that dispatcher → iOS K/N stack overflow. JVM tolerated the wrong thread by luck.
+- Fix: added `RealHostSnackbar.ziplineDispatcher: CoroutineDispatcher?`, wired in both Specs' `bindServices` from `treehouseApp.dispatchers.zipline`, and wrapped both the `onResult` and `close()` calls in a single `withContext(ziplineDispatcher)`. Both Spec files (`MainActivity.kt` Android + `MainViewController.kt` iOS) updated symmetrically.
+- Verified on iPhone 17 Pro sim (iOS 26.3): diagnostic auto-trigger → `auto-firing showHostSnackbar` → snackbar timeout → `DIAGNOSTIC: onResult lambda invoked with actionPerformed=false`. No crash.
+- Verified on Pixel 9 emulator (API 36): same diagnostic, same successful round-trip. No Android regression.
+- See gotcha #12 below for the generalization that applies to every new ZiplineService callback we add.
 
 **Tier 3 interaction verification (2026-05-12, Pixel 9 API 36 emulator):**
 - `AlertDialog` — tap "Show dialog" → "Confirm action / Are you sure you want to delete this item?" dialog renders; tap "Delete" → mirror text updates to `"Dialog: Delete confirmed"`. Callback round-trip works.
