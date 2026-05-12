@@ -257,14 +257,22 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
         // garbage collected without being closed." Anonymous instances
         // passed inline to `bind(...)` become GC-eligible the moment
         // bindServices returns; first guest call then errors with
-        // "no such service (service closed?)". Hold them as `val`
-        // properties of the Spec to keep them alive for its lifetime.
+        // "no such service (service closed?)". Hold them as `lateinit
+        // var` (or `val`) properties of the Spec to keep them alive
+        // for its lifetime.
+        //
+        // `iosHostSnackbar` is `lateinit` rather than `val` because its
+        // constructor requires the zipline dispatcher, which only exists
+        // once TreehouseApp has been created. The Spec instance survives
+        // long enough for bindServices to populate the field BEFORE any
+        // guest call can fire (Zipline doesn't accept calls until bind
+        // returns), so the lateinit contract is honored.
         //
         // Note: this Spec mirrors the AndroidMain Spec in MainActivity.kt;
         // both must wire the same set of services (any divergence shows
         // up as platform-specific guest crashes).
         private val iosHostConsole = IosRealHostConsole()
-        private val iosHostSnackbar = RealHostSnackbar()
+        private lateinit var iosHostSnackbar: RealHostSnackbar
 
         override suspend fun bindServices(
             treehouseApp: TreehouseApp<SduiAppService>,
@@ -275,12 +283,12 @@ fun initializeTreehouseApp(): TreehouseApp<SduiAppService> {
             zipline.bind<HostConsole>("console", iosHostConsole)
             println("SDUI-iOS: console bound")
 
-            // Wire the zipline-confined dispatcher into RealHostSnackbar
-            // BEFORE binding the service — see gotcha #12. Without this,
-            // callback.onResult crashes iOS K/N with QuickJsException:
-            // stack overflow because the outbound proxy call must happen
-            // on Zipline's owning thread, not Dispatchers.Main.
-            iosHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+            // Construct RealHostSnackbar WITH the zipline-confined
+            // dispatcher — see gotcha #12. The constructor parameter is
+            // required precisely so this wiring can't be forgotten.
+            iosHostSnackbar = RealHostSnackbar(
+                ziplineDispatcher = treehouseApp.dispatchers.zipline,
+            )
 
             // Snackbar: see Android Spec for the architecture rationale.
             // Both platforms must bind the same set of services.

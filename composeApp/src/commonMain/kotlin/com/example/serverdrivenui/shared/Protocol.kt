@@ -2782,8 +2782,30 @@ object SnackbarHub {
  * serializes them via a Mutex so calls naturally queue FIFO. No extra
  * queue state needed on our side.
  */
+/**
+ * @param ziplineDispatcher Zipline's thread-confined dispatcher
+ *   ([dev.konduit.treehouse.TreehouseDispatchers.zipline]). REQUIRED at
+ *   construction so the type system makes the wiring impossible to forget.
+ *
+ *   Why it must be passed in (gotcha #12 in docs/HANDOVER.md): Zipline's
+ *   QuickJS instance is single-thread confined. Any outbound call to a
+ *   guest ZiplineService — including `callback.onResult(...)` and
+ *   `callback.close()` — MUST be issued from this dispatcher. Calling from
+ *   any other thread (e.g. Dispatchers.Main, which our scope uses to drive
+ *   the M3 Snackbar UI) crashes with `QuickJsException: stack overflow` on
+ *   iOS Kotlin/Native. JVM-backed Zipline silently tolerates the wrong
+ *   thread by luck. See cashapp/zipline#1429 + #1592.
+ *
+ *   Construct + bind from inside [TreehouseApp.Spec.bindServices], which
+ *   is the first lifecycle hook that has access to `treehouseApp.dispatchers`.
+ *   Hold the resulting instance as a `lateinit var` on the Spec to keep
+ *   it alive (Zipline holds only a weak-ish ref; without a strong host-side
+ *   ref the service GCs and emits `serviceLeaked`).
+ */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
+class RealHostSnackbar(
+    private val ziplineDispatcher: kotlinx.coroutines.CoroutineDispatcher,
+) : com.example.serverdrivenui.shared.HostSnackbar {
     // Lazy scope — defer Dispatchers.Main resolution until first show()
     // call, NOT at construction. On iOS Kotlin/Native, accessing
     // Dispatchers.Main during bindServices() (which runs before the
@@ -2798,28 +2820,6 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
                 kotlinx.coroutines.SupervisorJob(),
         )
     }
-
-    /**
-     * Zipline's thread-confined dispatcher. Set by the Spec's bindServices
-     * once the TreehouseApp is available, e.g.
-     * `iosHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline`.
-     *
-     * Why this matters (gotcha #12 root cause, 2026-05-12): Zipline's
-     * QuickJS instance is single-thread confined. Any outbound call to a
-     * guest ZiplineService — including `callback.onResult(...)` — MUST be
-     * issued from this dispatcher. Calling from any other thread (e.g.
-     * Dispatchers.Main, which our scope uses to drive the M3 Snackbar UI)
-     * crashes with `QuickJsException: stack overflow` on iOS Kotlin/Native.
-     * JVM-backed Zipline silently tolerates the wrong thread by luck.
-     * See cashapp/zipline#1429 + #1592.
-     *
-     * Nullable + var (not constructor-injected) because the Spec creates
-     * RealHostSnackbar as a field BEFORE TreehouseApp exists; bindServices
-     * is the first hook that has access to the dispatchers. If callers
-     * forget to wire it, `showWithResult` falls back to the buggy direct
-     * call and the iOS K/N crash returns — a println warns at that point.
-     */
-    var ziplineDispatcher: kotlinx.coroutines.CoroutineDispatcher? = null
 
     override fun show(message: String, actionLabel: String?, durationMillis: Long) {
         // Fire-and-forget variant: result is discarded. Defensive
@@ -2869,13 +2869,7 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
                 // crashes with QuickJsException: stack overflow; JVM tolerates
                 // it by luck. Group both ZiplineService touches inside a
                 // single withContext to amortize the dispatch hop.
-                val zd = ziplineDispatcher
-                if (zd != null) {
-                    kotlinx.coroutines.withContext(zd) {
-                        invokeAndClose(message, callback, actionPerformed)
-                    }
-                } else {
-                    println("RealHostSnackbar.showWithResult($message): WARN — ziplineDispatcher not set, calling onResult on current thread (will crash on iOS K/N).")
+                kotlinx.coroutines.withContext(ziplineDispatcher) {
                     invokeAndClose(message, callback, actionPerformed)
                 }
             }

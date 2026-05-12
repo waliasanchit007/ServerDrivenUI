@@ -164,20 +164,25 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
 
     **Root cause** (cashapp/zipline #1429, #1592): each `TreehouseApp` owns a thread-confined `dispatchers.zipline` — that's the single thread QuickJS runs on. Any outbound call into the JS guest (`callback.onResult(...)`, `callback.close()`, `flow.value`, etc.) must execute on that dispatcher. JVM-backed Zipline silently accepts the wrong thread; iOS K/N's stricter threading reliably blows up inside the QuickJS call dispatch.
 
-    **Fix:** wire the dispatcher into the host service and `withContext(...)` around every outbound proxy call:
+    **Fix:** make the dispatcher a **constructor-required** parameter on the host service and `withContext(...)` around every outbound proxy call. As of 2026-05-13 the field is no longer a mutable nullable `var` — type system enforces the wiring:
     ```kotlin
     // commonMain RealHostSnackbar:
-    var ziplineDispatcher: CoroutineDispatcher? = null
-    // ...
-    scope.launch {
-        val actionPerformed = SnackbarHub.state.showSnackbar(...)  // Dispatchers.Main
-        withContext(ziplineDispatcher!!) {   // ← hop to Zipline thread
-            try { callback.onResult(actionPerformed) }
-            finally { callback.close() }     // close() is ALSO an outbound call
+    class RealHostSnackbar(
+        private val ziplineDispatcher: CoroutineDispatcher,  // required, not nullable
+    ) : HostSnackbar {
+        // ...
+        scope.launch {
+            val actionPerformed = SnackbarHub.state.showSnackbar(...)  // Dispatchers.Main
+            withContext(ziplineDispatcher) {   // ← hop to Zipline thread
+                try { callback.onResult(actionPerformed) }
+                finally { callback.close() }   // close() is ALSO an outbound call
+            }
         }
     }
     // Spec.bindServices (both Android + iOS):
-    androidHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+    private lateinit var androidHostSnackbar: RealHostSnackbar  // strong ref, late init
+    // ...
+    androidHostSnackbar = RealHostSnackbar(treehouseApp.dispatchers.zipline)
     zipline.bind<HostSnackbar>("snackbar", androidHostSnackbar)
     ```
 
@@ -190,7 +195,9 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
     - Changing `onResult` return type from `Unit` to `Boolean` — orthogonal, bug is not Unit-related.
     - QuickJS `maxStackSize` (defaults to 512 KiB on both K/N and JVM) — not a size issue. The "stack overflow" is QuickJS's internal recursion-depth guard tripping because the call dispatch on the wrong thread re-enters itself.
 
-    **Generalization for future ZiplineService callbacks:** any host service that receives a `ZiplineService` callback or returns one (StateFlow, Flow, custom service) MUST hop to `treehouseApp.dispatchers.zipline` before invoking proxy methods. The pattern: store the dispatcher when binding the service, `withContext(...)` around every proxy touch. Add this to every new HostX service — it's not optional, it's a hard correctness requirement on iOS.
+    **Generalization for future ZiplineService callbacks:** any host service that receives a `ZiplineService` callback or returns one (StateFlow, Flow, custom service) MUST hop to `treehouseApp.dispatchers.zipline` before invoking proxy methods. The pattern: take the dispatcher as a **constructor parameter** on the host service (non-nullable, no defaults), construct the service inside the Spec's `bindServices` from `treehouseApp.dispatchers.zipline`, hold it as `lateinit var` for the strong-ref guarantee, and `withContext(...)` around every proxy touch. The constructor-required pattern was deliberately chosen over a mutable `var` + runtime null-check because it makes the wiring impossible to forget for the next contributor. See `RealHostSnackbar` for the canonical example.
+
+    **Konduit-generated widget callbacks (AlertDialog onDismissRequest, DropdownMenu onClick, etc.)** do NOT need this wiring on our side — Konduit's `EventBridge` in `konduit-treehouse-host/.../TreehouseAppContent.kt` already hops to `dispatchers.zipline` for `UiEventSink.sendEvent`. The bug was specific to OUR hand-written `RealHostSnackbar` which bypassed Konduit's event sink. This gotcha only fires when you add a new HostX service that takes/returns a `ZiplineService` proxy.
 
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 
@@ -303,7 +310,15 @@ Open questions:
 - `ModalBottomSheet` — tap "Show sheet" → sheet slides up with "Bottom sheet" header + Cancel/Save buttons; tap "Save" → mirror text updates to `"Sheet: Save"`. Callback works.
 - `DropdownMenu` — tap the menu icon → Edit/Share/Delete items appear; tap "Share" → mirror text updates to `"Picked: Share"`. Anchoring + selection callback work.
 - `DatePicker` — tap "Pick date" → M3 dialog appears with today highlighted; tap day 15 → tap "OK" → mirror text updates to `"Picked: 1778803200000 (UTC midnight ms)"` (= May 15 2026 UTC). Callback delivers the ms-precision UTC timestamp.
-- All four use the same `(T) -> Unit` lambda callback pattern that bit us with snackbars on iOS (gotcha #12). Android (JVM-backed Zipline) works fine for all of them. **Not yet retested on iOS sim** — assume they suffer the same iOS K/N stack overflow until proven otherwise.
+- All four use the same `(T) -> Unit` lambda callback pattern that bit us with snackbars on iOS (gotcha #12). Android (JVM-backed Zipline) works fine for all of them. **Konduit dispatch audit (2026-05-13)**: read `konduit-treehouse-host/.../TreehouseAppContent.kt` `EventBridge` (line 606) — it already does the correct `bindingScope.launch(ziplineDispatcher)` hop for widget UI events. So Tier 3 widget callbacks should work on iOS without further intervention. The original bug was specific to OUR hand-written `RealHostSnackbar` which bypassed Konduit's EventBridge by invoking the callback proxy directly from `Dispatchers.Main`. Live iOS verification of the four widgets still pending (requires UI tap input which the overnight session couldn't drive through a locked Mac screen lock).
+
+**Dispatcher pattern tightening (2026-05-13, overnight):**
+- After gotcha #12 was closed, the field on `RealHostSnackbar` was a mutable `var ziplineDispatcher: CoroutineDispatcher? = null` with a runtime null-check + warning println. A copy-paste of the Spec without the `androidHostSnackbar.ziplineDispatcher = ...` line would have silently crashed iOS for the next HostX service.
+- Promoted `ziplineDispatcher` to a constructor parameter (non-nullable, required). Both Specs now construct the snackbar inside `bindServices` and hold it as `lateinit var` (still a strong ref for `serviceLeaked` prevention, just delayed). Removed the nullable-fallback path + warning println — no longer reachable.
+- Pixel 9 verification of the refactor: `bindServices called` → `console service bound` → `snackbar service bound`. Tap-tested both `actionPerformed=false` (timeout) and `actionPerformed=true` (Undo) paths — mirror text confirmed both.
+- The constructor-required pattern is the template for every future HostX service that owns a `ZiplineService` callback. Documented in `docs/USAGE.md` + `RealHostSnackbar`'s KDoc.
+
+**Integration docs landed (2026-05-13):** new `docs/USAGE.md` walks downstream consumers through vendoring Caliclan as a git submodule, the minimum host boilerplate (Android Spec example + lateinit pattern), guest-screen authoring, the dev loop, and the top-5 gotchas to internalize before writing a first screen. Read this if you're integrating Caliclan into a separate Compose Multiplatform project; read this HANDOVER if you're working on Caliclan itself.
 
 ### Regression tests ✅ landed (2026-05-12)
 

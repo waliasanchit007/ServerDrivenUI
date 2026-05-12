@@ -105,13 +105,19 @@ class MainActivity : ComponentActivity() {
             // garbage collected without being closed." Anonymous instances
             // passed inline to `bind(...)` become GC-eligible the moment
             // bindServices returns; first guest call then errors with
-            // "no such service (service closed?)". Hold them as `val`
-            // properties of the Spec to keep them alive for its lifetime.
+            // "no such service (service closed?)". Hold them as `lateinit
+            // var` (or `val`) properties of the Spec to keep them alive
+            // for its lifetime.
             //
-            // The Spec instance is itself rooted by `treehouseAppFactory.create`
-            // via the returned TreehouseApp, which lives as long as MainActivity.
+            // `androidHostSnackbar` is `lateinit` rather than `val` because
+            // its constructor requires the zipline dispatcher, which only
+            // exists once TreehouseApp has been created. Populating it
+            // inside bindServices guarantees the wiring is in place before
+            // Zipline accepts any guest call. The Spec instance itself is
+            // rooted by `treehouseAppFactory.create` via the returned
+            // TreehouseApp, which lives as long as MainActivity.
             private val androidHostConsole = AndroidRealHostConsole()
-            private val androidHostSnackbar = RealHostSnackbar()
+            private lateinit var androidHostSnackbar: RealHostSnackbar
 
             override suspend fun bindServices(
                 treehouseApp: dev.konduit.treehouse.TreehouseApp<SduiAppService>,
@@ -122,13 +128,15 @@ class MainActivity : ComponentActivity() {
                 zipline.bind<HostConsole>("console", androidHostConsole)
                 Log.d("SDUI-Host", "console service bound")
 
-                // Wire the zipline-confined dispatcher before binding. The
+                // Construct RealHostSnackbar with the zipline-confined
+                // dispatcher (constructor-required since gotcha #12). The
                 // showWithResult callback path crosses the QuickJS boundary
-                // and MUST be invoked from this dispatcher — see gotcha #12
-                // in HANDOVER. JVM Zipline tolerates the wrong thread by
-                // luck, iOS K/N reliably stack-overflows. Wire it on both
-                // platforms so the code path is identical.
-                androidHostSnackbar.ziplineDispatcher = treehouseApp.dispatchers.zipline
+                // and MUST be invoked from this dispatcher — JVM Zipline
+                // tolerates the wrong thread by luck, iOS K/N reliably
+                // stack-overflows. Both platforms wire it for parity.
+                androidHostSnackbar = RealHostSnackbar(
+                    ziplineDispatcher = treehouseApp.dispatchers.zipline,
+                )
 
                 // Snackbar: guest calls showHostSnackbar(message) → Zipline RPC
                 // → RealHostSnackbar (in commonMain Protocol.kt) → M3
