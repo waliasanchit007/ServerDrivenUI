@@ -158,6 +158,8 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
 
 11. **Zipline `ZiplineService` methods can declare `(T) -> Unit` lambda parameters — and the build succeeds — but the runtime proxy fails to construct on the guest side, leaving `take<T>()` silently null.** Zipline marshals values across the QuickJS boundary in exactly two flavors: `@Serializable` values, or `ZiplineService` proxies. A raw function-typed parameter (or return) is neither. Symptom: host's `bindService` log line appears fine, the guest's `take<T>(name)` doesn't throw an observable exception (the catch fires before the host-console polyfill is installed so the failure println goes to a dropped Zipline stdout), and every later call to the service uses a null bridge → silent no-op. We shipped this bug in commit `62ccff1` (the original `HostSnackbar.showWithResult(... onResult: (Boolean) -> Unit)`) and the regression broke the snackbar queue end-to-end despite `bindServices` still showing `snackbar service bound`. Fix: declare a callback `ZiplineService` (e.g. `SnackbarResultCallback` with `fun onResult(actionPerformed: Boolean)`), make the host method take that, and the guest wraps the user lambda in an anonymous impl. Lifecycle: host must `callback.close()` after invoking, or the proxy leaks (`serviceLeaked` warning).
 
+12. **Zipline host→guest callback dispatch crashes with `QuickJsException: stack overflow` on iOS Kotlin/Native (zipline 1.24.0).** Once you have a `ZiplineService` callback (per gotcha #11), calling its method from the host crosses the boundary into QuickJS — and on iOS K/N this dispatch reliably throws stack overflow inside `app.cash.zipline.QuickJs.toKotlinInstanceOrNull` while unwrapping the call result. The user's guest-side method body **never runs** — verified by reducing the callback to a single println and watching it not appear in iOS sim logs. Same code runs fine on Android (JVM-backed Zipline). Repro from the snackbar showcase: tap "With action" → snackbar shows → host calls `callback.onResult(false)` → stack overflow surfaces in host log as `RealHostSnackbar.showWithResult(...) onResult callback threw: QuickJsException: stack overflow`. **Practical implication:** on iOS, prefer fire-and-forget `ZiplineService` methods (no return, no callback) until we either bump Zipline (the upstream may have fixed this in a newer release we haven't tested) or PR a fix into the Konduit-forked Zipline. The bug is platform-specific to iOS K/N — not in the wire format, schema, or our code.
+
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 
 Five corrections agreed before Tier 2 starts:
@@ -255,6 +257,29 @@ Open questions:
 - Fix #1 (commit `7c259ac`): introduce `SnackbarResultCallback : ZiplineService` with `onResult(actionPerformed: Boolean)`. Host closes the proxy after firing once.
 - Fix #2 (commit `cb06a60`): the anonymous `SnackbarResultCallback` impl on the guest had a name-shadowing bug — calling `onResult(actionPerformed)` from inside the override resolves to the override itself, not the outer lambda parameter → infinite self-recursion → StackOverflow on Undo tap → app crash. Aliased the outer lambda to `resultLambda` before the object expression.
 - **Verified end-to-end on Android device (2026-05-11)**: tap "With action" → "Item deleted" + "Undo" snackbar appears; tap "Undo" → mirror text updates to `"Last result: Undo tapped ✓"`. Both the `show()` queue path and the `showWithResult()` round-trip work.
+
+**iOS sim verification (2026-05-12) — partial:**
+- `show()` works end-to-end on iOS. Tapping "Long" rendered `"Upload failed — check your connection."` snackbar at the bottom of the screen exactly as on Android.
+- `showWithResult()` callback dispatch **crashes inside Zipline's iOS QuickJS machinery** with `app.cash.zipline.QuickJsException: stack overflow`. Repro: tap "With action" → snackbar appears → host's `callback.onResult(false)` outbound call → Zipline `OutboundCallHandler.callInternal` → `InboundCallChannel.call` → QuickJS throws stack overflow inside `toKotlinInstanceOrNull`. The user's onResult lambda **never executes** — confirmed by replacing the lambda body with a single `println` and observing it doesn't appear in logs. So this is a Zipline / Kotlin-Native cross-boundary dispatch bug, not anything in our application code.
+- Android (JVM-backed Zipline) is unaffected — same code path, no crash.
+- Workaround on iOS: use `show()` (fire-and-forget) instead of `showWithResult()` until we either upgrade Zipline (currently 1.24.0 in the Konduit fork) or PR a fix upstream. The wire format / API surface is right; only the iOS K/N runtime path is broken.
+- This is now gotcha #12.
+
+**Tier 3 interaction verification (2026-05-12, Pixel 9 API 36 emulator):**
+- `AlertDialog` — tap "Show dialog" → "Confirm action / Are you sure you want to delete this item?" dialog renders; tap "Delete" → mirror text updates to `"Dialog: Delete confirmed"`. Callback round-trip works.
+- `ModalBottomSheet` — tap "Show sheet" → sheet slides up with "Bottom sheet" header + Cancel/Save buttons; tap "Save" → mirror text updates to `"Sheet: Save"`. Callback works.
+- `DropdownMenu` — tap the menu icon → Edit/Share/Delete items appear; tap "Share" → mirror text updates to `"Picked: Share"`. Anchoring + selection callback work.
+- `DatePicker` — tap "Pick date" → M3 dialog appears with today highlighted; tap day 15 → tap "OK" → mirror text updates to `"Picked: 1778803200000 (UTC midnight ms)"` (= May 15 2026 UTC). Callback delivers the ms-precision UTC timestamp.
+- All four use the same `(T) -> Unit` lambda callback pattern that bit us with snackbars on iOS (gotcha #12). Android (JVM-backed Zipline) works fine for all of them. **Not yet retested on iOS sim** — assume they suffer the same iOS K/N stack overflow until proven otherwise.
+
+### Regression tests ✅ landed (2026-05-12)
+
+Two pure-JVM unit suites now run in CI to catch the regressions from this batch:
+
+- **`:shared-protocol-host:jvmTest` → `BackgroundProtocolTest`.** Drives the generated `SduiSchemaHostProtocol.createModifier` decoder with two `ModifierElement` JSON payloads (old without `cornerRadiusDp`, new with it) and asserts the decoded `Background` modifier shape. Guards against a future Konduit codegen change that would drop the additive default and silently break older guest bundles — exactly the failure mode gotcha #10 warns about (white screen on protocol mismatch).
+- **`:shared:jvmTest` → `SnackbarResultCallbackTest`.** Pins down the wrapper pattern that survived two regressions (62ccff1 raw-lambda marshalling, 7c259ac override name-shadow recursion). Three tests: positive callback delivery, false-path for dismissed snackbar, and an explicit stack-overflow guard that fails with a clear message if anyone "simplifies" the wrapper by removing the `val resultLambda = outerLambda` alias.
+
+Both run in ~30s each on a warm gradle daemon. CI wired via `.github/workflows/ci.yml` "Run unit tests" step right after the guest .zipline compile.
 
 ### Tier 3 modifier additions ✅ landed
 - `Background(color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 5 — `cornerRadiusDp` shipped in the rounded-Background follow-up; default 0 keeps the original rectangular fill, positive values paint a rounded fill of that radius. Independent of any sibling `Clip` (use Clip when you also need to clip overflow).

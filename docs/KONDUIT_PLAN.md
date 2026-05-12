@@ -1117,6 +1117,17 @@ on every PR + push to main. macOS-only (same reasoning as Konduit's CI).
 Land this AFTER Batch 2.0 (the LayoutModifier migration) so the CI
 exercises the new modifier system from day one.
 
+**Update (2026-05-12):** CI now also runs `:shared-protocol-host:jvmTest`
+and `:shared:jvmTest` after the build matrix. Two suites — see
+HANDOVER §"Regression tests" — both pin down regressions we hit during
+Batch 2.x: the additive `cornerRadiusDp` default on `Background` and
+the SnackbarResultCallback wrapper pattern. Both are pure-JVM, run in
+~30s on a warm daemon, and don't require an emulator. Future test
+additions should follow this shape (commonTest source set in the
+relevant module, exercised through public API where possible) rather
+than adding instrumented Android tests, until we have a real
+device-loop CI need.
+
 ---
 
 ## 8. Decisions log

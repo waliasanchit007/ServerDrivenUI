@@ -19,5 +19,8 @@ kotlin {
             implementation(libs.redwood.protocol.host)
             api(libs.zipline)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
 }
