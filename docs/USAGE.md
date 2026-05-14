@@ -16,21 +16,32 @@ instead — this doc assumes you're a downstream consumer.
 # 1. Vendor Caliclan as a git submodule in your project root
 git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/caliclan
 
-# 2. Include its Gradle modules from your settings.gradle.kts
-includeBuild("third_party/caliclan")  # or include() individual modules
+# 2. In your top-level settings.gradle.kts, include the modules with explicit
+#    projectDir (see Step 1 — `includeBuild` does NOT work here because the
+#    Caliclan modules don't publish to Maven coordinates).
 
-# 3. Add a KONDUIT_READ_TOKEN to your CI / local gradle.properties so the
-#    Konduit Maven artifacts resolve (classic PAT, read:packages scope)
+# 3. Put gpr.user + gpr.token in ~/.gradle/gradle.properties (classic PAT
+#    with read:packages scope). NOTE: KONDUIT_READ_TOKEN is only the CI
+#    secret *name* — locally the gradle property must be `gpr.token`.
+#    See §"GitHub Packages auth" below.
 
-# 4. Set up a TreehouseApp.Spec in your activity / view controller (see below)
+# 4. Merge the required keys from Caliclan's gradle.properties into yours
+#    (kotlin.native.cacheKind=none in particular — CMP-8845 workaround).
 
-# 5. Write a guest .kt file that extends `Screen` and use the schema widgets
+# 5. Set up a TreehouseApp.Spec in your activity / view controller (Step 2).
+
+# 6. Write a guest .kt file that extends `Screen` using the schema widgets
+#    (Step 4).
 ```
+
+Prerequisites: **JDK 21** (matches CI), **Xcode 16+** for iOS, Android SDK
+with API 36, Kotlin 2.1.0+ compatible AGP.
 
 Production-readiness reality check before you commit to this path:
 
 - **Android**: solid. End-to-end verified, hot reload works.
-- **iOS**: solid as of 2026-05-12 (gotcha #12 fixed). Verified on iPhone 17 Pro sim.
+- **iOS**: solid as of 2026-05-13 (gotcha #12 fixed, dispatcher pattern
+  enforced via constructor). Verified on iPhone 17 Pro sim.
 - **Library distribution**: not yet on Maven Central. Git submodule is your only option today.
 - **Compose Facade**: deferred. You'll import from 6+ modules (`shared`, `shared-widget`, `shared-protocol-host`, etc.). Lives with this for now.
 - **Production load**: only showcase-level traffic tested. No 60 Hz Flow / large-list stress runs yet.
@@ -67,98 +78,202 @@ modules.
 
 ## Step 1 — Vendor Caliclan
 
-Easiest path is a git submodule:
+Add it as a git submodule:
 
 ```bash
 git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/caliclan
 git submodule update --init --recursive
 ```
 
-In your top-level `settings.gradle.kts`:
-
-```kotlin
-includeBuild("third_party/caliclan") {
-    dependencySubstitution {
-        substitute(module("com.example.serverdrivenui:shared"))
-            .using(project(":shared"))
-        substitute(module("com.example.serverdrivenui:shared-widget"))
-            .using(project(":shared-widget"))
-        // ...repeat for shared-protocol-host, schema-types, etc.
-    }
-}
-```
-
-Or, simpler, just include the modules directly:
+In your top-level `settings.gradle.kts`, include each module with its
+`projectDir` pointing inside the submodule. (`includeBuild` does not work
+here — the Caliclan modules don't apply `maven-publish`, so there are no
+Maven coordinates to substitute.)
 
 ```kotlin
 include(":shared")
 project(":shared").projectDir = file("third_party/caliclan/shared")
-// ...repeat for every module you need
+
+include(":shared-widget")
+project(":shared-widget").projectDir = file("third_party/caliclan/shared-widget")
+
+include(":shared-modifier")
+project(":shared-modifier").projectDir = file("third_party/caliclan/shared-modifier")
+
+include(":shared-protocol-host")
+project(":shared-protocol-host").projectDir = file("third_party/caliclan/shared-protocol-host")
+
+include(":shared-protocol-guest")
+project(":shared-protocol-guest").projectDir = file("third_party/caliclan/shared-protocol-guest")
+
+include(":schema")
+project(":schema").projectDir = file("third_party/caliclan/schema")
+
+include(":schema-types")
+project(":schema-types").projectDir = file("third_party/caliclan/schema-types")
+
+include(":presenter")
+project(":presenter").projectDir = file("third_party/caliclan/presenter")
 ```
 
-Modules you'll need on the host side:
+You will also need to copy the `pluginManagement {}` and
+`dependencyResolutionManagement {}` blocks from
+`third_party/caliclan/settings.gradle.kts` (or merge them with yours) — they
+declare the Konduit Maven repo and the Compose dev repo that the modules
+expect.
 
-| Module                    | Why                                                  |
-|---------------------------|------------------------------------------------------|
-| `shared`                  | HostConsole, HostSnackbar, SduiAppService            |
-| `shared-widget`           | M3 widget implementations (Box, Column, Button, ...) |
-| `shared-protocol-host`    | `SduiSchemaHostProtocol.Factory` for TreehouseApp    |
-| `shared-modifier`         | Generated modifier interfaces                        |
-| `schema-types`            | Color/typography enums + serializers module          |
-| `composeApp` (optional)   | Use as-is if you want the full hosting plumbing      |
+### Modules — what to include
 
-For the guest side, you'll need a fresh Kotlin/JS module similar to
-`presenter/`. See Step 4.
+**Host side** (always):
 
-### KONDUIT_READ_TOKEN
+| Module                    | Why                                                            |
+|---------------------------|----------------------------------------------------------------|
+| `shared`                  | `HostConsole`, `HostSnackbar`, `SduiAppService`, `RealHostSnackbar` |
+| `shared-widget`           | M3 widget implementations (Box, Column, Button, ...)           |
+| `shared-modifier`         | Generated modifier interfaces (transitive — needed at link time)|
+| `shared-protocol-host`    | `SduiSchemaHostProtocol.Factory` for TreehouseApp              |
+| `schema`                  | Schema sources + `SduiSerializersModule`                       |
+| `schema-types`            | Color/typography enums (KMP) used inside `@Modifier` properties |
 
-The host modules depend on `dev.konduit:konduit-*` artifacts hosted on
-GitHub Packages in the private `waliasanchit007/konduit` repo. You need a
-**classic** GitHub PAT (fine-grained PATs don't work — GitHub Packages
-Maven only accepts classic) with `read:packages` scope.
+**Guest side** (always):
 
-Local: `~/.gradle/gradle.properties`:
+| Module                    | Why                                                            |
+|---------------------------|----------------------------------------------------------------|
+| `presenter`               | The guest Kotlin/JS module — copy wholesale and rename, or model your own on it (see Step 4)|
+| `shared-protocol-guest`   | Guest-side protocol counterpart                                |
+
+**Optional**:
+
+| Module                    | Why                                                            |
+|---------------------------|----------------------------------------------------------------|
+| `composeApp`              | The reference KMP host module — use as-is to skip writing your own iOS framework target, or read it as a template |
+| `dev-server`              | Local hot-reload dev server (Ktor + WebSocket)                 |
+
+### gradle.properties — merge these into yours
+
+Caliclan's `gradle.properties` has a few keys you MUST merge into the
+consumer project, or builds will fail in confusing ways:
+
+```properties
+# Workaround for Compose Multiplatform linker issue CMP-8845 — without
+# this, iOS link fails. Mandatory.
+kotlin.native.cacheKind=none
+
+# Caliclan's presenter relies on this being off; turning it on breaks
+# JS codegen.
+kotlin.incremental.js.ir=false
+
+# Recommended for headroom — Konduit codegen is memory-heavy.
+org.gradle.jvmargs=-Xmx4096M -Dfile.encoding=UTF-8
+
+# Android — required by AGP namespace + Compose Compiler integration.
+android.nonTransitiveRClass=true
+android.useAndroidX=true
+```
+
+### GitHub Packages auth (this is the #1 first-build failure)
+
+The host modules pull `dev.konduit:konduit-*` artifacts from GitHub
+Packages in the private `waliasanchit007/konduit` repo. The submodule's
+`settings.gradle.kts` reads credentials from these four sources, in this
+order:
+
+1. Gradle property `gpr.user`  (local — `~/.gradle/gradle.properties`)
+2. Env var `GITHUB_ACTOR`      (CI fallback)
+3. Gradle property `gpr.token` (local)
+4. Env var `GITHUB_TOKEN`      (CI fallback)
+
+You need a **classic** GitHub PAT (fine-grained PATs do NOT work — GitHub
+Packages Maven only accepts classic) with `read:packages` scope.
+
+**Local setup** — put this in `~/.gradle/gradle.properties` (NOT your
+project's `gradle.properties`, and NOT named `KONDUIT_READ_TOKEN`):
 ```
 gpr.user=your-github-username
 gpr.token=ghp_your_classic_pat_here
 ```
 
-CI: set `GITHUB_ACTOR` + `GITHUB_TOKEN` env vars on the runner. See this
-repo's `.github/workflows/ci.yml` for an example token-probe step.
+**CI** — `KONDUIT_READ_TOKEN` is just the secret name we happen to use in
+GitHub Actions; the workflow exports it as `GITHUB_TOKEN`. From
+`.github/workflows/ci.yml`:
+```yaml
+env:
+  GITHUB_ACTOR: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ secrets.KONDUIT_READ_TOKEN }}
+```
+
+**Symptom of missing token**: Gradle's dependency resolution will 401
+against `maven.pkg.github.com` with a stack trace that buries the auth
+failure several frames deep. If your first `./gradlew help` shows
+`Received status code 401 from server: Unauthorized`, this is the cause.
 
 ---
 
 ## Step 2 — Host boilerplate (Android)
 
-Minimum `MainActivity.kt` to hoist a guest-driven screen:
+The reference `MainActivity` is `androidApp/src/main/kotlin/com/example/serverdrivenui/MainActivity.kt`
+(308 lines, includes hot-reload + dev controller wiring). Stripped to
+essentials, the minimum looks like this:
 
 ```kotlin
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import androidx.compose.runtime.remember
+import app.cash.zipline.Zipline
+import app.cash.zipline.loader.ManifestVerifier
+import app.cash.zipline.loader.asZiplineHttpClient
+import com.example.serverdrivenui.TreehouseHelper                      // Java helper (Android factory)
+import com.example.serverdrivenui.schema.SduiSerializersModule
+import com.example.serverdrivenui.schema.protocol.host.SduiSchemaHostProtocol
+import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
+import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.HostSnackbar
+import com.example.serverdrivenui.shared.RealHostSnackbar
+import com.example.serverdrivenui.shared.SduiAppService
+import dev.konduit.treehouse.TreehouseApp
+import dev.konduit.treehouse.composeui.TreehouseContent
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import okhttp3.OkHttpClient
+
 class MainActivity : ComponentActivity() {
-    private lateinit var treehouseApp: TreehouseApp<SduiAppService>
+    private val manifestUrlFlow = MutableStateFlow("https://your-cdn/manifest.zipline.json")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val factory = TreehouseAppFactory(
-            httpClient = OkHttpZiplineHttpClient(OkHttpClient()),
-            manifestVerifier = ManifestVerifier.NO_SIGNATURE_CHECKS,
-            embeddedFileSystem = null,
-            embeddedDir = null,
-            cacheName = "zipline",
-            cacheMaxSizeInBytes = 50L * 1024L * 1024L,
-            concurrentDownloads = 8,
-            stateStore = MemoryStateStore(),
-            leakDetector = LeakDetector.none(),
-            hostProtocolFactory = SduiSchemaHostProtocol.Factory,
+        // Android uses the Android-specific TreehouseAppFactory overload
+        // (it needs a Context for cache storage). The repo wraps that in a
+        // small Java helper because the Kotlin extension is awkward to call
+        // from Kotlin (KT-50800-ish). Either copy `TreehouseHelper.java`
+        // from this repo into your app, or call `TreehouseAppFactoryAndroidKt
+        // .TreehouseAppFactory(...)` directly with `applicationContext`.
+        val factory = TreehouseHelper.createTreehouseAppFactory(
+            /* context = */ applicationContext,
+            /* httpClient = */ OkHttpClient().asZiplineHttpClient(),
+            /* manifestVerifier = */ ManifestVerifier.NO_SIGNATURE_CHECKS,
+            /* hostProtocolFactory = */ SduiSchemaHostProtocol.Factory,
         )
 
         val spec = object : TreehouseApp.Spec<SduiAppService>() {
             override val name = "myapp"
-            override val manifestUrl = MutableStateFlow("https://your-cdn/manifest.zipline.json")
+            override val manifestUrl = manifestUrlFlow.asStateFlow()
             override val serializersModule = SduiSerializersModule
 
-            // Hold strong refs to host services so they don't GC out from
-            // under Zipline. See HANDOVER gotcha #6.
+            // Hold strong refs to bound host services so Zipline's
+            // GC-monitored proxy doesn't lose them. See HANDOVER gotcha #6.
+            //
+            // `hostSnackbar` is `lateinit var` because its constructor
+            // needs `treehouseApp.dispatchers.zipline`, which only exists
+            // once the factory has created the TreehouseApp. Populating
+            // it inside bindServices guarantees correct wiring before any
+            // guest call can fire. (See HANDOVER gotcha #12.)
+            //
+            // `AndroidRealHostConsole` is NOT exported from a Caliclan
+            // module — copy the 5-line class from this repo's
+            // `MainActivity.kt` or write your own `: HostConsole` that
+            // routes to your logger.
             private val hostConsole = AndroidRealHostConsole()
             private lateinit var hostSnackbar: RealHostSnackbar
 
@@ -167,28 +282,85 @@ class MainActivity : ComponentActivity() {
                 zipline: Zipline,
             ) {
                 zipline.bind<HostConsole>("console", hostConsole)
-                // Construct RealHostSnackbar with the zipline-confined
-                // dispatcher — required, see HANDOVER gotcha #12.
-                hostSnackbar = RealHostSnackbar(treehouseApp.dispatchers.zipline)
+                hostSnackbar = RealHostSnackbar(
+                    ziplineDispatcher = treehouseApp.dispatchers.zipline,
+                )
                 zipline.bind<HostSnackbar>("snackbar", hostSnackbar)
             }
 
             override fun create(zipline: Zipline) = zipline.take<SduiAppService>("app")
         }
 
-        treehouseApp = factory.create(lifecycleScope, spec)
+        val treehouseApp = factory.create(appScope = lifecycleScope, spec = spec)
 
         setContent {
             MaterialTheme {
-                TreehouseContent(treehouseApp, source = SduiContentSource)
+                val widgetSystem = remember { SduiSchemaWidgetSystem(CmpWidgetFactory) }
+                val contentSource = remember { SduiContentSource() }
+                TreehouseContent(
+                    treehouseApp = treehouseApp,
+                    widgetSystem = widgetSystem,
+                    contentSource = contentSource,
+                )
             }
         }
     }
 }
 ```
 
-iOS is structurally identical — see `composeApp/src/iosMain/.../MainViewController.kt`
-in this repo for the iOS-flavored Spec.
+For the full reference (hot reload over WebSocket, retry callbacks, dev
+controller, curated event listener) see `androidApp/.../MainActivity.kt`
+in this repo. `CmpWidgetFactory` and `SduiContentSource` come from
+`composeApp/src/commonMain/.../App.kt`.
+
+### Step 2b — Host boilerplate (iOS)
+
+iOS has more surface area: you provide your own `ZiplineHttpClient`
+backed by `NSURLSession`, you wire `embedAndSignAppleFrameworkForXcode`
+as a Run Script build phase, and you add `NSAppTransportSecurity`
+exceptions for dev-server URLs.
+
+The reference is `composeApp/src/iosMain/.../MainViewController.kt`
+(343 lines). Copy it wholesale and rename, or model your own on it —
+the `TreehouseApp.Spec` shape is identical to Android's, with these
+iOS-only differences:
+
+- **HTTP client**: `IosZiplineHttpClient(NSURLSession.sharedSession)`,
+  defined in the same file. There is no published Konduit-provided iOS
+  client; you own this class.
+- **HostConsole impl**: `IosRealHostConsole` (also in
+  `MainViewController.kt` — `println("JS: $message")`). Copy or rewrite
+  to route to your logger.
+- **`TreehouseAppFactory` constructor**: iOS uses the pure-Kotlin
+  constructor directly (no Context). Requires
+  `@OptIn(dev.konduit.leaks.RedwoodLeakApi::class)` at file or call
+  site.
+
+### iOS framework wiring (Xcode side)
+
+This trips up most first integrations:
+
+1. **Framework `baseName`** is `"ComposeApp"` (set in
+   `composeApp/build.gradle.kts`). In Swift you `import ComposeApp` and
+   call `MainViewControllerKt.MainViewController()`. If you rename the
+   `composeApp` module, update both sides.
+2. **Link SQLite** — Zipline's bundle cache uses SQLite. Add
+   `linkerOpts("-lsqlite3")` inside the `binaries.framework { … }` block
+   for each iOS target. Missing this gives an obscure linker error from
+   Zipline's loader.
+3. **`embedAndSignAppleFrameworkForXcode` build phase** — your Xcode
+   target needs a Run Script build phase that invokes
+   `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode`. See
+   `iosApp/iosApp.xcodeproj/project.pbxproj` in this repo for the exact
+   script body.
+4. **`Info.plist` ATS exceptions** for the dev server. The repo's
+   `iosApp/iosApp/Info.plist` has:
+   - `NSAllowsLocalNetworking = true`
+   - `NSExceptionDomains` for `127.0.0.1` and `localhost`
+     (`NSExceptionAllowsInsecureHTTPLoads = true`,
+     `NSIncludesSubdomains = true`)
+   - `NSLocalNetworkUsageDescription` text (required by iOS 14+)
+   Without these, the iOS sim 401/blocks plaintext HTTP to the dev server.
 
 ---
 
@@ -200,10 +372,25 @@ somewhere in your Compose tree to render the actual snackbars. The
 once at the root:
 
 ```kotlin
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.runtime.remember
+import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
+import com.example.serverdrivenui.shared.CmpWidgetFactory
+import com.example.serverdrivenui.shared.SduiContentSource
+import com.example.serverdrivenui.shared.SnackbarHub
+import dev.konduit.treehouse.composeui.TreehouseContent
+
 @Composable
 fun App(treehouseApp: TreehouseApp<SduiAppService>) {
     Box(modifier = Modifier.fillMaxSize()) {
-        TreehouseContent(treehouseApp, source = SduiContentSource)
+        val widgetSystem = remember { SduiSchemaWidgetSystem(CmpWidgetFactory) }
+        val contentSource = remember { SduiContentSource() }
+        TreehouseContent(
+            treehouseApp = treehouseApp,
+            widgetSystem = widgetSystem,
+            contentSource = contentSource,
+            modifier = Modifier.fillMaxSize(),
+        )
         SnackbarHost(
             hostState = SnackbarHub.state,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -211,6 +398,13 @@ fun App(treehouseApp: TreehouseApp<SduiAppService>) {
     }
 }
 ```
+
+Notes on stability:
+- `widgetSystem` and `contentSource` MUST be `remember`-ed. If they're
+  reconstructed each recomposition, `TreehouseContent` tears down the
+  guest session and reconnects on every frame.
+- `SduiContentSource` is a class (not an object). The `remember { ... }`
+  block is doing real work, not just deduplication.
 
 ---
 
@@ -267,9 +461,18 @@ bundle and pushes hot-reload notifications. To run:
 ./gradlew konduitDev
 ```
 
-Your host app's `manifestUrl` should point at the dev server (`http://10.0.2.2:8080/manifest.zipline.json`
-for Android emulator, `http://127.0.0.1:8080/...` for iOS sim with adb
-reverse, or an ngrok URL for physical devices).
+Your host app's `manifestUrl` should point at the dev server:
+- **Android emulator** → `http://10.0.2.2:8080/manifest.zipline.json`
+  (the emulator's alias for the host's loopback).
+- **Android physical device on USB** → `http://127.0.0.1:8080/...` after
+  `adb reverse tcp:8080 tcp:8080` exposes the host port. (Or use the
+  host's LAN IP if Wi-Fi.)
+- **iOS sim** → `http://127.0.0.1:8080/...` directly — the simulator
+  shares the host's loopback, no port-forwarding needed. (`adb reverse`
+  is Android-only; do not look for an iOS equivalent.)
+- **iOS physical device** → host's LAN IP, or an ngrok HTTPS tunnel.
+  IP-literal HTTP URLs require the `NSExceptionDomains` ATS entry — see
+  Step 2b.
 
 On each guest source change, recompile:
 ```bash
@@ -301,10 +504,12 @@ detail. The TL;DR:
    of your `TreehouseApp.Spec`. Anonymous inline arguments to `zipline.bind`
    GC out from under Zipline and the next guest call errors with "no such
    service".
-5. **Use the right manifest URL per platform.** Android emulator → `10.0.2.2`,
-   iOS sim → `127.0.0.1` with `adb reverse` (or ngrok HTTPS for physical
-   devices). iOS additionally needs `NSExceptionDomains` in `Info.plist`
-   for IP-literal URLs.
+5. **Use the right manifest URL per platform.** Android emulator →
+   `10.0.2.2`. iOS sim → `127.0.0.1` directly (no `adb reverse` — that's
+   Android-only). Android USB device → `127.0.0.1` after
+   `adb reverse tcp:8080 tcp:8080`. Physical iOS → LAN IP or ngrok HTTPS.
+   iOS additionally needs `NSExceptionDomains` in `Info.plist` for
+   IP-literal URLs.
 
 The full list of 12 gotchas is in `HANDOVER.md` §"Gotchas / requirements
 that aren't obvious". Read it before debugging anything mysterious.
