@@ -64,8 +64,8 @@ class QuotesScreen : Screen {
                 return@LaunchedEffect
             }
             error = null
-            quotes = null
             try {
+                // Non-suspend: see comment on HostQuotesProvider.
                 quotes = provider.getQuotes(selectedFilter)
             } catch (t: Throwable) {
                 error = "Failed to load quotes: ${t.message}"

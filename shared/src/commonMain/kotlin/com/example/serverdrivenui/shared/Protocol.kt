@@ -131,13 +131,22 @@ data class Quote(
  */
 interface HostQuotesProvider : ZiplineService {
     /**
-     * Fetch the current quotes list. Suspends so the host can return
-     * cached data or kick off a network fetch.
+     * Fetch the current quotes list synchronously from the host's
+     * in-memory cache. The host should have its data ready before
+     * navigating to a QuotesScreen — typically by kicking off the
+     * network fetch in `LaunchedEffect(Unit)` of the route's
+     * composable before binding this service.
+     *
+     * Why non-suspend: Konduit-Zipline 1.26's compiler plugin causes
+     * the host's `bind<>()` to hang silently when this method is
+     * declared `suspend`. Empirically reproducible with
+     * `List<@Serializable Quote>` return type. A future Konduit
+     * release may lift this restriction.
      *
      * The host should respect [languageFilter] when non-null: "en",
      * "hi", "sa" (extensible). Pass null to mean "all languages".
      */
-    suspend fun getQuotes(languageFilter: String?): List<Quote>
+    fun getQuotes(languageFilter: String?): List<Quote>
 }
 
 /**

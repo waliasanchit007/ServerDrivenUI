@@ -1,6 +1,12 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.zipline)
+    // Required for @Serializable data classes used as wire types in
+    // ZiplineService method signatures (e.g. List<Quote> return type
+    // on HostQuotesProvider). Without this plugin Zipline's
+    // .serializer() lookup fails at take<> time with
+    // "Serializer for class 'X' is not found".
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {

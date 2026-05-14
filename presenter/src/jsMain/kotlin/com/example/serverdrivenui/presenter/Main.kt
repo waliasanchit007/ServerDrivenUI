@@ -174,13 +174,13 @@ fun main() {
         HostQuotesProviderBridge.instance = zipline.take<HostQuotesProvider>("quotes")
         println("Zipline JS: HostQuotesProvider bound — routing to QuotesScreen")
     } catch (e: Throwable) {
-        println("Zipline JS: HostQuotesProvider not bound; default screen will be used")
+        println("Zipline JS: HostQuotesProvider take failed: ${e::class.simpleName} — ${e.message}")
     }
     try {
         HostQuoteNavigatorBridge.instance = zipline.take<HostQuoteNavigator>("quote-nav")
         println("Zipline JS: HostQuoteNavigator bound")
     } catch (e: Throwable) {
-        println("Zipline JS: HostQuoteNavigator not bound; tap callbacks will no-op")
+        println("Zipline JS: HostQuoteNavigator take failed: ${e::class.simpleName} — ${e.message}")
     }
 
     // Capture original console for fallback
