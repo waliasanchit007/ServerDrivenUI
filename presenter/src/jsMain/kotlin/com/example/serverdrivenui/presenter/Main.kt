@@ -11,6 +11,8 @@ import com.example.serverdrivenui.schema.SduiSerializersModule
 import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
 import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.HostQuoteNavigator
+import com.example.serverdrivenui.shared.HostQuotesProvider
 import com.example.serverdrivenui.shared.HostSnackbar
 
 /**
@@ -54,6 +56,24 @@ class SduiAppServiceImpl : SduiAppService {
  */
 object HostSnackbarBridge {
     var instance: HostSnackbar? = null
+}
+
+/**
+ * Guest-side reference to the host's [HostQuotesProvider] service, if
+ * the host bound one. Populated in [main] on a best-effort basis (no
+ * provider → `instance` stays null → presenter routes to its default
+ * Tier 1 showcase instead of QuotesScreen).
+ */
+object HostQuotesProviderBridge {
+    var instance: HostQuotesProvider? = null
+}
+
+/**
+ * Guest-side reference to the host's [HostQuoteNavigator] callback
+ * service. Same lifecycle as [HostQuotesProviderBridge].
+ */
+object HostQuoteNavigatorBridge {
+    var instance: HostQuoteNavigator? = null
 }
 
 /**
@@ -145,6 +165,22 @@ fun main() {
         println("Zipline JS: HostSnackbar bound successfully")
     } catch (e: Throwable) {
         println("Zipline JS: Failed to take host snackbar: ${e.message}")
+    }
+
+    // OPTIONAL host services for the QuotesScreen route. Bind failures
+    // are non-fatal — the presenter falls back to Tier 1 showcase if
+    // these aren't provided.
+    try {
+        HostQuotesProviderBridge.instance = zipline.take<HostQuotesProvider>("quotes")
+        println("Zipline JS: HostQuotesProvider bound — routing to QuotesScreen")
+    } catch (e: Throwable) {
+        println("Zipline JS: HostQuotesProvider not bound; default screen will be used")
+    }
+    try {
+        HostQuoteNavigatorBridge.instance = zipline.take<HostQuoteNavigator>("quote-nav")
+        println("Zipline JS: HostQuoteNavigator bound")
+    } catch (e: Throwable) {
+        println("Zipline JS: HostQuoteNavigator not bound; tap callbacks will no-op")
     }
 
     // Capture original console for fallback

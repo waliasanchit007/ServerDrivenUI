@@ -5,6 +5,7 @@ import dev.konduit.treehouse.ZiplineTreehouseUi
 import app.cash.zipline.ZiplineService
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 
 interface SduiAppService : AppService {
     fun launch(): ZiplineTreehouseUi
@@ -92,4 +93,58 @@ interface HostSnackbar : ZiplineService {
         durationMillis: Long,
         callback: SnackbarResultCallback,
     )
+}
+
+/**
+ * A single quote shown in a feed-style list. Cross-platform value
+ * shape used by both host (Android / iOS) and guest (Kotlin/JS).
+ *
+ * Konduit-the-library is not opinionated about what a quote is — this
+ * is a deliberately generic shape that maps to common content cards:
+ * `text` is the headline, `language` is an optional locale tag,
+ * `tag` is an optional grouping (e.g. an author, deity, category id)
+ * that the host can use for downstream navigation.
+ */
+@Serializable
+data class Quote(
+    val id: String,
+    val text: String,
+    val language: String = "en",
+    val tag: String? = null,
+)
+
+/**
+ * Host-side data provider for a quote feed. The host implements this
+ * to feed quotes (from a database, network, cache, etc.) into a
+ * guest-rendered quote-feed screen.
+ *
+ * Why a service: the guest doesn't know how to fetch from your app's
+ * data source. Bind one of these from the host's
+ * `Spec.bindServices(...)` and the guest takes it as
+ * `zipline.take<HostQuotesProvider>("quotes")`.
+ *
+ * If the guest's `take("quotes")` fails (no provider bound), the
+ * presenter falls back to its default Tier 1 showcase screen.
+ *
+ * @see HostQuoteNavigator for the companion callback service that
+ *   the guest uses to notify the host when a quote is tapped.
+ */
+interface HostQuotesProvider : ZiplineService {
+    /**
+     * Fetch the current quotes list. Suspends so the host can return
+     * cached data or kick off a network fetch.
+     *
+     * The host should respect [languageFilter] when non-null: "en",
+     * "hi", "sa" (extensible). Pass null to mean "all languages".
+     */
+    suspend fun getQuotes(languageFilter: String?): List<Quote>
+}
+
+/**
+ * Companion to [HostQuotesProvider]: the guest calls [onQuoteSelected]
+ * when the user taps a quote card. The host typically responds by
+ * navigating to its own creation flow.
+ */
+interface HostQuoteNavigator : ZiplineService {
+    fun onQuoteSelected(quoteId: String, tag: String?)
 }

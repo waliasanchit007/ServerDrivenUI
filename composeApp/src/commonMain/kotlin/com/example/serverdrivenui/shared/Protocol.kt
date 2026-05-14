@@ -163,6 +163,9 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.Check -> Icons.Filled.Check
     SchemaIconName.Info -> Icons.Filled.Info
     SchemaIconName.Warning -> Icons.Filled.Warning
+    SchemaIconName.FormatQuote -> Icons.Filled.FormatQuote
+    SchemaIconName.Brush -> Icons.Filled.Brush
+    SchemaIconName.AutoStories -> Icons.AutoMirrored.Filled.MenuBook
 }
 
 // ============================================================================

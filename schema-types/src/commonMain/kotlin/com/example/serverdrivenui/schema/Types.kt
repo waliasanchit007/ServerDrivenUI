@@ -58,4 +58,6 @@ enum class SchemaVerticalAlignment { Top, CenterVertically, Bottom }
 enum class SchemaIconName {
     Home, Settings, Star, Favorite, Search, Menu, Close, Add, ArrowBack, ArrowForward,
     Person, Notifications, Email, Phone, Lock, Edit, Delete, Check, Info, Warning,
+    // Content / typography icons
+    FormatQuote, Brush, AutoStories,
 }
