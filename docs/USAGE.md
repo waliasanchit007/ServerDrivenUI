@@ -262,6 +262,7 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.remember
 import app.cash.zipline.Zipline
+import app.cash.zipline.loader.LoaderEventListener
 import app.cash.zipline.loader.ManifestVerifier
 import app.cash.zipline.loader.asZiplineHttpClient
 import com.example.serverdrivenui.TreehouseHelper                      // Java helper (Android factory)
@@ -290,10 +291,18 @@ class MainActivity : ComponentActivity() {
         // from Kotlin (KT-50800-ish). Either copy `TreehouseHelper.java`
         // from this repo into your app, or call `TreehouseAppFactoryAndroidKt
         // .TreehouseAppFactory(...)` directly with `applicationContext`.
+        // The underlying TreehouseAppFactory's loaderEventListener
+        // parameter is non-null at the Kotlin layer — passing null
+        // crashes at first use with `Parameter specified as non-null
+        // is null`. Use a no-op base instance, or override methods like
+        // cacheStorageFailed for production observability.
+        val loaderListener = object : LoaderEventListener() {}
+
         val factory = TreehouseHelper.createTreehouseAppFactory(
             /* context = */ applicationContext,
             /* httpClient = */ OkHttpClient().asZiplineHttpClient(),
             /* manifestVerifier = */ ManifestVerifier.NO_SIGNATURE_CHECKS,
+            /* loaderEventListener = */ loaderListener,
             /* hostProtocolFactory = */ SduiSchemaHostProtocol.Factory,
         )
 
