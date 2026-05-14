@@ -10,6 +10,7 @@ import com.example.serverdrivenui.presenter.HostQuotesProviderBridge
 import com.example.serverdrivenui.presenter.HostQuoteNavigatorBridge
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
+import com.example.serverdrivenui.shared.HostQuotesObserver
 import com.example.serverdrivenui.shared.Quote
 import com.example.serverdrivenui.schema.SchemaArrangement
 import com.example.serverdrivenui.schema.SchemaColor
@@ -57,8 +58,30 @@ class QuotesScreen : Screen {
         var selectedFilter by remember { mutableStateOf<String?>(null) }
         var quotes by remember { mutableStateOf<List<Quote>?>(null) }
         var error by remember { mutableStateOf<String?>(null) }
+        // Bumped by the host-side observer; participates in the
+        // getQuotes() LaunchedEffect's key list so a change-notification
+        // forces a re-fetch with the current language filter.
+        var refreshTick by remember { mutableStateOf(0) }
 
-        LaunchedEffect(selectedFilter, provider) {
+        // Subscribe to host change-notifications exactly once per provider.
+        // Wrapped in try/catch so older hosts (no observe() impl) gracefully
+        // degrade to snapshot mode rather than crashing.
+        LaunchedEffect(provider) {
+            if (provider == null) return@LaunchedEffect
+            val observer = object : HostQuotesObserver {
+                override fun onQuotesChanged() {
+                    refreshTick++
+                }
+            }
+            try {
+                provider.observe(observer)
+            } catch (t: Throwable) {
+                // Old host without observe() — snapshot-only mode is fine.
+                println("Konduit-Guest: HostQuotesProvider.observe() unavailable: ${t.message}")
+            }
+        }
+
+        LaunchedEffect(selectedFilter, refreshTick, provider) {
             if (provider == null) {
                 error = "HostQuotesProvider not bound by host"
                 return@LaunchedEffect
@@ -203,37 +226,33 @@ private fun QuoteCard(quote: Quote, onClick: () -> Unit) {
     ) {
         Column(
             verticalArrangement = SchemaArrangement.Start,
-            horizontalAlignment = SchemaHorizontalAlignment.Start,
+            horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Box(
-                onClick = null,
-                modifier = Modifier.fillMaxWidth().padding(24, 24, 24, 24),
+            // Top accent: a small quote glyph centered above the text.
+            Row(
+                horizontalArrangement = SchemaArrangement.Center,
+                verticalAlignment = SchemaVerticalAlignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(0, 20, 0, 4),
             ) {
-                // Decorative quote icon — corner accent.
-                Row(
-                    horizontalArrangement = SchemaArrangement.End,
-                    verticalAlignment = SchemaVerticalAlignment.Top,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        name = SchemaIconName.FormatQuote,
-                        tint = SchemaColor.Tertiary,
-                        modifier = Modifier.size(48, 48),
-                    )
-                }
+                Icon(
+                    name = SchemaIconName.FormatQuote,
+                    tint = SchemaColor.Tertiary,
+                    modifier = Modifier.size(28, 28),
+                )
+            }
 
-                Column(
-                    verticalArrangement = SchemaArrangement.Center,
-                    horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth().padding(0, 8, 0, 0),
-                ) {
-                    Text(
-                        text = "\"${quote.text}\"",
-                        style = SchemaTextStyle.HeadlineSmall,
-                        color = SchemaColor.Primary,
-                    )
-                }
+            // Quote text — centered, generous horizontal padding.
+            Column(
+                verticalArrangement = SchemaArrangement.Center,
+                horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth().padding(24, 0, 24, 20),
+            ) {
+                Text(
+                    text = quote.text,
+                    style = SchemaTextStyle.HeadlineSmall,
+                    color = SchemaColor.Primary,
+                )
             }
 
             // Action bar
@@ -249,7 +268,7 @@ private fun QuoteCard(quote: Quote, onClick: () -> Unit) {
                 )
                 Box(
                     onClick = null,
-                    modifier = Modifier.size(6, 0),
+                    modifier = Modifier.size(8, 0),
                 ) {}
                 Text(
                     text = "Tap to create status",

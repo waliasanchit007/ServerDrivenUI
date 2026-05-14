@@ -147,6 +147,36 @@ interface HostQuotesProvider : ZiplineService {
      * "hi", "sa" (extensible). Pass null to mean "all languages".
      */
     fun getQuotes(languageFilter: String?): List<Quote>
+
+    /**
+     * Register a [HostQuotesObserver] so the host can push
+     * change-notifications when its underlying data updates (a refresh
+     * lands, a new quote is added, a user-driven filter change happens
+     * out-of-band, etc.). The guest is expected to re-fetch via
+     * [getQuotes] when [HostQuotesObserver.onQuotesChanged] fires.
+     *
+     * Calling [observe] a second time replaces the previous observer —
+     * the host must drop its reference to the old one. The guest is
+     * free to pass the same [HostQuotesObserver] instance across calls;
+     * Zipline scopes the proxy.
+     *
+     * Why a separate method rather than embedding the data in the
+     * callback: keeping `getQuotes()` as the single source of truth
+     * means the host doesn't have to know about the guest's current
+     * language filter when notifying. The guest re-asks with the right
+     * filter, and the host serves the same in-memory cache.
+     *
+     * Why additive on the existing service rather than a new
+     * `HostQuotesObservable` service: ZiplineService method addition is
+     * wire-additive (per [HostSnackbar.showWithResult]'s rationale),
+     * and integrators are more likely to remember to wire one service
+     * than to wire two. Old guests that never call [observe] keep
+     * working unchanged. Old hosts that don't override [observe] would
+     * surface as a "no such method" runtime error on the guest side —
+     * the guest should wrap [observe] in try/catch for graceful
+     * degradation against older host binaries.
+     */
+    fun observe(observer: HostQuotesObserver)
 }
 
 /**
@@ -156,4 +186,32 @@ interface HostQuotesProvider : ZiplineService {
  */
 interface HostQuoteNavigator : ZiplineService {
     fun onQuoteSelected(quoteId: String, tag: String?)
+}
+
+/**
+ * Reactive push channel for a quote feed. The guest implements this
+ * service, passes it to [HostQuotesProvider.observe], and the host calls
+ * [onQuotesChanged] whenever its in-memory data changes.
+ *
+ * The guest is expected to respond by re-calling
+ * [HostQuotesProvider.getQuotes] with its current language filter — the
+ * callback intentionally doesn't carry the new data because the host
+ * doesn't know the guest's filter state.
+ *
+ * Lifecycle: Zipline's leak detector will surface a `serviceLeaked`
+ * event if the host stops holding a reference to the observer before
+ * calling [close], so hosts should null out their stored reference (or
+ * call [close]) when the guest screen unmounts. The guest doesn't need
+ * to manage anything — its LaunchedEffect scope handles teardown.
+ */
+interface HostQuotesObserver : ZiplineService {
+    /**
+     * Fires when host data may have changed. Guest should re-fetch via
+     * [HostQuotesProvider.getQuotes] with its current filter.
+     *
+     * Non-suspend for the same reason [HostQuotesProvider.getQuotes] is
+     * non-suspend (Konduit-Zipline 1.26 suspend-bind hang). A future
+     * release may lift this.
+     */
+    fun onQuotesChanged()
 }
