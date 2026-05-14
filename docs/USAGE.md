@@ -496,43 +496,159 @@ Notes on stability:
 
 ## Step 4 — Define a guest screen
 
-Spin up a new Kotlin/JS module modeled on `presenter/`:
+The guest side is a Kotlin/JS module that compiles to a `.zipline`
+bundle. Konduit's `:presenter` is the canonical reference; the minimum
+for a new integrator is a 3-file scaffold:
+
+### 4a. The module's build.gradle.kts
+
+Copy `third_party/konduit/presenter/build.gradle.kts` essentially
+verbatim and just rename the package paths:
 
 ```kotlin
-// presenter/src/jsMain/kotlin/yourapp/screens/MyScreen.kt
-class MyScreen : Screen {
-    @Composable
-    override fun Content(navigator: Navigator) {
-        Column(modifier = Modifier.padding(16, 16, 16, 16)) {
-            Text(text = "Hello from the server", style = SchemaTextStyle.HeadlineMedium)
-            Button(
-                text = "Show snackbar",
-                onClick = {
-                    showHostSnackbar(
-                        message = "Tapped from guest!",
-                        actionLabel = "Undo",
-                        onResult = { undone -> println("undone=$undone") },
-                    )
-                },
-            )
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.zipline)
+    alias(libs.plugins.redwood.generator.compose)
+    alias(libs.plugins.composeMultiplatform)
+}
+
+redwoodSchema {
+    source = project(":schema")
+    type = "com.example.serverdrivenui.schema.SduiSchema"
+}
+
+kotlin {
+    js {
+        browser()
+        binaries.executable()
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.redwood.compose)
+            implementation(libs.redwood.widget)
+            implementation(libs.redwood.treehouse)
+            implementation(libs.redwood.treehouse.guest)
+            implementation(libs.zipline)
+            implementation(project(":shared"))
+        }
+        val jsMain by getting {
+            dependencies {
+                implementation(project(":shared-protocol-guest"))
+                implementation(project(":shared-widget"))
+            }
         }
     }
 }
+```
 
-// In your main.kt:
-fun main() {
-    val zipline = Zipline.get()
-    val app = StandardAppLifecycle.create(
+The `redwood.generator.compose` plugin + `redwoodSchema { source =
+project(":schema") }` are load-bearing — they generate the
+`com.example.serverdrivenui.schema.compose.Column` / `Text` / `Button`
+etc. composables from the schema. Without those, guest screen code
+won't resolve.
+
+### 4b. main.kt — bind the SduiAppService
+
+```kotlin
+package yourapp.guest
+
+import androidx.compose.runtime.Composable
+import app.cash.zipline.Zipline
+import com.example.serverdrivenui.schema.SduiSerializersModule
+import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
+import com.example.serverdrivenui.shared.SduiAppService
+import dev.konduit.treehouse.StandardAppLifecycle
+import dev.konduit.treehouse.TreehouseUi
+import dev.konduit.treehouse.ZiplineTreehouseUi
+import dev.konduit.treehouse.asZiplineTreehouseUi
+import kotlinx.serialization.json.Json
+
+class YourAppService : SduiAppService {
+    override val appLifecycle = StandardAppLifecycle(
+        protocolWidgetSystemFactory = SduiSchemaProtocolWidgetSystemFactory,
         json = Json { serializersModule = SduiSerializersModule },
-        // ... screens registry
+        widgetVersion = 1U,
     )
-    zipline.bind<SduiAppService>("app", app)
+
+    override fun launch(): ZiplineTreehouseUi {
+        val ui = object : TreehouseUi {
+            @Composable override fun Show() { MyScreen() }
+        }
+        return ui.asZiplineTreehouseUi(appLifecycle)
+    }
+
+    override fun close() {}
+}
+
+fun main() {
+    Zipline.get().bind<SduiAppService>("app", YourAppService())
 }
 ```
 
-The guest-side ergonomics for snackbar / navigation / console are in
-`presenter/src/jsMain/.../Main.kt` and `presenter/src/jsMain/.../Navigator.kt`.
-Copy-paste the helpers you need.
+### 4c. MyScreen.kt
+
+```kotlin
+import com.example.serverdrivenui.schema.SchemaArrangement
+import com.example.serverdrivenui.schema.SchemaColor
+import com.example.serverdrivenui.schema.SchemaHorizontalAlignment
+import com.example.serverdrivenui.schema.SchemaTextStyle
+import com.example.serverdrivenui.schema.compose.Column
+import com.example.serverdrivenui.schema.compose.Text
+
+@Composable
+fun MyScreen() {
+    Column(
+        verticalArrangement = SchemaArrangement.Start,
+        horizontalAlignment = SchemaHorizontalAlignment.Start,
+    ) {
+        Text(
+            text = "Hello from the server",
+            style = SchemaTextStyle.HeadlineMedium,
+            color = SchemaColor.Primary,
+        )
+    }
+}
+```
+
+### Build it
+
+```bash
+./gradlew :yourGuestModule:compileDevelopmentExecutableKotlinJsZipline
+# → build/zipline/Development/manifest.zipline.json + yourGuestModule.zipline
+```
+
+Point your dev-server at that directory and your host's `manifestUrl`
+at the dev-server, and the guest renders.
+
+### Gotcha — schema composables have NO default values
+
+`@Property` fields on schema widgets are required at the call site —
+the codegen emits constructor parameters without defaults. So:
+
+- `Column(...)` requires `verticalArrangement` AND `horizontalAlignment`.
+- `Text(...)` requires `text`, `style`, AND `color`.
+- `Button(...)` requires `text`, `onClick`, AND whatever else the
+  schema declares.
+
+This is the opposite of stock M3 Compose, where most props have
+sensible defaults. Don't be misled by IDE auto-completion suggesting
+"shorter" signatures — those are the schema's underlying class
+properties, not the codegen'd call. Hit `Ctrl-P` on the call site to
+see what's actually required.
+
+Caught empirically with `e: HelloScreen.kt: No value passed for
+parameter 'verticalArrangement'`. The fix is just to fill in every
+property — there's no workaround inside the schema today.
+
+### Guest-side helpers (showHostSnackbar, navigation)
+
+The fancier guest-side ergonomics — host snackbar bridge, navigator,
+console proxy — live in `third_party/konduit/presenter/src/jsMain/`
+(`Main.kt` + `Navigator.kt`). They're not part of any library;
+copy-paste whichever helpers you need into your guest module.
 
 ---
 
