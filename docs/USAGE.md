@@ -218,6 +218,36 @@ against `maven.pkg.github.com` with a stack trace that buries the auth
 failure several frames deep. If your first `./gradlew help` shows
 `Received status code 401 from server: Unauthorized`, this is the cause.
 
+### Mandatory: restrict the Konduit Maven repo to dev.konduit
+
+When you declare the Konduit Maven repo in `dependencyResolutionManagement`,
+add a `content {}` filter so Gradle only queries it for `dev.konduit.*`
+artifacts. Without this, Gradle will hit GH Packages for *every*
+transitive dep (androidx, kotlin, kotlinx, etc.) — and GH Packages
+responds slowly enough to non-existent paths that the build hangs for
+minutes before falling through to google()/mavenCentral():
+
+```kotlin
+maven {
+    url = uri("https://maven.pkg.github.com/waliasanchit007/konduit")
+    credentials {
+        username = (providers.gradleProperty("gpr.user").orNull
+            ?: System.getenv("GITHUB_ACTOR")).orEmpty()
+        password = (providers.gradleProperty("gpr.token").orNull
+            ?: System.getenv("GITHUB_TOKEN")).orEmpty()
+    }
+    content {                                       // ← required
+        includeGroup("dev.konduit")
+        includeGroupByRegex("dev\\.konduit\\..*")
+    }
+}
+```
+
+Konduit's own builds don't hit this because their Gradle caches already
+have every androidx/kotlin coordinate they'll ever ask for. A fresh
+integrator project doesn't have those caches and will see 10+ minute
+build hangs that look like network errors. Add the filter from day one.
+
 ---
 
 ## Step 2 — Host boilerplate (Android)
@@ -323,6 +353,42 @@ For the full reference (hot reload over WebSocket, retry callbacks, dev
 controller, curated event listener) see `androidApp/.../MainActivity.kt`
 in this repo. `CmpWidgetFactory` and `SduiContentSource` come from
 `composeApp/src/commonMain/.../App.kt`.
+
+### Step 2 — Dependencies your module needs
+
+The reason Konduit's own `androidApp/build.gradle.kts` is so short is
+that it calls `App(treehouseApp = ...)` from `:composeApp` — and
+`:composeApp` hides several deps as `implementation`. If you skip that
+wrapper and call `TreehouseContent` directly (as Step 2 above does),
+you need to declare those deps yourself. Minimum for the snippet above
+to compile:
+
+```kotlin
+dependencies {
+    // Konduit modules from the submodule
+    implementation(project(":composeApp"))             // M3 widget facade + helpers
+    implementation(project(":shared"))                 // HostConsole, HostSnackbar, RealHostSnackbar
+    implementation(project(":shared-protocol-host"))   // SduiSchemaHostProtocol.Factory
+
+    // Treehouse — note that :composeApp uses `implementation` (not
+    // `api`) for `redwood.treehouse.host.composeui`, so the
+    // TreehouseContent composable does NOT propagate transitively.
+    // Declare it here directly.
+    implementation(libs.redwood.treehouse.host)
+    implementation(libs.redwood.treehouse.host.composeui)
+    implementation(libs.zipline.loader)
+
+    // Android
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.okhttp)
+
+    // Compose
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.material3)
+    implementation(compose.ui)
+}
+```
 
 ### Step 2b — Host boilerplate (iOS)
 
