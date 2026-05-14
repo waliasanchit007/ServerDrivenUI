@@ -425,6 +425,54 @@ dependencies {
 }
 ```
 
+### ⚠️ If you use AsyncImage: register a Coil 3 ImageLoader yourself
+
+Konduit's `AsyncImage` widget is backed by **Coil 3**. Coil 3's
+default singleton ImageLoader has **no network fetcher** — `AsyncImage`
+with an HTTP URL silently fails (no exception, just an empty image
+slot). Konduit's own `App()` composable registers one via
+`setSingletonImageLoaderFactory`. If you skip `App()` and call
+`TreehouseContent` directly, you must do this yourself:
+
+```kotlin
+@Composable
+fun YourKonduitScreen(...) {
+    setSingletonImageLoaderFactory { ctx ->
+        ImageLoader.Builder(ctx)
+            .components { add(OkHttpNetworkFetcherFactory()) }
+            .crossfade(true)
+            .build()
+    }
+    // ... then TreehouseContent(...)
+}
+```
+
+#### Pick the right Coil network fetcher for your app
+
+Konduit's `App()` uses `coil-network-ktor2`. **That breaks if your host
+app pulls in Ktor 3** (e.g. via Supabase 3.x, modern Ktor server, etc.)
+because Coil's ktor2 fetcher imports Ktor 2 classes that aren't on the
+classpath when Ktor 3 wins resolution:
+
+```
+java.lang.NoClassDefFoundError: Failed resolution of:
+Lio/ktor/utils/io/jvm/nio/WritingKt;
+```
+
+For a host with Ktor 3, register `coil-network-okhttp` instead (no Ktor
+dependency at all):
+
+```kotlin
+dependencies {
+    implementation(libs.coil.compose)
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
+    // NOT coil-network-ktor2 in a Ktor-3 host
+}
+```
+
+…and use `OkHttpNetworkFetcherFactory()` in the ImageLoader builder
+shown above. OkHttp is already on the classpath via Zipline's loader.
+
 ### Step 2b — Host boilerplate (iOS)
 
 iOS has more surface area: you provide your own `ZiplineHttpClient`
