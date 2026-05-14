@@ -726,6 +726,171 @@ copy-paste whichever helpers you need into your guest module.
 
 ---
 
+## Step 4½ — Data services (Provider + Navigator + Observer)
+
+If your guest screen needs **data from the host** (a quote feed, a list
+of products, the user's saved items, etc.), you want the three-service
+pattern. It's the recipe DevoStatus's Quotes tab uses today — wire it
+once and you get filtering, tap navigation, and reactive updates from
+the host's view model into the guest screen.
+
+The contract:
+
+| Service              | Direction         | When it runs                           |
+|----------------------|-------------------|----------------------------------------|
+| `HostXProvider`      | Guest → Host call | Guest calls `getX(filter)` synchronously |
+| `HostXNavigator`     | Guest → Host call | Guest calls when the user taps an item |
+| `HostXObserver`      | Host → Guest call | Host calls when its data changes       |
+
+`HostQuotesProvider` / `HostQuoteNavigator` / `HostQuotesObserver` in
+`shared/Protocol.kt` are the live reference. Copy the shape for your
+own data.
+
+### 4½.a — Define the services
+
+```kotlin
+// shared/src/commonMain/kotlin/.../Protocol.kt
+@Serializable
+data class Product(val id: String, val name: String, val priceMinor: Int)
+
+interface HostProductsProvider : ZiplineService {
+    // Non-suspend — Zipline 1.26 hangs bind<>() on suspend methods that
+    // return @Serializable lists. See gotcha #14.
+    fun getProducts(categoryFilter: String?): List<Product>
+    fun observe(observer: HostProductsObserver)
+}
+
+interface HostProductSelectionNavigator : ZiplineService {
+    fun onProductSelected(productId: String)
+}
+
+interface HostProductsObserver : ZiplineService {
+    fun onProductsChanged()
+}
+```
+
+### 4½.b — Implement the services on the host
+
+```kotlin
+// host module — Android example, mirror this in iosMain.
+private class RealHostProductsProvider(
+    private val source: (String?) -> List<Product>,
+    private val flow: Flow<List<Product>>?,   // host's data flow
+    private val scope: CoroutineScope,
+) : HostProductsProvider {
+    private var observer: HostProductsObserver? = null
+    private var observerJob: Job? = null
+
+    override fun getProducts(filter: String?) = source(filter)
+
+    override fun observe(observer: HostProductsObserver) {
+        // Replace previous observer + cancel its job.
+        observerJob?.cancel()
+        this.observer?.close()
+        this.observer = observer
+        val f = flow ?: return
+        observerJob = scope.launch {
+            // drop(1) — the first emission is the value the guest already
+            // saw in its initial getProducts() call.
+            f.drop(1).collect { observer.onQuotesChanged() }
+        }
+    }
+}
+```
+
+Then bind in your `TreehouseApp.Spec.bindServices`:
+
+```kotlin
+override suspend fun bindServices(
+    treehouseApp: TreehouseApp<MyAppService>,
+    zipline: Zipline,
+) {
+    zipline.bind<HostConsole>("console", hostConsole)
+    zipline.bind<HostSnackbar>("snackbar", hostSnackbar)
+    zipline.bind<HostProductsProvider>("products", productsProvider)
+    zipline.bind<HostProductSelectionNavigator>("product-nav", productNav)
+    // No bind for HostProductsObserver — that one is implemented and
+    // passed BY the guest. See 4½.c.
+}
+```
+
+### 4½.c — Consume the services on the guest
+
+```kotlin
+// presenter/src/jsMain/kotlin/.../ProductsScreen.kt
+class ProductsScreen : Screen {
+    @Composable
+    override fun Content(navigator: Navigator) {
+        val provider = HostProductsProviderBridge.instance
+        val productNav = HostProductSelectionNavigatorBridge.instance
+
+        var filter by remember { mutableStateOf<String?>(null) }
+        var products by remember { mutableStateOf<List<Product>?>(null) }
+        var refreshTick by remember { mutableStateOf(0) }
+
+        // Wire the observer once per provider — graceful fallback if the
+        // host is older and didn't ship observe().
+        LaunchedEffect(provider) {
+            if (provider == null) return@LaunchedEffect
+            val observer = object : HostProductsObserver {
+                override fun onProductsChanged() { refreshTick++ }
+            }
+            try {
+                provider.observe(observer)
+            } catch (t: Throwable) {
+                // Old host without observe() → snapshot-only mode.
+            }
+        }
+
+        // Re-fetch whenever the filter changes OR the host signals.
+        LaunchedEffect(filter, refreshTick, provider) {
+            products = provider?.getProducts(filter)
+        }
+
+        // … render products …
+    }
+}
+```
+
+You'll also need a `HostProductsProviderBridge` object in the presenter
+module — see `presenter/src/jsMain/.../Main.kt` for the
+`HostQuotesProviderBridge` pattern.
+
+### 4½.d — Make the provider/navigator drive routing (optional)
+
+Have `presenter/RootUi` route to your screen automatically when its
+provider is bound:
+
+```kotlin
+val firstScreen = when {
+    HostProductsProviderBridge.instance != null -> ProductsScreen()
+    HostQuotesProviderBridge.instance != null   -> QuotesScreen()
+    else                                         -> Tier1ShowcaseScreen()
+}
+```
+
+This way the same guest bundle can serve multiple screens depending on
+which services the host binds. DevoStatus's `:konduit-host` uses this
+trick — its Quotes tab and its Demo tab both ship the same bundle, just
+with different `bindServices(...)` impls.
+
+### Why three services, not one fat one?
+
+- Provider, navigator, and observer have **different lifecycles**: the
+  observer outlives any single getProducts() call, the navigator fires
+  on tap, the provider's getProducts() is request/response. Splitting
+  them keeps each interface small.
+- Provider is **host-owned** (guest calls in), navigator is
+  **host-owned** (guest calls in), observer is **guest-owned** (host
+  calls in). Different ownership = different services. This is the same
+  pattern as `HostSnackbar` + `SnackbarResultCallback`.
+- Old guests can ignore observer entirely and still work — the host
+  just won't get reactive notifications. Adding observer to an existing
+  Provider as a new method is wire-additive (per the rationale on
+  `HostSnackbar.showWithResult`).
+
+---
+
 ## Step 5 — Dev loop
 
 The dev server in this repo (`dev-server/`) serves the latest `.zipline`
