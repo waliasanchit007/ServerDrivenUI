@@ -1,11 +1,11 @@
-# Using Caliclan in another Compose Multiplatform project
+# Using Konduit in another Compose Multiplatform project
 
 This guide is for "I have a separate Compose Multiplatform app and I want one
 or more of its screens to be Server-Driven UI." It walks through vendoring
-Caliclan, the minimum host-side boilerplate, defining a new screen on the
+Konduit, the minimum host-side boilerplate, defining a new screen on the
 guest side, and the gotchas that bite.
 
-If you're working on Caliclan itself, read `HANDOVER.md` and `KONDUIT_PLAN.md`
+If you're working on Konduit itself, read `HANDOVER.md` and `KONDUIT_PLAN.md`
 instead — this doc assumes you're a downstream consumer.
 
 ---
@@ -13,19 +13,19 @@ instead — this doc assumes you're a downstream consumer.
 ## TL;DR
 
 ```bash
-# 1. Vendor Caliclan as a git submodule in your project root
-git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/caliclan
+# 1. Vendor Konduit as a git submodule in your project root
+git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/konduit
 
 # 2. In your top-level settings.gradle.kts, include the modules with explicit
 #    projectDir (see Step 1 — `includeBuild` does NOT work here because the
-#    Caliclan modules don't publish to Maven coordinates).
+#    Konduit modules don't publish to Maven coordinates).
 
 # 3. Put gpr.user + gpr.token in ~/.gradle/gradle.properties (classic PAT
 #    with read:packages scope). NOTE: KONDUIT_READ_TOKEN is only the CI
 #    secret *name* — locally the gradle property must be `gpr.token`.
 #    See §"GitHub Packages auth" below.
 
-# 4. Merge the required keys from Caliclan's gradle.properties into yours
+# 4. Merge the required keys from Konduit's gradle.properties into yours
 #    (kotlin.native.cacheKind=none in particular — CMP-8845 workaround).
 
 # 5. Set up a TreehouseApp.Spec in your activity / view controller (Step 2).
@@ -76,49 +76,49 @@ modules.
 
 ---
 
-## Step 1 — Vendor Caliclan
+## Step 1 — Vendor Konduit
 
 Add it as a git submodule:
 
 ```bash
-git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/caliclan
+git submodule add https://github.com/waliasanchit007/ServerDrivenUI third_party/konduit
 git submodule update --init --recursive
 ```
 
 In your top-level `settings.gradle.kts`, include each module with its
 `projectDir` pointing inside the submodule. (`includeBuild` does not work
-here — the Caliclan modules don't apply `maven-publish`, so there are no
+here — the Konduit modules don't apply `maven-publish`, so there are no
 Maven coordinates to substitute.)
 
 ```kotlin
 include(":shared")
-project(":shared").projectDir = file("third_party/caliclan/shared")
+project(":shared").projectDir = file("third_party/konduit/shared")
 
 include(":shared-widget")
-project(":shared-widget").projectDir = file("third_party/caliclan/shared-widget")
+project(":shared-widget").projectDir = file("third_party/konduit/shared-widget")
 
 include(":shared-modifier")
-project(":shared-modifier").projectDir = file("third_party/caliclan/shared-modifier")
+project(":shared-modifier").projectDir = file("third_party/konduit/shared-modifier")
 
 include(":shared-protocol-host")
-project(":shared-protocol-host").projectDir = file("third_party/caliclan/shared-protocol-host")
+project(":shared-protocol-host").projectDir = file("third_party/konduit/shared-protocol-host")
 
 include(":shared-protocol-guest")
-project(":shared-protocol-guest").projectDir = file("third_party/caliclan/shared-protocol-guest")
+project(":shared-protocol-guest").projectDir = file("third_party/konduit/shared-protocol-guest")
 
 include(":schema")
-project(":schema").projectDir = file("third_party/caliclan/schema")
+project(":schema").projectDir = file("third_party/konduit/schema")
 
 include(":schema-types")
-project(":schema-types").projectDir = file("third_party/caliclan/schema-types")
+project(":schema-types").projectDir = file("third_party/konduit/schema-types")
 
 include(":presenter")
-project(":presenter").projectDir = file("third_party/caliclan/presenter")
+project(":presenter").projectDir = file("third_party/konduit/presenter")
 ```
 
 You will also need to copy the `pluginManagement {}` and
 `dependencyResolutionManagement {}` blocks from
-`third_party/caliclan/settings.gradle.kts` (or merge them with yours) — they
+`third_party/konduit/settings.gradle.kts` (or merge them with yours) — they
 declare the Konduit Maven repo and the Compose dev repo that the modules
 expect.
 
@@ -151,7 +151,7 @@ expect.
 
 ### gradle.properties — merge these into yours
 
-Caliclan's `gradle.properties` has a few keys you MUST merge into the
+Konduit's `gradle.properties` has a few keys you MUST merge into the
 consumer project, or builds will fail in confusing ways:
 
 ```properties
@@ -159,7 +159,7 @@ consumer project, or builds will fail in confusing ways:
 # this, iOS link fails. Mandatory.
 kotlin.native.cacheKind=none
 
-# Caliclan's presenter relies on this being off; turning it on breaks
+# Konduit's presenter relies on this being off; turning it on breaks
 # JS codegen.
 kotlin.incremental.js.ir=false
 
@@ -186,12 +186,23 @@ order:
 You need a **classic** GitHub PAT (fine-grained PATs do NOT work — GitHub
 Packages Maven only accepts classic) with `read:packages` scope.
 
-**Local setup** — put this in `~/.gradle/gradle.properties` (NOT your
-project's `gradle.properties`, and NOT named `KONDUIT_READ_TOKEN`):
+**Local setup (CLI builds)** — put this in `~/.gradle/gradle.properties`
+(NOT your project's `gradle.properties`, and NOT named
+`KONDUIT_READ_TOKEN`):
 ```
 gpr.user=your-github-username
 gpr.token=ghp_your_classic_pat_here
 ```
+Then `chmod 600 ~/.gradle/gradle.properties` so the token isn't world-
+readable.
+
+**Local setup (Android Studio only)** — AS lets you set env vars per-run
+via Run > Edit Configurations > Environment variables. Setting
+`GITHUB_ACTOR` + `GITHUB_TOKEN` there works for IDE-driven builds, but
+the values won't be visible to `./gradlew` invocations from your
+Terminal (or from CI, or from this doc's reader who's likely using
+CLI builds). For headless integration testing, you still need the
+`~/.gradle/gradle.properties` entries above.
 
 **CI** — `KONDUIT_READ_TOKEN` is just the secret name we happen to use in
 GitHub Actions; the workflow exports it as `GITHUB_TOKEN`. From
@@ -270,7 +281,7 @@ class MainActivity : ComponentActivity() {
             // it inside bindServices guarantees correct wiring before any
             // guest call can fire. (See HANDOVER gotcha #12.)
             //
-            // `AndroidRealHostConsole` is NOT exported from a Caliclan
+            // `AndroidRealHostConsole` is NOT exported from a Konduit
             // module — copy the 5-line class from this repo's
             // `MainActivity.kt` or write your own `: HostConsole` that
             // routes to your logger.
