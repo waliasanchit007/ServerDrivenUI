@@ -365,6 +365,32 @@ in this repo. `CmpWidgetFactory` and `SduiContentSource` come from
 
 ### Step 2 — Dependencies your module needs
 
+### ⚠️ MANDATORY: apply the Zipline Gradle plugin to your host module
+
+Any module that calls `zipline.bind<T>(...)` or `zipline.take<T>(...)`
+**must** apply the Zipline Kotlin compiler plugin. Zipline uses a
+compiler plugin to rewrite those calls at compile time so they use
+generated serializers. **Without the plugin:**
+
+- `zipline.bind<T>(...)` **silently hangs forever** — no error, no
+  exception, no log line. Your host's `bindServices` enters but never
+  returns. The screen stays blank and you'll be debugging for hours.
+- `zipline.take<T>(...)` throws `IllegalStateException: unexpected
+  call to Zipline.take: is the Zipline plugin configured?`
+
+This is the most painful integration footgun in Konduit. Apply the
+plugin in your host module's `build.gradle.kts`:
+
+```kotlin
+plugins {
+    // ... your other plugins ...
+    alias(libs.plugins.zipline)   // ← REQUIRED
+}
+```
+
+`:composeApp`, `:presenter`, and Konduit's own `androidApp` all apply
+it. New host modules don't get it by default — you have to remember.
+
 The reason Konduit's own `androidApp/build.gradle.kts` is so short is
 that it calls `App(treehouseApp = ...)` from `:composeApp` — and
 `:composeApp` hides several deps as `implementation`. If you skip that
