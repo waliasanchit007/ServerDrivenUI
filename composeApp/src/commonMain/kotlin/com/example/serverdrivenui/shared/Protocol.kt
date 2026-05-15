@@ -5,6 +5,7 @@ package com.example.serverdrivenui.shared
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn as ComposeLazyColumn
 import androidx.compose.foundation.lazy.LazyRow as ComposeLazyRow
@@ -375,6 +376,9 @@ class CmpBox : Box<CmpRender> {
     // Wire-additive property (Schema Property 2). Default TopStart matches
     // Compose's Box default and the previous pre-extension behavior.
     private var contentAlignment by mutableStateOf(SchemaBoxAlignment.TopStart)
+    // Properties 3-4 — long-press / double-tap gesture handlers.
+    private var onLongClick by mutableStateOf<(() -> Unit)?>(null)
+    private var onDoubleClick by mutableStateOf<(() -> Unit)?>(null)
     override val children: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
         get() = mod.value
@@ -382,8 +386,24 @@ class CmpBox : Box<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val click = onClick
-        val composed = modifier.applyToCompose(incoming)
-            .let { if (click != null) it.clickable { click() } else it }
+        val longCb = onLongClick
+        val doubleCb = onDoubleClick
+        val composed = modifier.applyToCompose(incoming).let { base ->
+            // Pick the most specific clickable variant that covers what
+            // the guest asked for. combinedClickable is required for
+            // long-press / double-tap; plain clickable is cheaper for
+            // single-tap-only (it doesn't allocate a gesture detector
+            // capable of multi-event tracking).
+            when {
+                longCb != null || doubleCb != null -> base.combinedClickable(
+                    onClick = { click?.invoke() },
+                    onLongClick = longCb?.let { { it() } },
+                    onDoubleClick = doubleCb?.let { { it() } },
+                )
+                click != null -> base.clickable { click() }
+                else -> base
+            }
+        }
         androidx.compose.foundation.layout.Box(
             modifier = composed,
             contentAlignment = contentAlignment.toComposeAlignment(),
@@ -395,6 +415,12 @@ class CmpBox : Box<CmpRender> {
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
     override fun contentAlignment(contentAlignment: SchemaBoxAlignment) {
         this.contentAlignment = contentAlignment
+    }
+    override fun onLongClick(onLongClick: (() -> Unit)?) {
+        this.onLongClick = onLongClick
+    }
+    override fun onDoubleClick(onDoubleClick: (() -> Unit)?) {
+        this.onDoubleClick = onDoubleClick
     }
 }
 
@@ -1253,6 +1279,9 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     // SchemaColor theme slot.
     private var customContainerColorArgb by mutableStateOf<Long?>(null)
     private var customContentColorArgb by mutableStateOf<Long?>(null)
+    // Properties 7-8 — gesture handlers.
+    private var onLongClick by mutableStateOf<(() -> Unit)?>(null)
+    private var onDoubleClick by mutableStateOf<(() -> Unit)?>(null)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1260,8 +1289,10 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
         set(v) { mod.value = v }
 
     override val value: CmpRender = { incoming ->
-        val composed = modifier.applyToCompose(incoming)
+        val baseModifier = modifier.applyToCompose(incoming)
         val cb = onClick
+        val longCb = onLongClick
+        val doubleCb = onDoubleClick
         val effectiveContainer = customContainerColorArgb?.let { Color(it.toInt()) }
             ?: containerColor.toComposeColor()
         val effectiveContent = customContentColorArgb?.let { Color(it.toInt()) }
@@ -1272,10 +1303,30 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
         )
         val shape = shapeFromRadius(cornerRadiusDp)
             ?: androidx.compose.material3.CardDefaults.shape
-        if (cb != null) {
+
+        // If gesture handlers beyond simple onClick are wired, we can't
+        // route through M3 `Card(onClick = …)` — it has no longPress /
+        // doubleClick parameters. Instead apply `combinedClickable` to
+        // the modifier chain ourselves and use the non-clickable Card
+        // overload. Plain-onClick stays on the M3 overload (gets free
+        // ripple + indication).
+        if (longCb != null || doubleCb != null) {
+            val gestured = baseModifier.combinedClickable(
+                onClick = { cb?.invoke() },
+                onLongClick = longCb?.let { { it() } },
+                onDoubleClick = doubleCb?.let { { it() } },
+            )
+            androidx.compose.material3.Card(
+                modifier = gestured,
+                shape = shape,
+                colors = colors,
+            ) {
+                (content as CmpChildren).render()
+            }
+        } else if (cb != null) {
             androidx.compose.material3.Card(
                 onClick = { cb() },
-                modifier = composed,
+                modifier = baseModifier,
                 shape = shape,
                 colors = colors,
             ) {
@@ -1283,7 +1334,7 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
             }
         } else {
             androidx.compose.material3.Card(
-                modifier = composed,
+                modifier = baseModifier,
                 shape = shape,
                 colors = colors,
             ) {
@@ -1307,6 +1358,12 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     }
     override fun customContentColorArgb(customContentColorArgb: Long?) {
         this.customContentColorArgb = customContentColorArgb
+    }
+    override fun onLongClick(onLongClick: (() -> Unit)?) {
+        this.onLongClick = onLongClick
+    }
+    override fun onDoubleClick(onDoubleClick: (() -> Unit)?) {
+        this.onDoubleClick = onDoubleClick
     }
 }
 

@@ -174,6 +174,17 @@ data class Box(
      * top-start" behavior.
      */
     @Property(2) val contentAlignment: SchemaBoxAlignment = SchemaBoxAlignment.TopStart,
+    /**
+     * Long-press handler. `null` = no long-press response. When non-null,
+     * the host wires `Modifier.combinedClickable(onLongClick = …)` so the
+     * regular [onClick] still fires on tap. Wire-additive (Property 3).
+     */
+    @Property(3) val onLongClick: (() -> Unit)? = null,
+    /**
+     * Double-tap handler. `null` = no double-tap response. Wire-additive
+     * (Property 4). Same combinedClickable wiring as [onLongClick].
+     */
+    @Property(4) val onDoubleClick: (() -> Unit)? = null,
     @Children(1) val children: () -> Unit,
 )
 
@@ -579,6 +590,10 @@ data class Card(
      * Wire-additive (Property 6).
      */
     @Property(6) val customContentColorArgb: Long? = null,
+    /** Long-press handler. See [Box.onLongClick]. Wire-additive (Property 7). */
+    @Property(7) val onLongClick: (() -> Unit)? = null,
+    /** Double-tap handler. See [Box.onDoubleClick]. Wire-additive (Property 8). */
+    @Property(8) val onDoubleClick: (() -> Unit)? = null,
     @Children(1) val content: () -> Unit,
 )
 
