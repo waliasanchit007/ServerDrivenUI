@@ -320,6 +320,17 @@ data class Button(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /**
+     * Corner radius in dp. `-1` (the default, wire-additive sentinel)
+     * means "use the M3 default for this widget" — the host falls
+     * through to `ButtonDefaults.shape`. Positive values override:
+     * `0` for sharp corners, large values (>= height/2) for a pill.
+     *
+     * Wire-additive (Property 4). Across the button family this same
+     * pattern with the same Property tag is used everywhere, so a
+     * single guest helper can apply it uniformly.
+     */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Outlined (medium-emphasis) button. */
@@ -328,6 +339,8 @@ data class OutlinedButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Text-only (low-emphasis) button. */
@@ -336,6 +349,8 @@ data class TextButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Filled tonal (medium-emphasis) button — softer than [Button]. */
@@ -344,6 +359,8 @@ data class FilledTonalButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Elevated (medium-emphasis) button with shadow. */
@@ -352,6 +369,8 @@ data class ElevatedButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Icon-only button. The single child should be an [Icon]. */
@@ -520,6 +539,8 @@ data class Card(
      * custom containerColors — this lets the guest pick explicitly.
      */
     @Property(3) val contentColor: SchemaColor = SchemaColor.OnSurface,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (~12dp for Card). */
+    @Property(4) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -527,6 +548,8 @@ data class Card(
 @Widget(52)
 data class ElevatedCard(
     @Property(1) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(2) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -534,6 +557,8 @@ data class ElevatedCard(
 @Widget(53)
 data class OutlinedCard(
     @Property(1) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(2) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -545,6 +570,8 @@ data class OutlinedCard(
 data class Surface(
     @Property(1) val tonalElevationDp: Int,
     @Property(2) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (0dp / rectangle for Surface). */
+    @Property(3) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -772,6 +799,8 @@ data class AssistChip(
     @Property(1) val label: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (8dp for chips). */
+    @Property(4) val cornerRadiusDp: Int = -1,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -789,6 +818,8 @@ data class InputChip(
     @Property(3) val enabled: Boolean,
     @Property(4) val onClick: (() -> Unit)?,
     @Property(5) val onClose: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(6) val cornerRadiusDp: Int = -1,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -801,6 +832,8 @@ data class SuggestionChip(
     @Property(1) val label: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
     @Children(1) val leadingIcon: () -> Unit,
 )
 

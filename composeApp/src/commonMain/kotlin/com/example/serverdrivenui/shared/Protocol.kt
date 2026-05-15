@@ -641,12 +641,24 @@ private class ButtonStateText {
     var text by mutableStateOf("")
     var enabled by mutableStateOf(true)
     var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // -1 = M3 default; positive = RoundedCornerShape override.
+    var cornerRadiusDp by mutableStateOf(-1)
 }
 
 @Composable
 private fun ButtonLabel(text: String) {
     ComposeText(text = text)
 }
+
+/**
+ * Helper: pick a M3 shape. `cornerRadiusDp < 0` returns `null` so the
+ * caller falls through to the widget's M3 default; otherwise returns
+ * a `RoundedCornerShape(cornerRadiusDp.dp)`. Large radii (>= height/2)
+ * collapse to a pill, exactly like the FilterChip pattern.
+ */
+private fun shapeFromRadius(cornerRadiusDp: Int): androidx.compose.ui.graphics.Shape? =
+    if (cornerRadiusDp < 0) null
+    else androidx.compose.foundation.shape.RoundedCornerShape(cornerRadiusDp.dp)
 
 class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     private val mod = StateModifier()
@@ -659,9 +671,12 @@ class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.shape
         androidx.compose.material3.Button(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -669,6 +684,7 @@ class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButton<CmpRender> {
@@ -682,9 +698,12 @@ class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButto
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.outlinedShape
         androidx.compose.material3.OutlinedButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -692,6 +711,7 @@ class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButto
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRender> {
@@ -705,9 +725,12 @@ class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRen
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.textShape
         androidx.compose.material3.TextButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -715,6 +738,7 @@ class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRen
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTonalButton<CmpRender> {
@@ -728,9 +752,12 @@ class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTona
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.filledTonalShape
         androidx.compose.material3.FilledTonalButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -738,6 +765,7 @@ class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTona
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButton<CmpRender> {
@@ -751,9 +779,12 @@ class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButto
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.elevatedShape
         androidx.compose.material3.ElevatedButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -761,6 +792,7 @@ class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButto
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpIconButton : com.example.serverdrivenui.schema.widget.IconButton<CmpRender> {
@@ -1171,6 +1203,7 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     // surfaceContainerHighest tint Material picks by default.
     private var containerColor by mutableStateOf(SchemaColor.Surface)
     private var contentColor by mutableStateOf(SchemaColor.OnSurface)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1184,10 +1217,13 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
             containerColor = containerColor.toComposeColor(),
             contentColor = contentColor.toComposeColor(),
         )
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.shape
         if (cb != null) {
             androidx.compose.material3.Card(
                 onClick = { cb() },
                 modifier = composed,
+                shape = shape,
                 colors = colors,
             ) {
                 (content as CmpChildren).render()
@@ -1195,6 +1231,7 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
         } else {
             androidx.compose.material3.Card(
                 modifier = composed,
+                shape = shape,
                 colors = colors,
             ) {
                 (content as CmpChildren).render()
@@ -1209,11 +1246,15 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     override fun contentColor(contentColor: SchemaColor) {
         this.contentColor = contentColor
     }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1223,23 +1264,29 @@ class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<Cm
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.elevatedShape
         if (cb != null) {
-            androidx.compose.material3.ElevatedCard(onClick = { cb() }, modifier = composed) {
+            androidx.compose.material3.ElevatedCard(onClick = { cb() }, shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.ElevatedCard(modifier = composed) {
+            androidx.compose.material3.ElevatedCard(shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 class CmpOutlinedCard : com.example.serverdrivenui.schema.widget.OutlinedCard<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1249,18 +1296,23 @@ class CmpOutlinedCard : com.example.serverdrivenui.schema.widget.OutlinedCard<Cm
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.outlinedShape
         if (cb != null) {
-            androidx.compose.material3.OutlinedCard(onClick = { cb() }, modifier = composed) {
+            androidx.compose.material3.OutlinedCard(onClick = { cb() }, shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.OutlinedCard(modifier = composed) {
+            androidx.compose.material3.OutlinedCard(shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
@@ -1273,18 +1325,24 @@ class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
         get() = mod.value
         set(v) { mod.value = v }
 
+    private var cornerRadiusDp by mutableStateOf(-1)
+
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.MaterialTheme.shapes.medium
         if (cb != null) {
             androidx.compose.material3.Surface(
                 onClick = { cb() },
                 tonalElevation = tonalElevationDp.dp,
+                shape = shape,
                 modifier = composed,
             ) { (content as CmpChildren).render() }
         } else {
             androidx.compose.material3.Surface(
                 tonalElevation = tonalElevationDp.dp,
+                shape = shape,
                 modifier = composed,
             ) { (content as CmpChildren).render() }
         }
@@ -1294,6 +1352,9 @@ class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
         this.tonalElevationDp = tonalElevationDp
     }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 // ============================================================================
@@ -1802,6 +1863,7 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1812,10 +1874,13 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.AssistChipDefaults.shape
         androidx.compose.material3.AssistChip(
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             leadingIcon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
@@ -1826,6 +1891,9 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1836,6 +1904,7 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
     private var onClose by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1847,11 +1916,14 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
         val click = onClick
         val close = onClose
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.InputChipDefaults.shape
         androidx.compose.material3.InputChip(
             selected = selected,
             onClick = { click?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             // FilterChip's check-glyph branch logic doesn't apply to
             // InputChip — M3 InputChip doesn't auto-render a selected
             // glyph; the avatar/icon slot is always honored.
@@ -1879,6 +1951,9 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
     override fun onClose(onClose: (() -> Unit)?) { this.onClose = onClose }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1888,6 +1963,7 @@ class CmpSuggestionChip :
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1898,10 +1974,13 @@ class CmpSuggestionChip :
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.SuggestionChipDefaults.shape
         androidx.compose.material3.SuggestionChip(
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             icon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
@@ -1912,6 +1991,9 @@ class CmpSuggestionChip :
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 // ============================================================================
