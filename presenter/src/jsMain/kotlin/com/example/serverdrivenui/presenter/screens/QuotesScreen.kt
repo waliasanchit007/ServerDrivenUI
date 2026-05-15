@@ -142,6 +142,18 @@ class QuotesScreen : Screen {
                                 label = label,
                                 enabled = true,
                                 onClick = { selectedFilter = value },
+                                // Brand the selection state to match
+                                // DevoStatus's native chip: saffron
+                                // container with maroon label, saffron
+                                // border in both states (lighter when
+                                // unselected — done by alpha on the
+                                // unselected `borderColor` slot can't
+                                // be expressed yet, so we use a single
+                                // Tertiary border).
+                                selectedContainerColor = SchemaColor.Tertiary,
+                                selectedLabelColor = SchemaColor.Primary,
+                                borderColor = SchemaColor.Tertiary,
+                                selectedBorderColor = SchemaColor.Tertiary,
                             ) {
                                 if (selectedFilter == value) {
                                     Icon(

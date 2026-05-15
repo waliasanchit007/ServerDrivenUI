@@ -1696,6 +1696,12 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive properties (Schema Properties 5-8). Defaults match
+    // M3's FilterChipDefaults so existing guests render identically.
+    private var selectedContainerColor by mutableStateOf(SchemaColor.SecondaryContainer)
+    private var selectedLabelColor by mutableStateOf(SchemaColor.OnSecondaryContainer)
+    private var borderColor by mutableStateOf(SchemaColor.OutlineVariant)
+    private var selectedBorderColor by mutableStateOf(SchemaColor.Transparent)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1706,6 +1712,23 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        // Merge guest overrides into M3's default chip colors. Only the
+        // selected-side slots are customizable today; unselected-side
+        // colors fall through to M3 defaults. Add more overrides here
+        // (with matching schema properties) if/when the gap surfaces.
+        val colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+            selectedContainerColor = selectedContainerColor.toComposeColor(),
+            selectedLabelColor = selectedLabelColor.toComposeColor(),
+            selectedLeadingIconColor = selectedLabelColor.toComposeColor(),
+        )
+        // The border is a separate concern in M3; we resolve both states
+        // here and let M3 pick the right one based on `selected`.
+        val border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+            enabled = enabled,
+            selected = selected,
+            borderColor = borderColor.toComposeColor(),
+            selectedBorderColor = selectedBorderColor.toComposeColor(),
+        )
         androidx.compose.material3.FilterChip(
             selected = selected,
             onClick = { cb?.invoke() },
@@ -1716,6 +1739,8 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
             leadingIcon = if (hasIcon && !selected) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
+            colors = colors,
+            border = border,
             modifier = composed,
         )
     }
@@ -1724,6 +1749,18 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun selectedContainerColor(selectedContainerColor: SchemaColor) {
+        this.selectedContainerColor = selectedContainerColor
+    }
+    override fun selectedLabelColor(selectedLabelColor: SchemaColor) {
+        this.selectedLabelColor = selectedLabelColor
+    }
+    override fun borderColor(borderColor: SchemaColor) {
+        this.borderColor = borderColor
+    }
+    override fun selectedBorderColor(selectedBorderColor: SchemaColor) {
+        this.selectedBorderColor = selectedBorderColor
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

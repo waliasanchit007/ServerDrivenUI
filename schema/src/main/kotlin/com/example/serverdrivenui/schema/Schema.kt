@@ -693,6 +693,35 @@ data class FilterChip(
     @Property(2) val label: String,
     @Property(3) val enabled: Boolean,
     @Property(4) val onClick: (() -> Unit)?,
+    /**
+     * Background color when [selected] = true. Wire-additive (Property 5).
+     * Default [SchemaColor.SecondaryContainer] matches M3's
+     * `FilterChipDefaults.filterChipColors().selectedContainerColor`.
+     * Use [SchemaColor.Tertiary] for the "selected = brand accent"
+     * pattern (e.g. DevoStatus's saffron-filled chip).
+     */
+    @Property(5) val selectedContainerColor: SchemaColor = SchemaColor.SecondaryContainer,
+    /**
+     * Label text color when [selected] = true. Wire-additive (Property 6).
+     * Default [SchemaColor.OnSecondaryContainer]; pair with whatever
+     * gives the right contrast against [selectedContainerColor].
+     */
+    @Property(6) val selectedLabelColor: SchemaColor = SchemaColor.OnSecondaryContainer,
+    /**
+     * Border color in the UNSELECTED state. Wire-additive (Property 7).
+     * Default [SchemaColor.OutlineVariant] matches M3's default
+     * filter-chip border. Use [SchemaColor.Tertiary] (etc.) for a
+     * branded outline.
+     */
+    @Property(7) val borderColor: SchemaColor = SchemaColor.OutlineVariant,
+    /**
+     * Border color in the SELECTED state. Wire-additive (Property 8).
+     * Default [SchemaColor.Transparent] matches M3's filled-when-
+     * selected look (no visible border on top of the container fill).
+     * Set the same color as [selectedContainerColor] to get a "filled
+     * chip with matching outline" look.
+     */
+    @Property(8) val selectedBorderColor: SchemaColor = SchemaColor.Transparent,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
