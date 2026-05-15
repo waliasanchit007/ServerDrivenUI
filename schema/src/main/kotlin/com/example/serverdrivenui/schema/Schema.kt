@@ -128,6 +128,12 @@ import dev.konduit.schema.Widget
         WrapContentWidth::class,
         WrapContentHeight::class,
         AspectRatio::class,
+        // Tier 3 modifier addition (tag 18) — Offset for decorative
+        // overlays (watermarks, badge nudges). Wire-additive: the
+        // generated runtime accepts unknown modifiers gracefully, but
+        // including the class in `members` is required for codegen to
+        // emit the interface + .offset() extension function.
+        Offset::class,
     ],
 )
 interface SduiSchema
@@ -147,6 +153,17 @@ interface SduiSchema
 @Widget(1)
 data class Box(
     @Property(1) val onClick: (() -> Unit)?,
+    /**
+     * Default alignment for unconstrained children. Wire-additive
+     * (Property 2, added after initial release) — older guests serialize
+     * the default [SchemaBoxAlignment.TopStart] and round-trip cleanly.
+     *
+     * Use `TopEnd` for decorative overlays (a watermark glyph anchored
+     * at the top-right of a card), `Center` for centered loading
+     * spinners, and the defaults for the legacy "stack children at
+     * top-start" behavior.
+     */
+    @Property(2) val contentAlignment: SchemaBoxAlignment = SchemaBoxAlignment.TopStart,
     @Children(1) val children: () -> Unit,
 )
 
@@ -207,6 +224,39 @@ data class Text(
     @Property(1) val text: String,
     @Property(2) val color: SchemaColor,
     @Property(3) val style: SchemaTextStyle,
+    /**
+     * Horizontal alignment of the text within its laid-out box. Combined
+     * with a width-constraining modifier (e.g. `Modifier.fillMaxWidth()`),
+     * this determines whether the text glyphs sit at the start/center/end.
+     * Wire-additive (Property 4) with default [SchemaTextAlign.Start] —
+     * the default preserves the previous behavior and lets older guests
+     * compile without changes (Redwood codegen propagates the Kotlin
+     * default to the generated composable signature).
+     */
+    @Property(4) val textAlign: SchemaTextAlign = SchemaTextAlign.Start,
+    /**
+     * Font weight override. The selected [SchemaTextStyle] already
+     * carries a default weight from M3's typography scale; this lets the
+     * guest pick a heavier or lighter cut without redefining the whole
+     * style. Wire-additive (Property 5) with default
+     * [SchemaFontWeight.Normal]; passing [Normal] preserves the previous
+     * "use the style's default weight" behavior because the host
+     * interprets Normal as "don't override".
+     */
+    @Property(5) val fontWeight: SchemaFontWeight = SchemaFontWeight.Normal,
+    /**
+     * Typeface family override. Same opt-in semantics as [fontWeight]:
+     * the host interprets [SchemaFontFamily.Default] as "use the style's
+     * default family", and any other value overrides it. Wire-additive
+     * (Property 6).
+     */
+    @Property(6) val fontFamily: SchemaFontFamily = SchemaFontFamily.Default,
+    /**
+     * Maximum number of lines. `0` means unbounded (the previous default).
+     * When the text would exceed this many lines, the host applies
+     * `TextOverflow.Ellipsis`. Wire-additive (Property 7).
+     */
+    @Property(7) val maxLines: Int = 0,
 )
 
 /** Display an image fetched from a URL. */
@@ -1187,6 +1237,28 @@ object WrapContentHeight
  */
 @Modifier(17)
 data class AspectRatio(val ratio: Double)
+
+/**
+ * Translate the widget by [x] / [y] dp from its layout-determined
+ * position WITHOUT participating in the parent's measure pass — equivalent
+ * to `Modifier.offset(x.dp, y.dp)`. The widget still takes up its original
+ * space in the parent; only the paint position shifts.
+ *
+ * Use for decorative overlays: a watermark glyph anchored at a card's
+ * top-right corner, a notification badge nudged off a bell icon, etc.
+ * Pair with [ClipCircle] / [Clip] when the offset would otherwise push
+ * the widget outside a clipped parent.
+ *
+ * Sign convention follows Compose: positive [x] shifts right, positive
+ * [y] shifts down. Use negatives to nudge up / left (e.g. `Offset(12, -12)`
+ * lifts the glyph slightly above the card top edge).
+ *
+ * Ordering caveat: order matters relative to size/clip. Apply Offset
+ * AFTER any size-defining modifiers but BEFORE clip-to-parent for the
+ * common "overhang glyph" pattern.
+ */
+@Modifier(18)
+data class Offset(val x: Int, val y: Int)  // dp; negative allowed
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/

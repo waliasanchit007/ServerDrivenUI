@@ -42,6 +42,7 @@ import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeigh
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
 import com.example.serverdrivenui.schema.modifier.Height as MHeight
+import com.example.serverdrivenui.schema.modifier.Offset as MOffset
 import com.example.serverdrivenui.schema.modifier.Padding as MPadding
 import com.example.serverdrivenui.schema.modifier.Size as MSize
 import com.example.serverdrivenui.schema.modifier.Weight as MWeight
@@ -168,6 +169,53 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.AutoStories -> Icons.AutoMirrored.Filled.MenuBook
 }
 
+// Schema-property -> Compose mappings for the wire-additive Text +
+// Box property extensions. Kept private so they don't leak into the
+// integrator's namespace.
+
+private fun SchemaTextAlign.toComposeTextAlign(): androidx.compose.ui.text.style.TextAlign = when (this) {
+    SchemaTextAlign.Start -> androidx.compose.ui.text.style.TextAlign.Start
+    SchemaTextAlign.Center -> androidx.compose.ui.text.style.TextAlign.Center
+    SchemaTextAlign.End -> androidx.compose.ui.text.style.TextAlign.End
+    SchemaTextAlign.Justify -> androidx.compose.ui.text.style.TextAlign.Justify
+}
+
+private fun SchemaFontWeight.toComposeFontWeight(): androidx.compose.ui.text.font.FontWeight = when (this) {
+    SchemaFontWeight.Light -> androidx.compose.ui.text.font.FontWeight.Light
+    SchemaFontWeight.Normal -> androidx.compose.ui.text.font.FontWeight.Normal
+    SchemaFontWeight.Medium -> androidx.compose.ui.text.font.FontWeight.Medium
+    SchemaFontWeight.SemiBold -> androidx.compose.ui.text.font.FontWeight.SemiBold
+    SchemaFontWeight.Bold -> androidx.compose.ui.text.font.FontWeight.Bold
+    SchemaFontWeight.ExtraBold -> androidx.compose.ui.text.font.FontWeight.ExtraBold
+}
+
+/**
+ * @return `null` for [SchemaFontFamily.Default] so [CmpText] can keep
+ *   the base TextStyle's family (the M3 typography default). Non-Default
+ *   maps to the corresponding [androidx.compose.ui.text.font.FontFamily].
+ *   A host that wants a brand typeface can swap the [Default] arm to
+ *   `FontFamily(myBrandFont)` here without touching the schema.
+ */
+private fun SchemaFontFamily.toComposeFontFamily(): androidx.compose.ui.text.font.FontFamily? = when (this) {
+    SchemaFontFamily.Default -> null
+    SchemaFontFamily.Serif -> androidx.compose.ui.text.font.FontFamily.Serif
+    SchemaFontFamily.SansSerif -> androidx.compose.ui.text.font.FontFamily.SansSerif
+    SchemaFontFamily.Monospace -> androidx.compose.ui.text.font.FontFamily.Monospace
+    SchemaFontFamily.Cursive -> androidx.compose.ui.text.font.FontFamily.Cursive
+}
+
+private fun SchemaBoxAlignment.toComposeAlignment(): Alignment = when (this) {
+    SchemaBoxAlignment.TopStart -> Alignment.TopStart
+    SchemaBoxAlignment.TopCenter -> Alignment.TopCenter
+    SchemaBoxAlignment.TopEnd -> Alignment.TopEnd
+    SchemaBoxAlignment.CenterStart -> Alignment.CenterStart
+    SchemaBoxAlignment.Center -> Alignment.Center
+    SchemaBoxAlignment.CenterEnd -> Alignment.CenterEnd
+    SchemaBoxAlignment.BottomStart -> Alignment.BottomStart
+    SchemaBoxAlignment.BottomCenter -> Alignment.BottomCenter
+    SchemaBoxAlignment.BottomEnd -> Alignment.BottomEnd
+}
+
 // ============================================================================
 // LayoutModifier translation
 //
@@ -232,6 +280,13 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MWrapContentWidth -> m = m.wrapContentWidth()
             is MWrapContentHeight -> m = m.wrapContentHeight()
             is MAspectRatio -> m = m.aspectRatio(el.ratio.toFloat())
+            // Offset (tag 18) — paints the widget at a different position
+            // without participating in the layout pass. Ordering note: in
+            // Compose, `Modifier.offset` BEFORE clip-to-parent lets the
+            // glyph extend outside its parent's bounds (the "watermark
+            // overhang" case); the guest controls order by where it
+            // chains .offset(...).
+            is MOffset -> m = m.offset(x = el.x.dp, y = el.y.dp)
         }
     }
     val bg = bgSchemaColor
@@ -282,6 +337,9 @@ private class StateModifier {
 class CmpBox : Box<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive property (Schema Property 2). Default TopStart matches
+    // Compose's Box default and the previous pre-extension behavior.
+    private var contentAlignment by mutableStateOf(SchemaBoxAlignment.TopStart)
     override val children: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
         get() = mod.value
@@ -291,12 +349,18 @@ class CmpBox : Box<CmpRender> {
         val click = onClick
         val composed = modifier.applyToCompose(incoming)
             .let { if (click != null) it.clickable { click() } else it }
-        androidx.compose.foundation.layout.Box(modifier = composed) {
+        androidx.compose.foundation.layout.Box(
+            modifier = composed,
+            contentAlignment = contentAlignment.toComposeAlignment(),
+        ) {
             (children as CmpChildren).render()
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun contentAlignment(contentAlignment: SchemaBoxAlignment) {
+        this.contentAlignment = contentAlignment
+    }
 }
 
 class CmpColumn : com.example.serverdrivenui.schema.widget.Column<CmpRender> {
@@ -427,6 +491,13 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     private var text by mutableStateOf("")
     private var color by mutableStateOf(SchemaColor.OnSurface)
     private var style by mutableStateOf(SchemaTextStyle.BodyMedium)
+    // Wire-additive properties (Schema Properties 4–7). Defaults preserve
+    // the pre-extension behavior: TextAlign.Start, default weight/family
+    // from the chosen SchemaTextStyle, unbounded line count.
+    private var textAlign by mutableStateOf(SchemaTextAlign.Start)
+    private var fontWeight by mutableStateOf(SchemaFontWeight.Normal)
+    private var fontFamily by mutableStateOf(SchemaFontFamily.Default)
+    private var maxLines by mutableStateOf(0)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -434,17 +505,41 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
+        // Merge guest-requested overrides into the base TextStyle from
+        // M3 typography. Passing `FontWeight.Normal` as an override is
+        // ambiguous (could mean "I really want Normal" or "use default"),
+        // but in practice the M3 body/title slots use specific weights
+        // and a guest that wanted Normal would explicitly pick it — so
+        // treating Normal as a real override is honest. The `null`
+        // shortcut just avoids redundant TextStyle reconstruction when
+        // the guest passed no overrides at all.
+        val baseStyle = style.toTextStyle()
+        val effectiveStyle = baseStyle.copy(
+            fontWeight = fontWeight.toComposeFontWeight(),
+            fontFamily = fontFamily.toComposeFontFamily() ?: baseStyle.fontFamily,
+            textAlign = textAlign.toComposeTextAlign(),
+        )
         ComposeText(
             text = text,
             color = color.toComposeColor(),
-            style = style.toTextStyle(),
+            style = effectiveStyle,
             modifier = composed,
+            maxLines = if (maxLines <= 0) Int.MAX_VALUE else maxLines,
+            overflow = if (maxLines <= 0) {
+                androidx.compose.ui.text.style.TextOverflow.Clip
+            } else {
+                androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            },
         )
     }
 
     override fun text(text: String) { this.text = text }
     override fun color(color: SchemaColor) { this.color = color }
     override fun style(style: SchemaTextStyle) { this.style = style }
+    override fun textAlign(textAlign: SchemaTextAlign) { this.textAlign = textAlign }
+    override fun fontWeight(fontWeight: SchemaFontWeight) { this.fontWeight = fontWeight }
+    override fun fontFamily(fontFamily: SchemaFontFamily) { this.fontFamily = fontFamily }
+    override fun maxLines(maxLines: Int) { this.maxLines = maxLines }
 }
 
 class CmpAsyncImage : AsyncImage<CmpRender> {
@@ -2739,6 +2834,9 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun WrapContentWidth(value: CmpRender, modifier: MWrapContentWidth) {}
     override fun WrapContentHeight(value: CmpRender, modifier: MWrapContentHeight) {}
     override fun AspectRatio(value: CmpRender, modifier: MAspectRatio) {}
+    // Tier 3 modifier addition (tag 18). No-op factory callback — actual
+    // application happens via applyToCompose reading from the chain.
+    override fun Offset(value: CmpRender, modifier: MOffset) {}
 }
 
 // ============================================================================

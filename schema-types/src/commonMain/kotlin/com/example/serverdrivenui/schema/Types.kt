@@ -61,3 +61,65 @@ enum class SchemaIconName {
     // Content / typography icons
     FormatQuote, Brush, AutoStories,
 }
+
+/**
+ * Horizontal alignment of [com.example.serverdrivenui.schema.Text]
+ * content within its laid-out box. Maps to `androidx.compose.ui.text.style.TextAlign`
+ * on the host (Start/Center/End/Justify; `Unspecified` is intentionally
+ * not exposed — guests express "use parent default" by passing
+ * [SchemaTextAlign.Start]).
+ *
+ * Wire-additive on the [com.example.serverdrivenui.schema.Text] widget
+ * (Property 4) with [Start] as the default — older payloads decode
+ * cleanly and render as today.
+ */
+@Serializable
+enum class SchemaTextAlign { Start, Center, End, Justify }
+
+/**
+ * Font weight slot. Subset of Compose's `FontWeight` constants —
+ * covers the slots a designer is likely to ask for without exposing
+ * 100..900 granular weights (most fonts only ship a few weights anyway).
+ *
+ * Maps to `androidx.compose.ui.text.font.FontWeight.{Light/Normal/Medium/SemiBold/Bold/ExtraBold}`
+ * on the host. Wire-additive on the [com.example.serverdrivenui.schema.Text]
+ * widget (Property 5) with [Normal] as the default.
+ */
+@Serializable
+enum class SchemaFontWeight {
+    Light, Normal, Medium, SemiBold, Bold, ExtraBold,
+}
+
+/**
+ * Generic typeface family. The host resolves each enum to a platform
+ * default — Compose Multiplatform's `FontFamily.{Default,Serif,SansSerif,
+ * Monospace,Cursive}`. To plug in a CUSTOM typeface (a brand font shipped
+ * by the host), the host's `toComposeFontFamily()` mapping for
+ * [SchemaFontFamily.Default] can swap in the brand `FontFamily` — same
+ * "theme-the-default-slot" pattern used by [SchemaColor.Primary].
+ *
+ * Wire-additive on [com.example.serverdrivenui.schema.Text] (Property 6)
+ * with [Default] as the default.
+ */
+@Serializable
+enum class SchemaFontFamily {
+    Default, Serif, SansSerif, Monospace, Cursive,
+}
+
+/**
+ * Stacking alignment for a [com.example.serverdrivenui.schema.Box]'s
+ * children. Maps to `androidx.compose.ui.Alignment.{TopStart, …,
+ * BottomEnd}` on the host. The Box itself can still be sized via the
+ * Size/Width/Height modifiers; this only changes where unconstrained
+ * children land within it.
+ *
+ * Wire-additive on [com.example.serverdrivenui.schema.Box] (Property 2)
+ * with [TopStart] as the default (which matches Compose's default and
+ * the previous Box behavior).
+ */
+@Serializable
+enum class SchemaBoxAlignment {
+    TopStart, TopCenter, TopEnd,
+    CenterStart, Center, CenterEnd,
+    BottomStart, BottomCenter, BottomEnd,
+}
