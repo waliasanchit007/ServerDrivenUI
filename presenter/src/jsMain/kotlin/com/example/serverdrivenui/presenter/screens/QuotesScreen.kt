@@ -145,21 +145,31 @@ class QuotesScreen : Screen {
                                 // Brand the selection state to match
                                 // DevoStatus's native chip: saffron
                                 // container with maroon label, saffron
-                                // border in both states (lighter when
-                                // unselected — done by alpha on the
-                                // unselected `borderColor` slot can't
-                                // be expressed yet, so we use a single
-                                // Tertiary border).
+                                // border in both states.
                                 selectedContainerColor = SchemaColor.Tertiary,
                                 selectedLabelColor = SchemaColor.Primary,
                                 borderColor = SchemaColor.Tertiary,
                                 selectedBorderColor = SchemaColor.Tertiary,
+                                // Pill shape — native used CircleShape on
+                                // the M3 32dp-tall chip, so a corner
+                                // radius >= height/2 collapses to a pill.
+                                // 50dp comfortably overshoots.
+                                cornerRadiusDp = 50,
                             ) {
                                 if (selectedFilter == value) {
+                                    // Leading check on selected chip,
+                                    // tinted with the same SchemaColor
+                                    // the M3 chip uses for its label so
+                                    // the icon contrasts against the
+                                    // saffron fill the same way the text
+                                    // does. The host now always renders
+                                    // guest-supplied leadingIcons (no
+                                    // longer suppressed when selected),
+                                    // so this glyph actually paints.
                                     Icon(
                                         name = SchemaIconName.Check,
-                                        tint = SchemaColor.OnPrimary,
-                                        modifier = Modifier.size(16, 16),
+                                        tint = SchemaColor.Primary,
+                                        modifier = Modifier.size(18, 18),
                                     )
                                 }
                             }
@@ -322,18 +332,25 @@ private fun QuoteCard(quote: Quote, onClick: () -> Unit) {
                 }
             }
 
-            // Action bar — saffron tint @ 10% alpha, centered Row with
-            // brush icon + "Tap to create status" in bold saffron.
+            // Action bar — saffron tint matching native's
+            // `Saffron.copy(alpha = 0.1f)`. Pinned to 40dp tall so it
+            // anchors the card's bottom edge (otherwise the Card's
+            // intrinsic height ends at the Row's content + padding,
+            // which leaves a thin white sliver visible between the
+            // action bar and the card's rounded-bottom border in some
+            // resolutions). 0.12 nudges saturation up slightly so the
+            // tint reads as "intentional" rather than a render artifact
+            // at common pixel densities.
             Row(
                 horizontalArrangement = SchemaArrangement.Center,
                 verticalAlignment = SchemaVerticalAlignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(40)
                     .background(
                         color = SchemaColor.Tertiary,
-                        alpha = 0.1,
-                    )
-                    .padding(0, 10, 0, 10),
+                        alpha = 0.12,
+                    ),
             ) {
                 Icon(
                     name = SchemaIconName.Brush,

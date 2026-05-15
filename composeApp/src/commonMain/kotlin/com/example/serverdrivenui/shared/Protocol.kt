@@ -1702,6 +1702,7 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     private var selectedLabelColor by mutableStateOf(SchemaColor.OnSecondaryContainer)
     private var borderColor by mutableStateOf(SchemaColor.OutlineVariant)
     private var selectedBorderColor by mutableStateOf(SchemaColor.Transparent)
+    private var cornerRadiusDp by mutableStateOf(8)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1734,13 +1735,21 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
-            // M3 renders a check glyph when selected; surrender the
-            // leadingIcon slot in that branch so we don't stack two icons.
-            leadingIcon = if (hasIcon && !selected) {
+            // Always pass through whatever leadingIcon the guest sent —
+            // the guest is in control of "should I show a glyph here?".
+            // Previously we suppressed it when `selected` so we wouldn't
+            // stack two icons next to M3's auto-rendered check; but M3's
+            // auto-check only fires when leadingIcon is null AND
+            // selected, and the guest sometimes wants to render its own
+            // explicit check (e.g. for a custom tint or icon). Trusting
+            // the guest is simpler and matches DevoStatus's native
+            // chip-with-explicit-check pattern.
+            leadingIcon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
             colors = colors,
             border = border,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(cornerRadiusDp.dp),
             modifier = composed,
         )
     }
@@ -1760,6 +1769,9 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     }
     override fun selectedBorderColor(selectedBorderColor: SchemaColor) {
         this.selectedBorderColor = selectedBorderColor
+    }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
     }
 }
 

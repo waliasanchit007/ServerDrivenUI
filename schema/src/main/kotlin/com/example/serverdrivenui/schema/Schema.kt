@@ -722,6 +722,14 @@ data class FilterChip(
      * chip with matching outline" look.
      */
     @Property(8) val selectedBorderColor: SchemaColor = SchemaColor.Transparent,
+    /**
+     * Corner radius in dp. Wire-additive (Property 9, default 8). M3's
+     * filter chip default is `MaterialTheme.shapes.small` which
+     * approximates 8dp; pass a large value (>= chip height / 2 — 50
+     * comfortably overshoots the M3 32dp height) for a fully pill /
+     * circular shape matching native chip styling.
+     */
+    @Property(9) val cornerRadiusDp: Int = 8,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
