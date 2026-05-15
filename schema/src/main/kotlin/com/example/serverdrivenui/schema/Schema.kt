@@ -470,6 +470,26 @@ data class SegmentedButtonRow(
 @Widget(51)
 data class Card(
     @Property(1) val onClick: (() -> Unit)?,
+    /**
+     * Container fill color. Wire-additive (Property 2, default Surface).
+     * Material3's `Card` defaults to `surfaceContainerHighest` which in
+     * many themes is a tinted variant of Surface — too dark when the
+     * integrator wanted a clean white card. Use [SchemaColor.Background]
+     * or [SchemaColor.Surface] for a white card matching native
+     * `containerColor = Color.White` semantics.
+     *
+     * Note: M3 `Card` already rounds and clips its content; sibling
+     * [Border] / [Clip] modifiers still work for additional outline /
+     * corner control beyond the M3 defaults.
+     */
+    @Property(2) val containerColor: SchemaColor = SchemaColor.Surface,
+    /**
+     * Text/icon color inside the card. Wire-additive (Property 3,
+     * default OnSurface). Material3's `Card` derives this from
+     * `containerColor` but doesn't always give the right contrast on
+     * custom containerColors — this lets the guest pick explicitly.
+     */
+    @Property(3) val contentColor: SchemaColor = SchemaColor.OnSurface,
     @Children(1) val content: () -> Unit,
 )
 

@@ -1144,6 +1144,12 @@ class CmpSegmentedButtonRow :
 class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive properties (Schema Properties 2-3). Defaults match
+    // M3's CardDefaults.cardColors() resolution — Surface + OnSurface
+    // give a clean white card on a default Material theme, vs the
+    // surfaceContainerHighest tint Material picks by default.
+    private var containerColor by mutableStateOf(SchemaColor.Surface)
+    private var contentColor by mutableStateOf(SchemaColor.OnSurface)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1153,18 +1159,35 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = containerColor.toComposeColor(),
+            contentColor = contentColor.toComposeColor(),
+        )
         if (cb != null) {
-            androidx.compose.material3.Card(onClick = { cb() }, modifier = composed) {
+            androidx.compose.material3.Card(
+                onClick = { cb() },
+                modifier = composed,
+                colors = colors,
+            ) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.Card(modifier = composed) {
+            androidx.compose.material3.Card(
+                modifier = composed,
+                colors = colors,
+            ) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun containerColor(containerColor: SchemaColor) {
+        this.containerColor = containerColor
+    }
+    override fun contentColor(contentColor: SchemaColor) {
+        this.contentColor = contentColor
+    }
 }
 
 class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<CmpRender> {

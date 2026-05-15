@@ -248,6 +248,12 @@ class QuotesScreen : Screen {
 private fun QuoteCard(quote: Quote, onClick: () -> Unit) {
     Card(
         onClick = onClick,
+        // Explicitly request a clean white container — M3's default
+        // surfaceContainerHighest gives a pale lavender tint in DevoStatus's
+        // theme, which doesn't match native's `Color.White`. Background
+        // slot is conventionally the integrator's "true white" in M3.
+        containerColor = SchemaColor.Background,
+        contentColor = SchemaColor.OnBackground,
         modifier = Modifier
             .fillMaxWidth()
             // Rounded saffron-tinted outline matching native:
