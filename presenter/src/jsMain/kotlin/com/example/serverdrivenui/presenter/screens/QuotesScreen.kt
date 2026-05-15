@@ -13,9 +13,13 @@ import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.shared.HostQuotesObserver
 import com.example.serverdrivenui.shared.Quote
 import com.example.serverdrivenui.schema.SchemaArrangement
+import com.example.serverdrivenui.schema.SchemaBoxAlignment
 import com.example.serverdrivenui.schema.SchemaColor
+import com.example.serverdrivenui.schema.SchemaFontFamily
+import com.example.serverdrivenui.schema.SchemaFontWeight
 import com.example.serverdrivenui.schema.SchemaHorizontalAlignment
 import com.example.serverdrivenui.schema.SchemaIconName
+import com.example.serverdrivenui.schema.SchemaTextAlign
 import com.example.serverdrivenui.schema.SchemaTextStyle
 import com.example.serverdrivenui.schema.SchemaVerticalAlignment
 import com.example.serverdrivenui.schema.compose.Box
@@ -29,9 +33,14 @@ import com.example.serverdrivenui.schema.compose.LazyItem
 import com.example.serverdrivenui.schema.compose.LazyRow
 import com.example.serverdrivenui.schema.compose.Row
 import com.example.serverdrivenui.schema.compose.Text
+import com.example.serverdrivenui.schema.compose.alpha
+import com.example.serverdrivenui.schema.compose.background
+import com.example.serverdrivenui.schema.compose.border
+import com.example.serverdrivenui.schema.compose.clip
 import com.example.serverdrivenui.schema.compose.fillMaxSize
 import com.example.serverdrivenui.schema.compose.fillMaxWidth
 import com.example.serverdrivenui.schema.compose.height
+import com.example.serverdrivenui.schema.compose.offset
 import com.example.serverdrivenui.schema.compose.padding
 import com.example.serverdrivenui.schema.compose.size
 import dev.konduit.Modifier
@@ -213,67 +222,115 @@ class QuotesScreen : Screen {
 }
 
 /**
- * Single quote card. Visually matches DevoStatus's original
- * `FeedQuoteCard` Compose code: rounded-corner card, decorative
- * FormatQuote icon top-right, centered quote text, and a "Tap to
- * create status" action row at the bottom.
+ * Single quote card — full visual parity with DevoStatus's original
+ * native `FeedQuoteCard`:
+ *
+ *   ┌──────────────────────────────────────────┐
+ *   │ rounded white card, faint tertiary border │
+ *   │   ┌─────────────── faded "  ┐ overhang ──┤
+ *   │   │            watermark   │              │
+ *   │   │   "Quote text in serif bold maroon,   │
+ *   │   │              centered."               │
+ *   │   └───────────────────────┘              │
+ *   ├───────────────────────────────────────────┤
+ *   │ ░  brush   Tap to create status   tinted ░│
+ *   └───────────────────────────────────────────┘
+ *
+ * Uses the schema features added in upstream commit b62d366:
+ *  - Modifier.alpha(0.1)        — watermark fade
+ *  - Modifier.offset(12, -12)   — corner overhang
+ *  - Modifier.border(...)       — rounded saffron stroke
+ *  - Modifier.background(c, r, a) — tinted action-bar fill
+ *  - Box(contentAlignment=TopEnd) — watermark anchor
+ *  - Text(textAlign+fontWeight+fontFamily) — serif bold center
  */
 @Composable
 private fun QuoteCard(quote: Quote, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Rounded saffron-tinted outline matching native:
+            // `BorderStroke(1.dp, Saffron.copy(alpha=0.2f))`. SchemaColor.Tertiary
+            // is the slot the integrator's MaterialTheme maps to Saffron.
+            .border(
+                thicknessDp = 1,
+                color = SchemaColor.Tertiary,
+                cornerRadiusDp = 16,
+            )
+            // Clip rounds the entire card content so the watermark
+            // overhang is clipped to the card edge instead of bleeding
+            // outside the M3 Card's shape.
+            .clip(cornerRadiusDp = 16),
     ) {
         Column(
             verticalArrangement = SchemaArrangement.Start,
             horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            // Top accent: a small quote glyph centered above the text.
-            Row(
-                horizontalArrangement = SchemaArrangement.Center,
-                verticalAlignment = SchemaVerticalAlignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(0, 20, 0, 4),
+            // Top section: watermark + centered quote text in a single
+            // Box, mirroring the native FeedQuoteCard's layered Box.
+            Box(
+                onClick = null,
+                contentAlignment = SchemaBoxAlignment.TopEnd,
+                modifier = Modifier.fillMaxWidth().padding(24, 24, 24, 24),
             ) {
+                // Decorative watermark icon — TopEnd anchored, 64dp,
+                // saffron @ 10% alpha, nudged out 12dp toward the
+                // corner for the overhang look.
                 Icon(
                     name = SchemaIconName.FormatQuote,
                     tint = SchemaColor.Tertiary,
-                    modifier = Modifier.size(28, 28),
+                    modifier = Modifier
+                        .size(64, 64)
+                        .alpha(0.1)
+                        .offset(x = 12, y = -12),
                 )
+                // Centered quote text. Serif bold maroon, exact match
+                // with the native FeedQuoteCard's headlineSmall.copy(...).
+                Column(
+                    verticalArrangement = SchemaArrangement.Center,
+                    horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "\"${quote.text}\"",
+                        style = SchemaTextStyle.HeadlineSmall,
+                        color = SchemaColor.Primary,
+                        textAlign = SchemaTextAlign.Center,
+                        fontWeight = SchemaFontWeight.Bold,
+                        fontFamily = SchemaFontFamily.Serif,
+                    )
+                }
             }
 
-            // Quote text — centered, generous horizontal padding.
-            Column(
-                verticalArrangement = SchemaArrangement.Center,
-                horizontalAlignment = SchemaHorizontalAlignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().padding(24, 0, 24, 20),
-            ) {
-                Text(
-                    text = quote.text,
-                    style = SchemaTextStyle.HeadlineSmall,
-                    color = SchemaColor.Primary,
-                )
-            }
-
-            // Action bar
+            // Action bar — saffron tint @ 10% alpha, centered Row with
+            // brush icon + "Tap to create status" in bold saffron.
             Row(
                 horizontalArrangement = SchemaArrangement.Center,
                 verticalAlignment = SchemaVerticalAlignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().height(40).padding(0, 8, 0, 8),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = SchemaColor.Tertiary,
+                        alpha = 0.1,
+                    )
+                    .padding(0, 10, 0, 10),
             ) {
                 Icon(
                     name = SchemaIconName.Brush,
-                    tint = SchemaColor.Secondary,
+                    tint = SchemaColor.Tertiary,
                     modifier = Modifier.size(16, 16),
                 )
                 Box(
                     onClick = null,
-                    modifier = Modifier.size(8, 0),
+                    modifier = Modifier.size(4, 0),
                 ) {}
                 Text(
                     text = "Tap to create status",
-                    style = SchemaTextStyle.LabelMedium,
-                    color = SchemaColor.Secondary,
+                    style = SchemaTextStyle.LabelSmall,
+                    color = SchemaColor.Tertiary,
+                    fontWeight = SchemaFontWeight.Bold,
                 )
             }
         }

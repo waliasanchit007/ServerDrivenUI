@@ -235,6 +235,10 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
     // 0 = rectangular fill (the original behavior); >0 = rounded fill of
     // that radius. Same additive-with-default pattern as Border.
     var bgCornerRadiusDp: Int = 0
+    // Background alpha — added in the schema-features follow-up. 1.0 =
+    // fully opaque (preserves the pre-extension behavior). Values in
+    // [0.0, 1.0] tint the color; Compose's Color.copy clamps internally.
+    var bgAlpha: Double = 1.0
     // Border state hoisted same way as Background — `toComposeColor()`
     // is @Composable and can't run inside the (non-composable)
     // forEachUnscoped lambda. Latest Border in the chain wins (matches
@@ -262,6 +266,7 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MBackground -> {
                 bgSchemaColor = el.color
                 bgCornerRadiusDp = el.cornerRadiusDp
+                bgAlpha = el.alpha
             }
             is MAlpha -> m = m.alpha(el.value.toFloat())
             is MWeight -> { /* applied by parent Row/Column */ }
@@ -293,8 +298,9 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
     if (bg != null) {
         // RoundedCornerShape(0.dp) ≡ RectangleShape — single code path,
         // no branch needed for the rectangular case (same trick as Border).
+        // bgAlpha = 1.0 (the default) leaves Color.copy a no-op tint.
         m = m.background(
-            color = bg.toComposeColor(),
+            color = bg.toComposeColor().copy(alpha = bgAlpha.toFloat()),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(bgCornerRadiusDp.dp),
         )
     }

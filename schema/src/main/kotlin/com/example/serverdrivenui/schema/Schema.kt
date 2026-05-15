@@ -1139,7 +1139,28 @@ data class Height(val value: Int)  // dp
  * additive: existing manifests serialize the default and round-trip cleanly.
  */
 @Modifier(5)
-data class Background(val color: SchemaColor, val cornerRadiusDp: Int = 0)
+data class Background(
+    val color: SchemaColor,
+    val cornerRadiusDp: Int = 0,
+    /**
+     * Alpha multiplier for the [color], in `[0.0, 1.0]`. Default 1.0 =
+     * fully opaque (the previous behavior). Common values: 0.1 for a
+     * faint tinted action bar (`Saffron @ 10%`), 0.2 for a subtle card
+     * border tint, 0.5 for a translucent overlay.
+     *
+     * Wire-additive (Background param 3). Older payloads decode as
+     * 1.0 (fully opaque). Stay within [0.0, 1.0]; values outside that
+     * range pass through to Compose's `Color.copy(alpha)`, which
+     * clamps internally.
+     *
+     * Why on Background rather than as a separate Alpha-on-color
+     * modifier: a "tinted background" is the overwhelmingly common
+     * case (M3's surface variants, action bars, etc.), and mixing
+     * `Modifier.alpha()` with `Modifier.background()` dims the
+     * children too — not what the integrator wants here.
+     */
+    val alpha: Double = 1.0,
+)
 
 /** Flex weight along the parent's main axis. Only meaningful in Row/Column. */
 @Modifier(6)
