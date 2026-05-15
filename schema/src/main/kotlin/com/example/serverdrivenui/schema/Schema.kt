@@ -107,6 +107,8 @@ import dev.konduit.schema.Widget
         // Tier 3 — Pickers (IDs 170–171)
         DatePickerDialog::class,
         TimePickerDialog::class,
+        // Tier 3 — Animations (IDs 180+)
+        AnimatedVisibility::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -1243,6 +1245,41 @@ data class TimePickerDialog(
     @Property(3) val is24Hour: Boolean,
     @Property(4) val onConfirm: ((Int) -> Unit)?,
     @Property(5) val onDismissRequest: () -> Unit,
+)
+
+// ============================================================================
+// Tier 3 — Animations (IDs 180–189)
+//
+// AnimatedVisibility is the foundational primitive — show/hide a subtree
+// with a tween. The schema's enter/exit transition is a curated enum
+// (SchemaTransition) rather than a free-form spec because:
+//   - Compose's EnterTransition / ExitTransition factories are not
+//     serializable (lambdas, animation specs, internal state)
+//   - 80% of usage is one of the named families (fade, slide, scale,
+//     expand, fade-and-slide combos)
+//
+// Duration is exposed as a single Int millis. Future versions may add
+// per-property duration or easing curves; today the host applies a
+// shared `tween(durationMillis)` to all involved transitions.
+// ============================================================================
+
+/**
+ * Animate the presence of [content]. When [visible] flips false→true
+ * the host runs [enterTransition] over [durationMillis]; flipping
+ * true→false runs [exitTransition].
+ *
+ * `SchemaTransition.None` for either side disables that direction's
+ * animation (the content snaps in/out instantly). Use for content
+ * that should appear without fanfare (e.g. error banners) but exit
+ * with a slide.
+ */
+@Widget(180)
+data class AnimatedVisibility(
+    @Property(1) val visible: Boolean,
+    @Property(2) val enterTransition: SchemaTransition = SchemaTransition.Fade,
+    @Property(3) val exitTransition: SchemaTransition = SchemaTransition.Fade,
+    @Property(4) val durationMillis: Int = 300,
+    @Children(1) val content: () -> Unit,
 )
 
 // ============================================================================

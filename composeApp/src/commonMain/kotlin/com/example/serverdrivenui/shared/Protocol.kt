@@ -2923,6 +2923,97 @@ class CmpPagerIndicator :
 }
 
 // ============================================================================
+// Tier 3 — Animations
+// ============================================================================
+
+/**
+ * Maps a [SchemaTransition] enum to a Compose [EnterTransition] +
+ * [ExitTransition] pair using a single shared `tween(durationMillis)`
+ * spec. Returns `null`/`null` for [SchemaTransition.None] so the host
+ * can pass `EnterTransition.None` / `ExitTransition.None` to disable
+ * the animation on that side without paying for an animation-system
+ * snapshot.
+ */
+@Composable
+private fun SchemaTransition.toEnterTransition(
+    durationMillis: Int,
+): androidx.compose.animation.EnterTransition {
+    val spec = androidx.compose.animation.core.tween<Float>(durationMillis)
+    val ispec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(durationMillis)
+    val sizespec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntSize>(durationMillis)
+    return when (this) {
+        SchemaTransition.None -> androidx.compose.animation.EnterTransition.None
+        SchemaTransition.Fade -> androidx.compose.animation.fadeIn(spec)
+        SchemaTransition.SlideVertical -> androidx.compose.animation.slideInVertically(ispec)
+        SchemaTransition.SlideHorizontal -> androidx.compose.animation.slideInHorizontally(ispec)
+        SchemaTransition.Expand -> androidx.compose.animation.expandIn(sizespec)
+        SchemaTransition.Scale -> androidx.compose.animation.scaleIn(spec)
+        SchemaTransition.FadeAndSlide -> androidx.compose.animation.fadeIn(spec) +
+            androidx.compose.animation.slideInVertically(ispec)
+        SchemaTransition.FadeAndScale -> androidx.compose.animation.fadeIn(spec) +
+            androidx.compose.animation.scaleIn(spec)
+    }
+}
+
+@Composable
+private fun SchemaTransition.toExitTransition(
+    durationMillis: Int,
+): androidx.compose.animation.ExitTransition {
+    val spec = androidx.compose.animation.core.tween<Float>(durationMillis)
+    val ispec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(durationMillis)
+    val sizespec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntSize>(durationMillis)
+    return when (this) {
+        SchemaTransition.None -> androidx.compose.animation.ExitTransition.None
+        SchemaTransition.Fade -> androidx.compose.animation.fadeOut(spec)
+        SchemaTransition.SlideVertical -> androidx.compose.animation.slideOutVertically(ispec)
+        SchemaTransition.SlideHorizontal -> androidx.compose.animation.slideOutHorizontally(ispec)
+        SchemaTransition.Expand -> androidx.compose.animation.shrinkOut(sizespec)
+        SchemaTransition.Scale -> androidx.compose.animation.scaleOut(spec)
+        SchemaTransition.FadeAndSlide -> androidx.compose.animation.fadeOut(spec) +
+            androidx.compose.animation.slideOutVertically(ispec)
+        SchemaTransition.FadeAndScale -> androidx.compose.animation.fadeOut(spec) +
+            androidx.compose.animation.scaleOut(spec)
+    }
+}
+
+class CmpAnimatedVisibility :
+    com.example.serverdrivenui.schema.widget.AnimatedVisibility<CmpRender> {
+    private val mod = StateModifier()
+    private var visible by mutableStateOf(false)
+    private var enterTransition by mutableStateOf(SchemaTransition.Fade)
+    private var exitTransition by mutableStateOf(SchemaTransition.Fade)
+    private var durationMillis by mutableStateOf(300)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = enterTransition.toEnterTransition(durationMillis),
+            exit = exitTransition.toExitTransition(durationMillis),
+            modifier = composed,
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun visible(visible: Boolean) { this.visible = visible }
+    override fun enterTransition(enterTransition: SchemaTransition) {
+        this.enterTransition = enterTransition
+    }
+    override fun exitTransition(exitTransition: SchemaTransition) {
+        this.exitTransition = exitTransition
+    }
+    override fun durationMillis(durationMillis: Int) {
+        this.durationMillis = durationMillis
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -3109,6 +3200,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun NavigationDrawerItem() = CmpNavigationDrawerItem()
     override fun DatePickerDialog() = CmpDatePickerDialog()
     override fun TimePickerDialog() = CmpTimePickerDialog()
+    override fun AnimatedVisibility() = CmpAnimatedVisibility()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 

@@ -123,3 +123,36 @@ enum class SchemaBoxAlignment {
     CenterStart, Center, CenterEnd,
     BottomStart, BottomCenter, BottomEnd,
 }
+
+/**
+ * Enter/exit transition family for AnimatedVisibility.
+ *
+ * Each entry maps to one or a combination of Compose's
+ * EnterTransition / ExitTransition factories:
+ *
+ *   None              → EnterTransition.None / ExitTransition.None  (instant swap)
+ *   Fade              → fadeIn() / fadeOut()
+ *   SlideVertical     → slideInVertically() / slideOutVertically()  (from above)
+ *   SlideHorizontal   → slideInHorizontally() / slideOutHorizontally() (from start)
+ *   Expand            → expandIn() / shrinkOut()
+ *   Scale             → scaleIn() / scaleOut()
+ *   FadeAndSlide      → fadeIn() + slideInVertically() / fadeOut() + slideOutVertically()
+ *   FadeAndScale      → fadeIn() + scaleIn() / fadeOut() + scaleOut()
+ *
+ * Slide direction is fixed at the widget level (vertical = from above
+ * for enter / to below for exit; horizontal = from start for enter / to
+ * end for exit) because parameterizing direction would require either a
+ * companion enum or a packed Int — not worth the wire complexity for
+ * the 80% case. Use [None] for "render immediately, no animation".
+ */
+@Serializable
+enum class SchemaTransition {
+    None,
+    Fade,
+    SlideVertical,
+    SlideHorizontal,
+    Expand,
+    Scale,
+    FadeAndSlide,
+    FadeAndScale,
+}
