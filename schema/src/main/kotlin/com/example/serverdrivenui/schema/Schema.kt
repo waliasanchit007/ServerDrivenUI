@@ -142,6 +142,8 @@ import dev.konduit.schema.Widget
         SystemBarsPadding::class,
         DisplayCutoutPadding::class,
         SafeContentPadding::class,
+        // Tag 25 — brand-color escape hatch (ARGB literal).
+        CustomBackground::class,
     ],
 )
 interface SduiSchema
@@ -295,6 +297,18 @@ data class Text(
      * serialize. Mapping back: `value / 100.0`.
      */
     @Property(10) val letterSpacingHundredthsSp: Int = 0,
+    /**
+     * Custom text color as a packed ARGB Long. `null` (the default,
+     * wire-additive) means "use the [color] theme slot". When non-null,
+     * the raw color wins — bypasses [SchemaColor] entirely.
+     *
+     * Format: `0xAARRGGBB` (alpha is the high byte). The host hands
+     * this to `Color(argb.toInt())`. Wire-additive (Property 11).
+     *
+     * Use case: brand text colors that aren't in the M3 theme palette
+     * (e.g. DevoStatus's PrimaryMaroon `0xFF7A1F1F`).
+     */
+    @Property(11) val customColorArgb: Long? = null,
 )
 
 /** Display an image fetched from a URL. */
@@ -309,6 +323,12 @@ data class AsyncImage(
 data class Icon(
     @Property(1) val name: SchemaIconName,
     @Property(2) val tint: SchemaColor,
+    /**
+     * Custom tint color as a packed ARGB Long. `null` (the default,
+     * wire-additive) → use the [tint] theme slot. Non-null wins.
+     * See [Text.customColorArgb] for the format.
+     */
+    @Property(3) val customTintArgb: Long? = null,
 )
 
 // ============================================================================
@@ -549,6 +569,16 @@ data class Card(
     @Property(3) val contentColor: SchemaColor = SchemaColor.OnSurface,
     /** See [Button.cornerRadiusDp]. `-1` = M3 default (~12dp for Card). */
     @Property(4) val cornerRadiusDp: Int = -1,
+    /**
+     * Custom container color as packed ARGB. `null` → use [containerColor].
+     * See [Text.customColorArgb] for format. Wire-additive (Property 5).
+     */
+    @Property(5) val customContainerColorArgb: Long? = null,
+    /**
+     * Custom content color as packed ARGB. `null` → use [contentColor].
+     * Wire-additive (Property 6).
+     */
+    @Property(6) val customContentColorArgb: Long? = null,
     @Children(1) val content: () -> Unit,
 )
 
@@ -1454,6 +1484,31 @@ object DisplayCutoutPadding
  */
 @Modifier(24)
 object SafeContentPadding
+
+/**
+ * Solid background fill using a custom ARGB color — escape hatch for
+ * brand colors that don't exist on [SchemaColor]'s M3 theme slots.
+ *
+ * [argb] is a packed Android color int (`0xAARRGGBB`). Example:
+ *   saffron `Color(0xFFFF6F00)` → `argb = 0xFFFF6F00L`.
+ *
+ * [alpha] is an independent multiplier in `[0.0, 1.0]` applied on top
+ * of the alpha bits in [argb]. Pass `1.0` to keep [argb]'s native
+ * alpha intact; pass `0.1` (etc.) to make a translucent tint without
+ * rewriting [argb].
+ *
+ * [cornerRadiusDp] mirrors [Background.cornerRadiusDp].
+ *
+ * Companion to [Background] (which uses theme slots) — same use cases
+ * (action-bar tints, brand-colored containers) when the exact color
+ * isn't on the M3 theme.
+ */
+@Modifier(25)
+data class CustomBackground(
+    val argb: Long,
+    val cornerRadiusDp: Int = 0,
+    val alpha: Double = 1.0,
+)
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/

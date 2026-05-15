@@ -39,6 +39,7 @@ import com.example.serverdrivenui.schema.modifier.Background as MBackground
 import com.example.serverdrivenui.schema.modifier.Border as MBorder
 import com.example.serverdrivenui.schema.modifier.Clip as MClip
 import com.example.serverdrivenui.schema.modifier.ClipCircle as MClipCircle
+import com.example.serverdrivenui.schema.modifier.CustomBackground as MCustomBackground
 import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
@@ -309,6 +310,17 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MSystemBarsPadding -> m = m.systemBarsPadding()
             is MDisplayCutoutPadding -> m = m.displayCutoutPadding()
             is MSafeContentPadding -> m = m.safeContentPadding()
+            // CustomBackground (tag 25) — brand-color escape hatch.
+            // Applied INLINE rather than deferred (the way regular
+            // Background is) because the color comes from a raw ARGB
+            // literal — no theme lookup, no @Composable required, so
+            // we can build the Color synchronously here. `Color()`
+            // takes an Int; the schema's Long widens to fit any ARGB
+            // value but we narrow back via `toInt()`.
+            is MCustomBackground -> m = m.background(
+                color = Color(el.argb.toInt()).copy(alpha = el.alpha.toFloat()),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp),
+            )
         }
     }
     val bg = bgSchemaColor
@@ -527,6 +539,8 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     private var fontSizeSp by mutableStateOf(0)
     private var lineHeightSp by mutableStateOf(0)
     private var letterSpacingHundredthsSp by mutableStateOf(0)
+    // Property 11 — custom text color overlay (brand-color escape hatch).
+    private var customColorArgb by mutableStateOf<Long?>(null)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -557,9 +571,14 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
                 (letterSpacingHundredthsSp / 100.0).sp
             } else androidx.compose.ui.unit.TextUnit.Unspecified,
         )
+        // Custom ARGB overlay wins over the SchemaColor theme slot — the
+        // common pattern is "use Tertiary, BUT for the maroon brand
+        // color, override". A null `customColorArgb` falls through.
+        val effectiveColor = customColorArgb?.let { Color(it.toInt()) }
+            ?: color.toComposeColor()
         ComposeText(
             text = text,
-            color = color.toComposeColor(),
+            color = effectiveColor,
             style = effectiveStyle,
             modifier = composed,
             maxLines = if (maxLines <= 0) Int.MAX_VALUE else maxLines,
@@ -582,6 +601,9 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     override fun lineHeightSp(lineHeightSp: Int) { this.lineHeightSp = lineHeightSp }
     override fun letterSpacingHundredthsSp(letterSpacingHundredthsSp: Int) {
         this.letterSpacingHundredthsSp = letterSpacingHundredthsSp
+    }
+    override fun customColorArgb(customColorArgb: Long?) {
+        this.customColorArgb = customColorArgb
     }
 }
 
@@ -626,6 +648,8 @@ class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
     private val mod = StateModifier()
     private var name by mutableStateOf(SchemaIconName.Star)
     private var tint by mutableStateOf(SchemaColor.OnSurface)
+    // Property 3 — custom tint overlay (brand-color escape hatch).
+    private var customTintArgb by mutableStateOf<Long?>(null)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -633,16 +657,21 @@ class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
+        val effectiveTint = customTintArgb?.let { Color(it.toInt()) }
+            ?: tint.toComposeColor()
         ComposeIcon(
             imageVector = name.toImageVector(),
             contentDescription = name.name,
-            tint = tint.toComposeColor(),
+            tint = effectiveTint,
             modifier = composed,
         )
     }
 
     override fun name(name: SchemaIconName) { this.name = name }
     override fun tint(tint: SchemaColor) { this.tint = tint }
+    override fun customTintArgb(customTintArgb: Long?) {
+        this.customTintArgb = customTintArgb
+    }
 }
 
 // ============================================================================
@@ -1220,6 +1249,10 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     private var containerColor by mutableStateOf(SchemaColor.Surface)
     private var contentColor by mutableStateOf(SchemaColor.OnSurface)
     private var cornerRadiusDp by mutableStateOf(-1)
+    // Properties 5-6 — custom-color overlays. Non-null wins over the
+    // SchemaColor theme slot.
+    private var customContainerColorArgb by mutableStateOf<Long?>(null)
+    private var customContentColorArgb by mutableStateOf<Long?>(null)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1229,9 +1262,13 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val effectiveContainer = customContainerColorArgb?.let { Color(it.toInt()) }
+            ?: containerColor.toComposeColor()
+        val effectiveContent = customContentColorArgb?.let { Color(it.toInt()) }
+            ?: contentColor.toComposeColor()
         val colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = containerColor.toComposeColor(),
-            contentColor = contentColor.toComposeColor(),
+            containerColor = effectiveContainer,
+            contentColor = effectiveContent,
         )
         val shape = shapeFromRadius(cornerRadiusDp)
             ?: androidx.compose.material3.CardDefaults.shape
@@ -1264,6 +1301,12 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     }
     override fun cornerRadiusDp(cornerRadiusDp: Int) {
         this.cornerRadiusDp = cornerRadiusDp
+    }
+    override fun customContainerColorArgb(customContainerColorArgb: Long?) {
+        this.customContainerColorArgb = customContainerColorArgb
+    }
+    override fun customContentColorArgb(customContentColorArgb: Long?) {
+        this.customContentColorArgb = customContentColorArgb
     }
 }
 
@@ -3041,6 +3084,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun SystemBarsPadding(value: CmpRender, modifier: MSystemBarsPadding) {}
     override fun DisplayCutoutPadding(value: CmpRender, modifier: MDisplayCutoutPadding) {}
     override fun SafeContentPadding(value: CmpRender, modifier: MSafeContentPadding) {}
+    override fun CustomBackground(value: CmpRender, modifier: MCustomBackground) {}
 }
 
 // ============================================================================
