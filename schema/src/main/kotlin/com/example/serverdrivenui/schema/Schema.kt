@@ -257,6 +257,36 @@ data class Text(
      * `TextOverflow.Ellipsis`. Wire-additive (Property 7).
      */
     @Property(7) val maxLines: Int = 0,
+    /**
+     * Font size override, in sp. `0` (the default) means "use the size
+     * baked into the chosen [SchemaTextStyle]" (M3's typography scale).
+     * Positive values override — useful for one-off display sizes
+     * ("Hero" headlines bigger than `DisplayLarge`, or compact
+     * timestamps below `LabelSmall`).
+     *
+     * Wire-additive (Property 8). The host treats `0` as a sentinel for
+     * "don't override" so existing payloads stay rendered identically.
+     */
+    @Property(8) val fontSizeSp: Int = 0,
+    /**
+     * Line-height override, in sp. `0` (the default) means "use the
+     * line height baked into the chosen [SchemaTextStyle]" (M3 derives
+     * line height from typography). Positive values override.
+     *
+     * Wire-additive (Property 9). Same `0`-as-sentinel pattern as
+     * [fontSizeSp].
+     */
+    @Property(9) val lineHeightSp: Int = 0,
+    /**
+     * Letter-spacing override, in 0.01-sp units (so `5` = `0.05.sp`).
+     * `0` means "use style default". Wire-additive (Property 10).
+     *
+     * Why hundredths-of-sp instead of a real Double: most CMP M3 type
+     * scales use letter-spacing values like 0.5, 0.25, -0.4 — three
+     * digits of precision is overkill, and an Int wire is cheaper to
+     * serialize. Mapping back: `value / 100.0`.
+     */
+    @Property(10) val letterSpacingHundredthsSp: Int = 0,
 )
 
 /** Display an image fetched from a URL. */

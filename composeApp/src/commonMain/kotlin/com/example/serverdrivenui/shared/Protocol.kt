@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage as CoilAsyncImage
 import dev.konduit.Modifier as KonduitModifier
 import dev.konduit.treehouse.TreehouseApp
@@ -504,6 +505,12 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     private var fontWeight by mutableStateOf(SchemaFontWeight.Normal)
     private var fontFamily by mutableStateOf(SchemaFontFamily.Default)
     private var maxLines by mutableStateOf(0)
+    // Wire-additive Properties 8-10 — typography overrides. `0` is the
+    // "don't override" sentinel for each; positive values win over the
+    // baked style.
+    private var fontSizeSp by mutableStateOf(0)
+    private var lineHeightSp by mutableStateOf(0)
+    private var letterSpacingHundredthsSp by mutableStateOf(0)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -524,6 +531,15 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
             fontWeight = fontWeight.toComposeFontWeight(),
             fontFamily = fontFamily.toComposeFontFamily() ?: baseStyle.fontFamily,
             textAlign = textAlign.toComposeTextAlign(),
+            // Size / line-height / letter-spacing: 0 = preserve baseline.
+            // We use Unspecified in those cases so M3 keeps the M3 value
+            // instead of substituting a literal 0.sp (which would render
+            // invisible glyphs).
+            fontSize = if (fontSizeSp > 0) fontSizeSp.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+            lineHeight = if (lineHeightSp > 0) lineHeightSp.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+            letterSpacing = if (letterSpacingHundredthsSp != 0) {
+                (letterSpacingHundredthsSp / 100.0).sp
+            } else androidx.compose.ui.unit.TextUnit.Unspecified,
         )
         ComposeText(
             text = text,
@@ -546,6 +562,11 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     override fun fontWeight(fontWeight: SchemaFontWeight) { this.fontWeight = fontWeight }
     override fun fontFamily(fontFamily: SchemaFontFamily) { this.fontFamily = fontFamily }
     override fun maxLines(maxLines: Int) { this.maxLines = maxLines }
+    override fun fontSizeSp(fontSizeSp: Int) { this.fontSizeSp = fontSizeSp }
+    override fun lineHeightSp(lineHeightSp: Int) { this.lineHeightSp = lineHeightSp }
+    override fun letterSpacingHundredthsSp(letterSpacingHundredthsSp: Int) {
+        this.letterSpacingHundredthsSp = letterSpacingHundredthsSp
+    }
 }
 
 class CmpAsyncImage : AsyncImage<CmpRender> {
