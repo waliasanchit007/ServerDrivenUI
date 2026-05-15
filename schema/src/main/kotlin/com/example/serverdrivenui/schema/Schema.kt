@@ -134,6 +134,14 @@ import dev.konduit.schema.Widget
         // including the class in `members` is required for codegen to
         // emit the interface + .offset() extension function.
         Offset::class,
+        // Tier 3 window-inset modifiers (tags 19–24) — full safe-area
+        // story for root containers and IME-aware sheets.
+        StatusBarsPadding::class,
+        NavigationBarsPadding::class,
+        ImePadding::class,
+        SystemBarsPadding::class,
+        DisplayCutoutPadding::class,
+        SafeContentPadding::class,
     ],
 )
 interface SduiSchema
@@ -1400,6 +1408,52 @@ data class AspectRatio(val ratio: Double)
  */
 @Modifier(18)
 data class Offset(val x: Int, val y: Int)  // dp; negative allowed
+
+// ============================================================================
+// Window-inset modifiers (tags 19–24) — see the parity-with-Compose plan
+//
+// All six match a Compose Foundation extension 1:1:
+//   StatusBarsPadding       ↔ Modifier.statusBarsPadding()
+//   NavigationBarsPadding   ↔ Modifier.navigationBarsPadding()
+//   ImePadding              ↔ Modifier.imePadding()
+//   SystemBarsPadding       ↔ Modifier.systemBarsPadding()        (status + nav)
+//   DisplayCutoutPadding    ↔ Modifier.displayCutoutPadding()     (notch / curve)
+//   SafeContentPadding      ↔ Modifier.safeContentPadding()       (every inset)
+//
+// Modeling these as modifiers rather than a service is intentional: the
+// integration boilerplate is zero (no zipline.bind on the host), the
+// behavior is correct under config changes (the M3 LocalDensity +
+// WindowInsets pipeline already recomposes when the IME shows / status
+// bar resizes), and the guest API matches native Compose verbatim.
+// ============================================================================
+
+/** Pad by the status-bar inset. Maps to `Modifier.statusBarsPadding()`. */
+@Modifier(19)
+object StatusBarsPadding
+
+/** Pad by the navigation-bar inset. Maps to `Modifier.navigationBarsPadding()`. */
+@Modifier(20)
+object NavigationBarsPadding
+
+/** Pad by the IME (soft-keyboard) inset. Animates with the IME show/hide. */
+@Modifier(21)
+object ImePadding
+
+/** Pad by both status + navigation bars. Maps to `Modifier.systemBarsPadding()`. */
+@Modifier(22)
+object SystemBarsPadding
+
+/** Pad around the display cutout / curved edges. */
+@Modifier(23)
+object DisplayCutoutPadding
+
+/**
+ * Pad by ALL system insets — status bar, navigation bar, IME, display
+ * cutout, and any other unsafe regions. Use on root screen containers
+ * to ensure no content lands under any system overlay.
+ */
+@Modifier(24)
+object SafeContentPadding
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/

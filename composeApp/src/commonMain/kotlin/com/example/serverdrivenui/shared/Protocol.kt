@@ -42,9 +42,15 @@ import com.example.serverdrivenui.schema.modifier.ClipCircle as MClipCircle
 import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
+import com.example.serverdrivenui.schema.modifier.DisplayCutoutPadding as MDisplayCutoutPadding
 import com.example.serverdrivenui.schema.modifier.Height as MHeight
+import com.example.serverdrivenui.schema.modifier.ImePadding as MImePadding
+import com.example.serverdrivenui.schema.modifier.NavigationBarsPadding as MNavigationBarsPadding
 import com.example.serverdrivenui.schema.modifier.Offset as MOffset
 import com.example.serverdrivenui.schema.modifier.Padding as MPadding
+import com.example.serverdrivenui.schema.modifier.SafeContentPadding as MSafeContentPadding
+import com.example.serverdrivenui.schema.modifier.StatusBarsPadding as MStatusBarsPadding
+import com.example.serverdrivenui.schema.modifier.SystemBarsPadding as MSystemBarsPadding
 import com.example.serverdrivenui.schema.modifier.Size as MSize
 import com.example.serverdrivenui.schema.modifier.Weight as MWeight
 import com.example.serverdrivenui.schema.modifier.Width as MWidth
@@ -293,6 +299,16 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             // overhang" case); the guest controls order by where it
             // chains .offset(...).
             is MOffset -> m = m.offset(x = el.x.dp, y = el.y.dp)
+            // Window-inset modifiers (tags 19–24). Each maps 1:1 to its
+            // Compose Foundation extension; Compose's WindowInsets
+            // pipeline handles density + animation (IME show/hide) so
+            // we get correct behavior for free.
+            is MStatusBarsPadding -> m = m.statusBarsPadding()
+            is MNavigationBarsPadding -> m = m.navigationBarsPadding()
+            is MImePadding -> m = m.imePadding()
+            is MSystemBarsPadding -> m = m.systemBarsPadding()
+            is MDisplayCutoutPadding -> m = m.displayCutoutPadding()
+            is MSafeContentPadding -> m = m.safeContentPadding()
         }
     }
     val bg = bgSchemaColor
@@ -3018,6 +3034,13 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     // Tier 3 modifier addition (tag 18). No-op factory callback — actual
     // application happens via applyToCompose reading from the chain.
     override fun Offset(value: CmpRender, modifier: MOffset) {}
+    // Window-inset modifiers (tags 19–24). Same no-op pattern.
+    override fun StatusBarsPadding(value: CmpRender, modifier: MStatusBarsPadding) {}
+    override fun NavigationBarsPadding(value: CmpRender, modifier: MNavigationBarsPadding) {}
+    override fun ImePadding(value: CmpRender, modifier: MImePadding) {}
+    override fun SystemBarsPadding(value: CmpRender, modifier: MSystemBarsPadding) {}
+    override fun DisplayCutoutPadding(value: CmpRender, modifier: MDisplayCutoutPadding) {}
+    override fun SafeContentPadding(value: CmpRender, modifier: MSafeContentPadding) {}
 }
 
 // ============================================================================
