@@ -346,97 +346,84 @@ threading bug rather than a wiring bug.
 
 ---
 
-## 9. `lateinit var` services inside `bindServices` silently skip binding on 2nd `TreehouseApp` mount
+## 9. ~~`lateinit var` services inside `bindServices` silently skip binding on 2nd `TreehouseApp` mount~~ — NOT a Konduit bug. Root cause: integrator's `remember(...)` keying on unstable lambdas.
 
-**Severity:** high (silent failure on the second composition).
-**Status:** root cause unpinned — DevoStatus reverted to `val` pattern.
+**Severity:** high when present (silent failure of host-side service
+binding).
+**Status:** root cause PINNED — this was never a Konduit bug. The fix
+lives entirely in the integrator's Composable.
 
-**Symptom.** A `TreehouseApp.Spec` declares a service as
-`private lateinit var fooService: FooService` and constructs it inside
-`bindServices` so the construction can grab
-`treehouseApp.dispatchers.zipline` (the documented pattern for gotcha
-#12). The first mount works fine — full `bindServices` log trail
-fires, all services bind, the guest's `take<>` proxies are healthy.
+**The real story.** When this gotcha was first observed, every recompo-
+sition was creating a new `TreehouseApp` instance, and the "second
+mount" with the lateinit-var pattern silently dropped service binding.
+Both directions — "Konduit is caching" and "lateinit var inside
+bindServices is bad" — were hypotheses; both were wrong.
 
-The SECOND mount (triggered by a `remember(...)` key change in the
-Composable wrapping `TreehouseContent`) silently fails:
+Actual root cause: the integrator's Composable held the TreehouseApp
+in a `remember(activity, quotesSource, onQuoteSelected, quotesFlow) {
+createTreehouseApp(...) }`. `quotesSource` and `onQuoteSelected` were
+anonymous lambdas at the call site, which means they got a new
+identity on every recomposition. `remember`'s key list saw "new keys"
+and invalidated, calling the factory block again — building a brand
+new TreehouseApp with a brand new Spec. The OLD TreehouseApp was
+still alive (no one closed it) and shared the same `appScope` and
+`manifestUrlFlow`. The two specs raced for the Zipline runtime; the
+later spec's bindServices either no-op'd or its log statements went
+to a thread whose stdout never made it to logcat.
 
-  - Guest's `take<FooService>("foo")` returns a proxy (Zipline is
-    lazy / deferred).
-  - First call to that proxy throws
-    `"no such service (service closed?)"` listing console + snackbar
-    as the only host services bound (no `foo`).
-  - Host-side `Log.d` calls inside `bindServices` produce **zero**
-    log output for the second mount — not even the entry log line.
-    bindServices apparently never runs (or its logs don't reach
-    logcat).
-
-**Reproduce.**
+**The fix (integrator-side).** Make the `remember` key list stable by
+wrapping unstable lambdas in `rememberUpdatedState`, then pass thin
+adapter lambdas (declared once inside `remember`) that delegate to the
+always-current State:
 
 ```kotlin
 @Composable
-fun MyScreen() {
-    val treehouseApp = remember(activity, sourceLambda, callbackLambda) {
-        createTreehouseApp(...)   // ← lambda keys change every recomposition
+fun MyScreen(
+    sourceLambda: (Filter) -> Data,         // unstable identity per recomposition
+    callbackLambda: (Result) -> Unit,       // same
+    stableFlow: Flow<…>,                    // stable (caller used remember)
+) {
+    val currentSource by rememberUpdatedState(sourceLambda)
+    val currentCallback by rememberUpdatedState(callbackLambda)
+    val treehouseApp = remember(activity, stableFlow) {           // ← stable keys only
+        createTreehouseApp(
+            source = { filter -> currentSource(filter) },          // ← stable adapter
+            callback = { result -> currentCallback(result) },      // ← stable adapter
+            flow = stableFlow,
+        )
     }
-    TreehouseContent(treehouseApp, ...)
-}
-
-// In the Spec:
-private lateinit var fooService: FooService
-
-override suspend fun bindServices(treehouseApp, zipline) {
-    Log.d(TAG, "binding starts")              // ← fires on mount 1, NOT on mount 2
-    fooService = FooService(scope, treehouseApp.dispatchers.zipline)
-    zipline.bind<FooService>("foo", fooService)
+    // … TreehouseContent(treehouseApp, …)
 }
 ```
 
-Trigger a recomposition (tap something, navigate, anything that
-remembers different lambda identities). Mount 2 has the bug.
+Net effect: exactly **one** `TreehouseApp` per Composable lifetime,
+even across hundreds of recompositions. The lateinit-var-in-bindServices
+pattern (per gotcha #12 outbound dispatch) then works fine — verified
+on DevoStatus commit `<bump>` after the fix.
 
-Empirically reproduced on DevoStatus's `KonduitQuotesScreen` at
-DevoStatus commit `3d1859c`. Reverted in `95b8919` to the property-init
-`val` pattern.
+**Why this is gotcha-list-worthy even though it's not a Konduit bug.**
+The two related gotchas (lateinit-var-in-bindServices for #12 outbound
+dispatch + unstable remember keys for screen wiring) form a pair where
+either alone is fine but TOGETHER they create a silent failure mode
+that's nearly impossible to debug from logs. New integrators following
+RealHostSnackbar's lateinit-var pattern get tripped if they also keyed
+their `remember` on unstable lambdas. The right fix is documenting the
+pairing, not changing the pattern.
 
-**Workaround.** Construct services at `val` property-init time:
+**Where Konduit could help (still worth doing).**
 
-```kotlin
-// instead of:
-private lateinit var fooService: FooService
-// inside bindServices:
-fooService = FooService(scope, treehouseApp.dispatchers.zipline)
-
-// use:
-private val fooService = FooService(scope)   // no ziplineDispatcher here
-zipline.bind<FooService>("foo", fooService)
-```
-
-If the service legitimately needs `treehouseApp.dispatchers.zipline`,
-make the parameter nullable + default-null and accept that outbound
-proxy calls won't be Zipline-thread-confined (works on Android, will
-hit gotcha #12 on iOS K/N).
-
-**Hypotheses (unverified).**
-
-1. Konduit caches `TreehouseApp` state by `Spec.name` and bypasses
-   `bindServices` on the second instance with the same name (would
-   explain the missing log lines).
-2. The new service construction inside `bindServices` throws or
-   suspends in a way that aborts the binding sequence (but console +
-   snackbar always bind successfully, which contradicts a
-   prefix-failure hypothesis).
-3. A Kotlin property-init-order subtlety: a `lateinit var` field that
-   gets read before assignment during another property's initializer
-   could be the trigger (the Spec also has `private val quoteNavigator
-   = RealHostQuoteNavigator(...)` initialized after `quotesProvider`).
-
-**Upstream fix.** Investigate why mount 2 doesn't log bindServices.
-If the fix is "always run bindServices on every TreehouseApp
-construction," document that in `USAGE.md` Step 2. If the fix is
-"caching by name is intentional, lateinit var inside is a footgun,"
-document THAT in the same place as gotcha #6 (strong-ref discipline)
-— the two combine for a really nasty silent-failure mode.
+1. **`TreehouseApp.Spec.bindServices` log instrumentation.** When an
+   integrator's bindServices is called the second time on the same
+   process, Konduit could detect it (or detect a previous-Spec leak
+   in the same appScope) and log a warning. Right now the failure is
+   diagnostically silent.
+2. **`USAGE.md` Step 2 callout.** Add a "remember stability"
+   subsection right after the Spec example — link forward to
+   `rememberUpdatedState` and provide the stable-adapter pattern as
+   the canonical shape.
+3. **A `rememberTreehouseApp { ... }` Compose helper.** Internalize
+   the stable-key contract in the API surface itself, so integrators
+   can't get it wrong.
 
 ---
 
