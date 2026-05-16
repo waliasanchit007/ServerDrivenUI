@@ -363,6 +363,86 @@ controller, curated event listener) see `androidApp/.../MainActivity.kt`
 in this repo. `CmpWidgetFactory` and `SduiContentSource` come from
 `composeApp/src/commonMain/.../App.kt`.
 
+### ⚠️ Remember stability — DO NOT skip this section
+
+The single biggest silent footgun in Konduit integration: holding a
+`TreehouseApp` in a `remember(...)` whose key list contains an
+**unstable reference**. This was DevoStatus's `docs/KNOWN_BUGS.md` #9
+— a day of debugging — and it's still the easiest mistake to make.
+
+**The pattern that breaks.** Anonymous lambdas at the call site get a
+NEW identity on every recomposition:
+
+```kotlin
+@Composable
+fun MyScreen(
+    onItemTap: (String) -> Unit,       // anonymous lambda from caller → unstable
+    quotesFlow: Flow<List<Quote>>,     // .map { ... } inline at caller → unstable
+) {
+    val app = remember(activity, onItemTap, quotesFlow) {   // ← KEY INSTABILITY
+        createTreehouseApp(...)
+    }
+    // … TreehouseContent(app, …)
+}
+```
+
+Every recomposition above this composable creates a new `onItemTap` /
+`quotesFlow` identity, `remember` invalidates, the factory block runs
+again, a brand-new `TreehouseApp` is built. The OLD one is still
+alive (nobody closed it) and the two race for the Zipline runtime.
+Symptom: the second `TreehouseApp.Spec.bindServices` silently no-ops
+its later binds (`console` + `snackbar` are visible to the guest, but
+your domain services like `HostQuotesProvider` are not), and the
+guest's `take<>` proxies later error with `no such service (service
+closed?)`. **Nothing in any log says "your remember key was
+unstable" — that's why this gotcha is invisible.**
+
+**The fix.** Wrap unstable lambdas in `rememberUpdatedState`, then
+pass adapter lambdas that delegate via the always-current State:
+
+```kotlin
+@Composable
+fun MyScreen(
+    onItemTap: (String) -> Unit,
+    quotesFlow: Flow<List<Quote>>,
+) {
+    val currentOnItemTap by rememberUpdatedState(onItemTap)
+
+    val app = rememberKonduitApp(activity, quotesFlow) {     // ← STABLE KEYS ONLY
+        createTreehouseApp(
+            onItemTap = { id -> currentOnItemTap(id) },      // adapter, stable identity
+            quotesFlow = quotesFlow,
+        )
+    }
+    // … TreehouseContent(app, …)
+}
+```
+
+[`rememberKonduitApp`][rkapp] (in `:composeApp` `commonMain`,
+`com.example.serverdrivenui.shared.RememberKonduitApp.kt`) is a tiny
+helper that wraps `remember(...)` with one extra behavior: if the
+factory block runs more than once for the same call site, it logs a
+LOUD warning the second time. So if you accidentally pass an unstable
+key, you'll see it in `logcat` / Xcode console immediately rather than
+debug the gotcha #9 ghost. Substitute your own `remember(...)` if you
+prefer — the contract is identical, just lose the warning.
+
+Quick checklist when you write a `rememberKonduitApp(…)`:
+
+  - ✅ Activity / ViewController reference: stable
+  - ✅ Stable `Flow` from the caller's own `remember { … }`: stable
+  - ✅ ViewModel instance: stable for the screen's lifetime
+  - ❌ Anonymous lambdas (`{ x -> … }` inline at the call site): UNSTABLE
+  - ❌ Inline `.map { … }` on a Flow: UNSTABLE
+  - ❌ New `data class` instances built inside the Composable body: UNSTABLE
+  - ❌ `mutableStateOf(…)` values: stable identity but if you key on
+        the `.value`, that's unstable
+
+When in doubt, wrap with `rememberUpdatedState` and pass an adapter.
+The cost is one extra State allocation per recomposition — negligible.
+
+[rkapp]: ../composeApp/src/commonMain/kotlin/com/example/serverdrivenui/shared/RememberKonduitApp.kt
+
 ### Step 2 — Dependencies your module needs
 
 ### ⚠️ MANDATORY: apply the Zipline Gradle plugin to your host module
