@@ -267,17 +267,18 @@ JVM-backed Zipline (Android) tolerates the wrong-thread state mutation
 quietly. iOS Kotlin/Native may crash (we haven't reproduced this one on
 iOS yet, but the symmetric outbound case in gotcha #12 does).
 
-**Workaround in place.** Take a `CoroutineScope` in the service's
-constructor, launch the side effect onto Main:
+**Workaround in place.** Take a `CoroutineScope` AND the UI dispatcher
+in the service's constructor, launch the side effect onto UI:
 
 ```kotlin
 private class RealHostNavigator(
     private val scope: CoroutineScope,
+    private val uiDispatcher: CoroutineDispatcher,  // ← TreehouseApp.dispatchers.ui
     private val navController: NavController,
 ) : HostNavigator {
     override fun onItemSelected(id: String) {
         Log.d("MyApp", "onItemSelected($id)")
-        scope.launch(Dispatchers.Main) {
+        scope.launch(uiDispatcher) {
             navController.navigate("detail/$id")
         }
     }
@@ -285,21 +286,35 @@ private class RealHostNavigator(
 ```
 
 Pass `activity.lifecycleScope` (Android) or a Main-dispatcher scope
-(iOS) at construction. This is the *symmetric pair* to gotcha #12: the
-inbound host method needs Main, the outbound guest-proxy call needs
-the Zipline dispatcher.
+(iOS) for `scope`, plus `treehouseApp.dispatchers.ui` for the
+`uiDispatcher`. This is the *symmetric pair* to gotcha #12: the inbound
+host method needs UI, the outbound guest-proxy call needs the Zipline
+dispatcher.
 
-**Upstream fix.** Three options, ranked by impact:
+> **Tip.** Prefer `treehouseApp.dispatchers.ui` over reaching for
+> `Dispatchers.Main` directly. On Android JVM the two are equivalent,
+> but on iOS K/N `dispatchers.ui` is the platform's UI dispatcher
+> wrapped in a way that plays nicely with Konduit's threading model.
+> See `TreehouseDispatchers` in konduit-treehouse-host — `ui` is
+> already public API.
+
+Because the dispatcher only exists after `bindServices` is called with
+a `treehouseApp` reference, services that need it have to be
+constructed inside `bindServices` (or capture the dispatcher later via
+`lateinit var`). DevoStatus's `RealHostQuoteNavigator` +
+`RealHostExploreNavigator` show the lateinit-var-in-Spec pattern.
+
+**Upstream fix options.** Two ranked by impact:
 
 1. **`@MainThread` annotation honored by Zipline codegen** — let the
-   integrator mark a service method as needing Main, and the generated
-   host stub does the dispatch hop. Lowest-friction.
-2. **`TreehouseApp.dispatchers.main`** — expose a Main dispatcher
-   alongside `dispatchers.zipline` so integrators have a sanctioned way
-   to switch, rather than reaching for `Dispatchers.Main` directly.
-3. **Doc + lint** — at minimum, document this in `USAGE.md` next to
-   gotcha #12 so the two directions appear as a pair. The current docs
-   only cover outbound.
+   integrator mark a service method as needing UI, and the generated
+   host stub does the dispatch hop. Lowest-friction; integrator never
+   has to remember the threading rule.
+2. **Doc + lint** — at minimum, surface this in `USAGE.md` next to
+   gotcha #12 so the two directions appear as a pair. (`dispatchers.ui`
+   exposure was option 2 from a previous version of this entry — it's
+   already shipped in Konduit `1.0.0-caliclan.2`; the original entry
+   was written before `TreehouseDispatchers.ui` was discovered.)
 
 **Real-world incidence.** Bit DevoStatus's "Tap to create status"
 button on the Quotes tab — `HostQuoteNavigator.onQuoteSelected` fired
