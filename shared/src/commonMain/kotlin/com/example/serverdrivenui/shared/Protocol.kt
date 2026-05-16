@@ -188,6 +188,57 @@ interface HostQuoteNavigator : ZiplineService {
     fun onQuoteSelected(quoteId: String, tag: String?)
 }
 
+// ─── Explore-feed shapes (Wallpaper + provider + navigator) ─────────────
+
+/**
+ * A wallpaper image surfaced to the guest as part of an explore /
+ * gallery feed. Like [Quote], this is a deliberately minimal value
+ * shape — `imageUrl` is enough for an `AsyncImage`, [tag] gives the
+ * host a way to group / filter (e.g. by deity, mood, category) when
+ * the user picks one.
+ */
+@Serializable
+data class Wallpaper(
+    val id: String,
+    val imageUrl: String,
+    val tag: String? = null,
+)
+
+/**
+ * Host-side provider for a wallpaper feed. Same shape as
+ * [HostQuotesProvider]:
+ *   - Non-suspend `getWallpapers(tagFilter)` for the same reason
+ *     (Konduit-Zipline 1.26 suspend-bind hang).
+ *   - Optional [HostWallpapersObserver] for reactive pushes when the
+ *     host's cache updates.
+ *
+ * The DevoStatus Explore screen pairs `getQuotes(...)` with a random
+ * matching wallpaper per card; in that pattern the guest fetches both
+ * lists once on mount and zips them in the presenter. For screens
+ * where wallpapers are the primary feed (a pure gallery), provider +
+ * observer give the full reactive contract.
+ */
+interface HostWallpapersProvider : ZiplineService {
+    fun getWallpapers(tagFilter: String?): List<Wallpaper>
+    fun observe(observer: HostWallpapersObserver)
+}
+
+interface HostWallpapersObserver : ZiplineService {
+    fun onWallpapersChanged()
+}
+
+/**
+ * Companion navigator for an explore-feed tap. The guest passes the
+ * selected quote id + wallpaper id; the host typically navigates to a
+ * preview / creation screen pre-populated with that pair.
+ *
+ * [wallpaperId] is nullable because the screen may render quote-only
+ * cards when no wallpaper is available (gradient fallback).
+ */
+interface HostExploreNavigator : ZiplineService {
+    fun onExploreItemSelected(quoteId: String, wallpaperId: String?)
+}
+
 /**
  * Reactive push channel for a quote feed. The guest implements this
  * service, passes it to [HostQuotesProvider.observe], and the host calls

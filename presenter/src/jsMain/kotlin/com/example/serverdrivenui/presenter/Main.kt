@@ -11,9 +11,11 @@ import com.example.serverdrivenui.schema.SduiSerializersModule
 import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidgetSystemFactory
 import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
+import com.example.serverdrivenui.shared.HostExploreNavigator
 import com.example.serverdrivenui.shared.HostQuoteNavigator
 import com.example.serverdrivenui.shared.HostQuotesProvider
 import com.example.serverdrivenui.shared.HostSnackbar
+import com.example.serverdrivenui.shared.HostWallpapersProvider
 
 /**
  * SduiAppService implementation - Entry point for the Zipline app.
@@ -74,6 +76,24 @@ object HostQuotesProviderBridge {
  */
 object HostQuoteNavigatorBridge {
     var instance: HostQuoteNavigator? = null
+}
+
+/**
+ * Guest-side reference to the host's [HostWallpapersProvider] service.
+ * Same opt-in lifecycle as [HostQuotesProviderBridge] — when the host
+ * doesn't bind it, [instance] stays null and screens needing wallpapers
+ * can degrade (e.g. ExploreScreen falls back to gradient-only cards).
+ */
+object HostWallpapersProviderBridge {
+    var instance: HostWallpapersProvider? = null
+}
+
+/**
+ * Guest-side reference to the host's [HostExploreNavigator] callback
+ * service. Same lifecycle as the other bridges.
+ */
+object HostExploreNavigatorBridge {
+    var instance: HostExploreNavigator? = null
 }
 
 /**
@@ -181,6 +201,24 @@ fun main() {
         println("Zipline JS: HostQuoteNavigator bound")
     } catch (e: Throwable) {
         println("Zipline JS: HostQuoteNavigator take failed: ${e::class.simpleName} — ${e.message}")
+    }
+
+    // OPTIONAL host services for the ExploreScreen route. Same opt-in
+    // contract as the Quotes pair — when these aren't bound, the
+    // presenter doesn't route to ExploreScreen.
+    try {
+        HostWallpapersProviderBridge.instance =
+            zipline.take<HostWallpapersProvider>("wallpapers")
+        println("Zipline JS: HostWallpapersProvider bound — routing eligible for ExploreScreen")
+    } catch (e: Throwable) {
+        println("Zipline JS: HostWallpapersProvider take failed: ${e::class.simpleName} — ${e.message}")
+    }
+    try {
+        HostExploreNavigatorBridge.instance =
+            zipline.take<HostExploreNavigator>("explore-nav")
+        println("Zipline JS: HostExploreNavigator bound")
+    } catch (e: Throwable) {
+        println("Zipline JS: HostExploreNavigator take failed: ${e::class.simpleName} — ${e.message}")
     }
 
     // Capture original console for fallback

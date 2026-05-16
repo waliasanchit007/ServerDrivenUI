@@ -9,6 +9,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn as ComposeLazyColumn
 import androidx.compose.foundation.lazy.LazyRow as ComposeLazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid as ComposeLazyVerticalGrid
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -41,6 +44,7 @@ import com.example.serverdrivenui.schema.modifier.Border as MBorder
 import com.example.serverdrivenui.schema.modifier.Clip as MClip
 import com.example.serverdrivenui.schema.modifier.ClipCircle as MClipCircle
 import com.example.serverdrivenui.schema.modifier.CustomBackground as MCustomBackground
+import com.example.serverdrivenui.schema.modifier.LinearGradient as MLinearGradient
 import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
@@ -176,6 +180,8 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.FormatQuote -> Icons.Filled.FormatQuote
     SchemaIconName.Brush -> Icons.Filled.Brush
     SchemaIconName.AutoStories -> Icons.AutoMirrored.Filled.MenuBook
+    SchemaIconName.FavoriteBorder -> Icons.Filled.FavoriteBorder
+    SchemaIconName.Share -> Icons.Filled.Share
 }
 
 // Schema-property -> Compose mappings for the wire-additive Text +
@@ -322,6 +328,56 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
                 color = Color(el.argb.toInt()).copy(alpha = el.alpha.toFloat()),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp),
             )
+            // LinearGradient (tag 26) — two-stop linear gradient
+            // background painted via Compose's Brush.linearGradient.
+            // angleDegrees maps to start/end offsets: 0° = top→bottom,
+            // 90° = start→end (LTR), 45° = TL→BR, etc. We resolve to a
+            // unit-circle direction vector and scale to the widget's
+            // bounding box at paint time. For arbitrary angles outside
+            // 0/90/180/270 we sample two points on the box edge along
+            // the chosen direction; for the 4 cardinals we use the
+            // simpler axis-aligned constants for visual fidelity.
+            is MLinearGradient -> {
+                val startColor = Color(el.startArgb.toInt()).copy(alpha = el.startAlpha.toFloat())
+                val endColor = Color(el.endArgb.toInt()).copy(alpha = el.endAlpha.toFloat())
+                val brush = when (((el.angleDegrees % 360) + 360) % 360) {
+                    0 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(startColor, endColor)
+                    )
+                    90 -> androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(startColor, endColor)
+                    )
+                    180 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(endColor, startColor)
+                    )
+                    270 -> androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(endColor, startColor)
+                    )
+                    else -> {
+                        // General case: derive start/end Offset on a unit
+                        // box (Brush.linearGradient interprets coords in
+                        // pixels but accepts Offset.Infinite for "the
+                        // widget's max extent"). For arbitrary angles
+                        // the simplest workable approximation: rotate a
+                        // diagonal Brush via start/end offsets scaled
+                        // to a large constant — fidelity is good enough
+                        // for typical 45° / 135° accents. Use TileMode.Clamp.
+                        val rad = el.angleDegrees.toDouble() * kotlin.math.PI / 180.0
+                        val largeDim = 10_000f
+                        val dx = (kotlin.math.sin(rad) * largeDim).toFloat()
+                        val dy = (kotlin.math.cos(rad) * largeDim).toFloat()
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(startColor, endColor),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(dx, dy),
+                        )
+                    }
+                }
+                m = m.background(
+                    brush = brush,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp),
+                )
+            }
         }
     }
     val bg = bgSchemaColor
@@ -530,6 +586,35 @@ class CmpLazyRow : LazyRow<CmpRender> {
             (items as CmpChildren).renderInLazyScope(this)
         }
     }
+}
+
+class CmpLazyVerticalGrid : com.example.serverdrivenui.schema.widget.LazyVerticalGrid<CmpRender> {
+    private val mod = StateModifier()
+    private var columns by mutableStateOf(2)
+    private var contentPaddingDp by mutableStateOf(0)
+    private var itemSpacingDp by mutableStateOf(0)
+    override val items: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cols = if (columns < 1) 1 else columns
+        ComposeLazyVerticalGrid(
+            columns = GridCells.Fixed(cols),
+            modifier = composed,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(contentPaddingDp.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(itemSpacingDp.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(itemSpacingDp.dp),
+        ) {
+            (items as CmpChildren).renderInLazyGridScope(this)
+        }
+    }
+
+    override fun columns(columns: Int) { this.columns = columns }
+    override fun contentPaddingDp(contentPaddingDp: Int) { this.contentPaddingDp = contentPaddingDp }
+    override fun itemSpacingDp(itemSpacingDp: Int) { this.itemSpacingDp = itemSpacingDp }
 }
 
 class CmpLazyItem : LazyItem<CmpRender> {
@@ -3094,6 +3179,15 @@ class CmpChildren : Widget.Children<CmpRender> {
         }
     }
 
+    /** Renders each child as a separate item() in a LazyVerticalGrid scope. */
+    fun renderInLazyGridScope(scope: LazyGridScope) {
+        _widgets.forEach { widget ->
+            scope.item {
+                widget.value(ComposeModifier)
+            }
+        }
+    }
+
     /**
      * Render inside a compose RowScope. Extracts Weight from each child's
      * modifier chain and applies it via RowScope.weight() before delegating.
@@ -3143,6 +3237,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun LazyColumn() = CmpLazyColumn()
     override fun LazyRow() = CmpLazyRow()
     override fun LazyItem() = CmpLazyItem()
+    override fun LazyVerticalGrid() = CmpLazyVerticalGrid()
     override fun Text() = CmpText()
     override fun AsyncImage() = CmpAsyncImage()
     override fun Icon() = CmpIcon()
@@ -3234,6 +3329,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun DisplayCutoutPadding(value: CmpRender, modifier: MDisplayCutoutPadding) {}
     override fun SafeContentPadding(value: CmpRender, modifier: MSafeContentPadding) {}
     override fun CustomBackground(value: CmpRender, modifier: MCustomBackground) {}
+    override fun LinearGradient(value: CmpRender, modifier: MLinearGradient) {}
 }
 
 // ============================================================================

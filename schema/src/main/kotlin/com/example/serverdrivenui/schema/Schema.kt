@@ -36,6 +36,7 @@ import dev.konduit.schema.Widget
         LazyColumn::class,
         LazyRow::class,
         LazyItem::class,
+        LazyVerticalGrid::class,
         Text::class,
         AsyncImage::class,
         Icon::class,
@@ -146,6 +147,7 @@ import dev.konduit.schema.Widget
         SafeContentPadding::class,
         // Tag 25 — brand-color escape hatch (ARGB literal).
         CustomBackground::class,
+        LinearGradient::class,
     ],
 )
 interface SduiSchema
@@ -239,6 +241,31 @@ data class LazyRow(
 @Widget(7)
 data class LazyItem(
     @Children(1) val children: () -> Unit,
+)
+
+/**
+ * Lazily-rendered grid with a fixed column count, laid out vertically
+ * (rows grow downward, items flow left → right then wrap). Children
+ * must be [LazyItem] widgets — each item occupies one cell.
+ *
+ * Maps to Compose's `LazyVerticalGrid(columns = GridCells.Fixed(N))`.
+ * The `columns` count is fixed at the protocol layer for wire economy;
+ * adaptive grids (`GridCells.Adaptive(minSize)`) can be added later as
+ * a sibling widget without breaking this one.
+ *
+ * Spacing between cells (both axes) can be tuned via [contentPaddingDp]
+ * and [itemSpacingDp]. Default 0 reproduces the M3 default; pass
+ * positive values to add gutters around / between cells.
+ */
+@Widget(11)
+data class LazyVerticalGrid(
+    /** Number of equal-width columns. Must be >= 1. */
+    @Property(1) val columns: Int,
+    /** Padding (dp) around the entire grid's content area. */
+    @Property(2) val contentPaddingDp: Int = 0,
+    /** Vertical + horizontal gap (dp) between cells. */
+    @Property(3) val itemSpacingDp: Int = 0,
+    @Children(1) val items: () -> Unit,
 )
 
 /** Display a string. */
@@ -1560,6 +1587,49 @@ data class CustomBackground(
     val argb: Long,
     val cornerRadiusDp: Int = 0,
     val alpha: Double = 1.0,
+)
+
+/**
+ * Linear gradient background. Maps to
+ * `Brush.linearGradient(colors = [startArgb, endArgb])` painted as the
+ * widget's background. The gradient direction is controlled by
+ * [angleDegrees]: 0° = top → bottom, 90° = start → end (LTR locales),
+ * 45° = top-left → bottom-right, etc. Matches Compose's
+ * `Brush.linearGradient(start = ..., end = ...)` direction semantics
+ * but with a single-number wire payload.
+ *
+ * Each endpoint takes a packed ARGB Long (`0xAARRGGBB`) so any brand
+ * color can be expressed without needing a SchemaColor slot. Use
+ * [startAlpha] / [endAlpha] as independent multipliers on top of the
+ * ARGB's native alpha bits — the same convention as [CustomBackground].
+ *
+ * [cornerRadiusDp] applies the same rounded clip as [Background] /
+ * [CustomBackground] so card-shaped gradients work without an extra
+ * [Clip] modifier.
+ *
+ * Common patterns:
+ *   - Brand vertical fade: `LinearGradient(brandLightArgb, brandDarkArgb,
+ *     angleDegrees = 0)`
+ *   - Diagonal accent: `LinearGradient(saffronArgb, maroonArgb,
+ *     angleDegrees = 45)`
+ *   - Subtle scrim under hero image: `LinearGradient(transparentArgb,
+ *     blackArgb, startAlpha = 0.0, endAlpha = 0.6)`
+ *
+ * For more than two color stops, layer multiple gradients via stacked
+ * Box children — keeps the wire format compact for the 90% case.
+ */
+@Modifier(26)
+data class LinearGradient(
+    val startArgb: Long,
+    val endArgb: Long,
+    /**
+     * Direction, in degrees. 0° = top → bottom. 90° = start → end. Any
+     * value works (45° = TL→BR, 180° = bottom → top, etc.).
+     */
+    val angleDegrees: Int = 0,
+    val startAlpha: Double = 1.0,
+    val endAlpha: Double = 1.0,
+    val cornerRadiusDp: Int = 0,
 )
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in

@@ -2,6 +2,7 @@ package com.example.serverdrivenui.presenter
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.example.serverdrivenui.presenter.screens.ExploreScreen
 import com.example.serverdrivenui.presenter.screens.QuotesScreen
 import com.example.serverdrivenui.presenter.screens.Tier1ShowcaseScreen
 import com.example.serverdrivenui.schema.compose.BackHandler
@@ -27,10 +28,18 @@ import com.example.serverdrivenui.schema.compose.ScreenStack
 fun RootUi(@Suppress("UNUSED_PARAMETER") initialRoute: String = "auto") {
     val navigator = remember {
         Navigator().apply {
-            val firstScreen = if (HostQuotesProviderBridge.instance != null) {
-                QuotesScreen()
-            } else {
-                Tier1ShowcaseScreen()
+            // Routing priority: explicit Explore wiring beats Quotes,
+            // beats default showcase. The host binds whichever services
+            // its current screen needs; the guest mounts the matching
+            // screen. If both are bound (e.g. the host pre-warms BOTH
+            // before user navigates), Explore wins — DevoStatus mounts
+            // them via two separate TreehouseApps so this conflict
+            // can't occur in practice, but the deterministic ordering
+            // is documented for any future single-app integrators.
+            val firstScreen = when {
+                HostWallpapersProviderBridge.instance != null -> ExploreScreen()
+                HostQuotesProviderBridge.instance != null -> QuotesScreen()
+                else -> Tier1ShowcaseScreen()
             }
             push(firstScreen)
         }

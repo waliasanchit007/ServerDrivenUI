@@ -60,6 +60,9 @@ enum class SchemaIconName {
     Person, Notifications, Email, Phone, Lock, Edit, Delete, Check, Info, Warning,
     // Content / typography icons
     FormatQuote, Brush, AutoStories,
+    // Engagement icons — additive at the END only (enum order is wire
+    // format; older payloads decode unchanged).
+    FavoriteBorder, Share,
 }
 
 /**
