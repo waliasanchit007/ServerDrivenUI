@@ -346,6 +346,100 @@ threading bug rather than a wiring bug.
 
 ---
 
+## 9. `lateinit var` services inside `bindServices` silently skip binding on 2nd `TreehouseApp` mount
+
+**Severity:** high (silent failure on the second composition).
+**Status:** root cause unpinned — DevoStatus reverted to `val` pattern.
+
+**Symptom.** A `TreehouseApp.Spec` declares a service as
+`private lateinit var fooService: FooService` and constructs it inside
+`bindServices` so the construction can grab
+`treehouseApp.dispatchers.zipline` (the documented pattern for gotcha
+#12). The first mount works fine — full `bindServices` log trail
+fires, all services bind, the guest's `take<>` proxies are healthy.
+
+The SECOND mount (triggered by a `remember(...)` key change in the
+Composable wrapping `TreehouseContent`) silently fails:
+
+  - Guest's `take<FooService>("foo")` returns a proxy (Zipline is
+    lazy / deferred).
+  - First call to that proxy throws
+    `"no such service (service closed?)"` listing console + snackbar
+    as the only host services bound (no `foo`).
+  - Host-side `Log.d` calls inside `bindServices` produce **zero**
+    log output for the second mount — not even the entry log line.
+    bindServices apparently never runs (or its logs don't reach
+    logcat).
+
+**Reproduce.**
+
+```kotlin
+@Composable
+fun MyScreen() {
+    val treehouseApp = remember(activity, sourceLambda, callbackLambda) {
+        createTreehouseApp(...)   // ← lambda keys change every recomposition
+    }
+    TreehouseContent(treehouseApp, ...)
+}
+
+// In the Spec:
+private lateinit var fooService: FooService
+
+override suspend fun bindServices(treehouseApp, zipline) {
+    Log.d(TAG, "binding starts")              // ← fires on mount 1, NOT on mount 2
+    fooService = FooService(scope, treehouseApp.dispatchers.zipline)
+    zipline.bind<FooService>("foo", fooService)
+}
+```
+
+Trigger a recomposition (tap something, navigate, anything that
+remembers different lambda identities). Mount 2 has the bug.
+
+Empirically reproduced on DevoStatus's `KonduitQuotesScreen` at
+DevoStatus commit `3d1859c`. Reverted in `95b8919` to the property-init
+`val` pattern.
+
+**Workaround.** Construct services at `val` property-init time:
+
+```kotlin
+// instead of:
+private lateinit var fooService: FooService
+// inside bindServices:
+fooService = FooService(scope, treehouseApp.dispatchers.zipline)
+
+// use:
+private val fooService = FooService(scope)   // no ziplineDispatcher here
+zipline.bind<FooService>("foo", fooService)
+```
+
+If the service legitimately needs `treehouseApp.dispatchers.zipline`,
+make the parameter nullable + default-null and accept that outbound
+proxy calls won't be Zipline-thread-confined (works on Android, will
+hit gotcha #12 on iOS K/N).
+
+**Hypotheses (unverified).**
+
+1. Konduit caches `TreehouseApp` state by `Spec.name` and bypasses
+   `bindServices` on the second instance with the same name (would
+   explain the missing log lines).
+2. The new service construction inside `bindServices` throws or
+   suspends in a way that aborts the binding sequence (but console +
+   snackbar always bind successfully, which contradicts a
+   prefix-failure hypothesis).
+3. A Kotlin property-init-order subtlety: a `lateinit var` field that
+   gets read before assignment during another property's initializer
+   could be the trigger (the Spec also has `private val quoteNavigator
+   = RealHostQuoteNavigator(...)` initialized after `quotesProvider`).
+
+**Upstream fix.** Investigate why mount 2 doesn't log bindServices.
+If the fix is "always run bindServices on every TreehouseApp
+construction," document that in `USAGE.md` Step 2. If the fix is
+"caching by name is intentional, lateinit var inside is a footgun,"
+document THAT in the same place as gotcha #6 (strong-ref discipline)
+— the two combine for a really nasty silent-failure mode.
+
+---
+
 ## Process
 
 When you fix one of these:
