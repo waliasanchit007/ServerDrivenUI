@@ -916,6 +916,34 @@ data class SuggestionChip(
     @Property(3) val onClick: (() -> Unit)?,
     /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
     @Property(4) val cornerRadiusDp: Int = -1,
+    /**
+     * Container fill color. Wire-additive (Property 5).
+     *
+     * Default [SchemaColor.Surface] matches the closest M3 slot to
+     * `SuggestionChipDefaults.suggestionChipColors().containerColor`
+     * (M3 uses `surfaceContainerLow`, which isn't on our SchemaColor
+     * enum yet; Surface is the next-best stand-in and renders nearly
+     * identically on most themes). Pass [SchemaColor.Tertiary] (etc.)
+     * for a branded "this chip is always emphasized" look — DevoStatus's
+     * native code does exactly that to make "Trending" stand out from
+     * the neutral siblings.
+     *
+     * Unlike [FilterChip], `SuggestionChip` has no selected/unselected
+     * state, so there's only one color slot here.
+     */
+    @Property(5) val containerColor: SchemaColor = SchemaColor.Surface,
+    /**
+     * Label text color. Wire-additive (Property 6, default OnSurface).
+     */
+    @Property(6) val labelColor: SchemaColor = SchemaColor.OnSurface,
+    /**
+     * Border color in the resting state. Wire-additive (Property 7).
+     * Default [SchemaColor.OutlineVariant] matches the M3 default chip
+     * border. Pass [SchemaColor.Transparent] for a borderless filled
+     * chip (the canonical branded look — pair with a non-default
+     * [containerColor]).
+     */
+    @Property(7) val borderColor: SchemaColor = SchemaColor.OutlineVariant,
     @Children(1) val leadingIcon: () -> Unit,
 )
 

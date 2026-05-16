@@ -135,10 +135,18 @@ class ExploreScreen : Screen {
                     verticalAlignment = SchemaVerticalAlignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
+                    // Trending = filled saffron with white label.
+                    // Native code does
+                    // `SuggestionChipDefaults.suggestionChipColors(
+                    //     containerColor = Saffron)`
+                    // which maps to Tertiary in DevoStatus's theme.
                     SuggestionChip(
                         label = "Trending",
                         enabled = true,
                         onClick = null,
+                        containerColor = SchemaColor.Tertiary,
+                        labelColor = SchemaColor.Background,
+                        borderColor = SchemaColor.Tertiary,
                     ) {}
                     Spacer(width = 8, height = 0)
                     SuggestionChip(

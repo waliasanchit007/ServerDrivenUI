@@ -2165,6 +2165,12 @@ class CmpSuggestionChip :
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
     private var cornerRadiusDp by mutableStateOf(-1)
+    // Wire-additive properties (Schema Properties 5-7). Defaults map to
+    // M3 SuggestionChipDefaults — passing them through is a no-op
+    // visually, so existing payloads render identically.
+    private var containerColor by mutableStateOf(SchemaColor.Surface)
+    private var labelColor by mutableStateOf(SchemaColor.OnSurface)
+    private var borderColor by mutableStateOf(SchemaColor.OutlineVariant)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -2177,6 +2183,15 @@ class CmpSuggestionChip :
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
         val shape = shapeFromRadius(cornerRadiusDp)
             ?: androidx.compose.material3.SuggestionChipDefaults.shape
+        val colors = androidx.compose.material3.SuggestionChipDefaults.suggestionChipColors(
+            containerColor = containerColor.toComposeColor(),
+            labelColor = labelColor.toComposeColor(),
+            iconContentColor = labelColor.toComposeColor(),
+        )
+        val border = androidx.compose.material3.SuggestionChipDefaults.suggestionChipBorder(
+            enabled = enabled,
+            borderColor = borderColor.toComposeColor(),
+        )
         androidx.compose.material3.SuggestionChip(
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
@@ -2185,6 +2200,8 @@ class CmpSuggestionChip :
             icon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
+            colors = colors,
+            border = border,
             modifier = composed,
         )
     }
@@ -2194,6 +2211,15 @@ class CmpSuggestionChip :
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
     override fun cornerRadiusDp(cornerRadiusDp: Int) {
         this.cornerRadiusDp = cornerRadiusDp
+    }
+    override fun containerColor(containerColor: SchemaColor) {
+        this.containerColor = containerColor
+    }
+    override fun labelColor(labelColor: SchemaColor) {
+        this.labelColor = labelColor
+    }
+    override fun borderColor(borderColor: SchemaColor) {
+        this.borderColor = borderColor
     }
 }
 
