@@ -185,6 +185,176 @@ been initialized would help.
 
 ---
 
+### U6. Konduit codegen emits invalid Kotlin for lambda-typed `@Modifier` properties on Kotlin/JS
+
+**Severity:** high (the build silently produces uncompilable codegen
+output if you happen to add a `() -> Unit` field on a `@Modifier`).
+**Origin:** HANDOVER.md gotcha #8.
+
+**Symptom.** Declaring a function-typed property on a `@Modifier` data
+class compiles fine on JVM but produces invalid Kotlin in the JS code-
+gen output — `ContextualSerializer(Function0<Unit>::class)`, which is
+not legal Kotlin syntax (class literal not allowed on a generic
+parameterized type). The `:shared-protocol-guest:compileKotlinJs` task
+fails with a cryptic "expecting class body" error pointing at generated
+code the integrator didn't write.
+
+**Reproduce.** Add this to the schema:
+```kotlin
+@Modifier(N)
+data class Clickable(
+    val onClick: () -> Unit,   // ← codegen breaks on JS
+)
+```
+
+`compileKotlinJvm` succeeds. `:shared-protocol-guest:compileKotlinJs`
+fails with an error on a generated file.
+
+**Workaround in place.** Click handlers / lambdas live on the *widget*
+that needs them, not on a modifier. Every Tier 1 / Tier 2 widget that
+needs a click handler declares `onClick: (() -> Unit)?` as a regular
+`@Property` (Button, IconButton, FAB, Box, Card all follow this). The
+schema's `Box` and `Card` widgets carry `onClick` directly rather than
+relying on a `Modifier.clickable {}` chain.
+
+**Upstream fix.** Konduit's `dev.konduit.generator.modifiers` plugin
+should special-case function-typed properties on `@Modifier` — either
+generate a `ZiplineService`-backed proxy (matching the U11 fix pattern)
+or emit a compile-time error so integrators see the rejection upfront
+rather than discover it through a broken JS codegen output.
+
+---
+
+### U10. Konduit codegen emits `ContextualSerializer(MyEnum::class)` for enum fields on `@Modifier` classes — silent white screen
+
+**Severity:** critical (worst documented failure mode — completely
+silent, looks like the schema widget didn't render at all).
+**Origin:** HANDOVER.md gotcha #10.
+
+**Symptom.** With `@Modifier(N) data class Background(val color:
+SchemaColor)`, the generated `BackgroundTagAndSerializer` includes
+`ContextualSerializer(SchemaColor::class)`. At runtime the encode call
+throws `SerializationException("Class 'SchemaColor' is not registered
+for polymorphic serialization in the scope of 'Modifier'")`. Konduit's
+protocol path swallows the exception silently; the batch of widget
+updates never reaches the host; the host renders an empty
+`TreehouseContent`; **the screen stays blank with zero logs**.
+
+The signature of this failure: guest's compose composition runs to
+completion (you can `println` from inside lambdas and see them) but
+ZERO `factory.X()` calls happen on the host side.
+
+**Reproduce.** Add an enum-typed property to any `@Modifier` data
+class. Do NOT register a contextual serializer for that enum. Run the
+guest. Host TreehouseContent stays blank, no exception in any log.
+
+**Workaround in place.** Define a shared
+`SerializersModule` (`SduiSerializersModule` in `:schema-types`) that
+registers each enum used in a `@Modifier` as a contextual serializer:
+
+```kotlin
+public val SduiSerializersModule: SerializersModule = SerializersModule {
+    contextual(SchemaColor::class, SchemaColor.serializer())
+    // Add more contextuals as new enums get used in @Modifier fields.
+}
+```
+
+Then wire it into both sides:
+- Host: every `TreehouseApp.Spec` overrides
+  `val serializersModule = SduiSerializersModule`.
+- Guest: `StandardAppLifecycle(json = Json { serializersModule = SduiSerializersModule })`.
+
+Enums used only as widget `@Property` (not modifier fields) work fine —
+codegen calls `MyEnum.serializer()` directly there. Only modifier
+fields trigger the contextual codegen.
+
+> **Cost:** new enums added to a `@Modifier` need to be remembered to
+> register in `SduiSerializersModule`. Forgetting reproduces the white
+> screen for that one new modifier — fix-by-omission is silent. This is
+> the highest-risk knowledge-debt on the integration.
+
+**Upstream fix.** Two options:
+1. **Change codegen** — Konduit's modifier generator could detect
+   `@Serializable enum` types and emit `MyEnum.serializer()` directly,
+   matching the @Property codegen. Removes the need for the
+   contextual-registration dance entirely.
+2. **Ship a baseline serializers module** — Konduit publishes a
+   `KonduitDefaultSerializers` module covering all schema-types enums
+   it ships, integrators add it to their own module. Reduces friction
+   but still requires integrators to register their own additions.
+
+Option (1) is the right fix.
+
+---
+
+### U11. `ZiplineService` methods with `(T) -> Unit` lambda parameters silently fail at runtime
+
+**Severity:** high (build succeeds, `zipline.take<T>` returns
+non-null-but-broken proxy, every method call is a silent no-op).
+**Origin:** HANDOVER.md gotcha #11.
+
+**Symptom.** Defining a `ZiplineService` interface method with a
+function-typed parameter compiles fine. The host's `bind<T>` succeeds.
+The guest's `take<T>(name)` doesn't throw — it returns a non-null proxy.
+But the proxy's first method call silently no-ops; the host method body
+never runs. Subsequent calls fail the same way. There's no exception
+visible to the guest (the actual proxy-construction failure happens
+before the host-console polyfill is installed, so the error println
+goes to a dropped Zipline stdout).
+
+**Reproduce.**
+```kotlin
+interface HostSnackbar : ZiplineService {
+    fun showWithResult(message: String, onResult: (Boolean) -> Unit)
+    //                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //                                  function-typed param → silent proxy
+}
+```
+
+Host implements + binds normally. Guest calls
+`HostSnackbarBridge.instance?.showWithResult("Saved", { ok -> … })`.
+Host body doesn't fire. No log line.
+
+**Cause.** Zipline marshals values across the QuickJS boundary in
+exactly two flavors:
+1. `@Serializable` values, or
+2. `ZiplineService` proxies.
+
+A raw function type is neither. Build succeeds because the Kotlin
+compiler accepts the signature; the Zipline runtime proxy construction
+fails before the guest's first call but the failure is unobservable.
+
+**Workaround in place.** Replace the lambda parameter with a dedicated
+`ZiplineService` callback type:
+
+```kotlin
+interface SnackbarResultCallback : ZiplineService {
+    fun onResult(actionPerformed: Boolean)
+}
+
+interface HostSnackbar : ZiplineService {
+    fun showWithResult(
+        message: String,
+        callback: SnackbarResultCallback,  // ← ZiplineService, not lambda
+    )
+}
+```
+
+The guest wraps the user's lambda in an anonymous `SnackbarResultCallback`
+impl. The host calls `callback.onResult(...)` then `callback.close()`
+exactly once (or the proxy leaks — `serviceLeaked` warning surfaces).
+
+See `RealHostSnackbar` in `composeApp/Protocol.kt` for the canonical
+shape.
+
+**Upstream fix.** Zipline's compiler plugin should detect function-typed
+parameters / returns on a `@interface ZiplineService` and either
+(a) auto-generate the callback service wrapping at the boundary, or
+(b) emit a build-time error so integrators see the rejection upfront
+rather than discover it through a silent runtime no-op.
+
+---
+
 ### U7. ~~`TreehouseApp.Spec` services held as anonymous inline references get GC'd~~ — FIXED in Konduit `1.0.0-caliclan.3`
 
 **Status:** Fixed in commit `<TBD-konduit-hash>` via
