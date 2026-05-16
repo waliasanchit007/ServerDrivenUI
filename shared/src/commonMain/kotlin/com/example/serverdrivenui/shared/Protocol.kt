@@ -240,6 +240,63 @@ interface HostExploreNavigator : ZiplineService {
 }
 
 /**
+ * Host-side service that turns a (quote, wallpaper) pair into a saved
+ * status card on the device gallery. The guest can't do this work
+ * itself — Bitmap / Canvas / MediaStore are platform APIs that have no
+ * Kotlin/JS equivalent, and the QuickJS runtime has no Android Context.
+ *
+ * Contract:
+ *   - The host composes the card (download wallpaper → resize to 9:16
+ *     → draw scrim + word-wrapped quote text → save to
+ *     `Pictures/<app>/` via MediaStore).
+ *   - The Saved tab reads from MediaStore on its own; this service
+ *     doesn't return the saved Uri because the guest has no use for it.
+ *   - Optional [observer] receives one-shot result callbacks so the
+ *     guest can flip its visual "liked" state back to `false` if the
+ *     save failed (matching native ExploreCard semantics where the
+ *     heart un-fills + a Toast shows on error).
+ *
+ * Non-suspend for the same reason the rest of this protocol is
+ * (Konduit-Zipline 1.26 suspend-bind hang). The actual save runs
+ * off-thread on the host; the call returns immediately.
+ */
+interface HostExploreSaver : ZiplineService {
+    /**
+     * Kick off the save pipeline for the given quote + wallpaper. Fire-
+     * and-forget; observer (if supplied) fires asynchronously when the
+     * pipeline finishes.
+     *
+     * @param quoteId Stable id from [Quote.id]. The host looks the
+     *   text + tag back up by id rather than receiving the payload
+     *   inline so older + newer code paths agree on which quote was saved.
+     * @param wallpaperId Optional [Wallpaper.id]. When null the host
+     *   uses a gradient-only background (saffron→maroon, matching the
+     *   on-screen card fallback).
+     * @param observer Optional one-shot result callback. Host calls
+     *   [HostExploreSaverObserver.onSaveResult] exactly once then closes
+     *   the service. Pass null for fire-and-forget.
+     */
+    fun saveQuoteCard(
+        quoteId: String,
+        wallpaperId: String?,
+        observer: HostExploreSaverObserver?,
+    )
+}
+
+/**
+ * One-shot result for [HostExploreSaver.saveQuoteCard]. Single-use:
+ * host calls [onSaveResult] then [close] (or just closes after a single
+ * call). Modeled on `SnackbarResultCallback` in this same file.
+ */
+interface HostExploreSaverObserver : ZiplineService {
+    /**
+     * @param success true if the bitmap was written to MediaStore;
+     *   false if any step (download, scale, write) failed.
+     */
+    fun onSaveResult(success: Boolean)
+}
+
+/**
  * Reactive push channel for a quote feed. The guest implements this
  * service, passes it to [HostQuotesProvider.observe], and the host calls
  * [onQuotesChanged] whenever its in-memory data changes.

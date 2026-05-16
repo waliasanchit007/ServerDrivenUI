@@ -12,6 +12,7 @@ import com.example.serverdrivenui.schema.protocol.guest.SduiSchemaProtocolWidget
 import kotlinx.serialization.json.Json
 import com.example.serverdrivenui.shared.HostConsole
 import com.example.serverdrivenui.shared.HostExploreNavigator
+import com.example.serverdrivenui.shared.HostExploreSaver
 import com.example.serverdrivenui.shared.HostQuoteNavigator
 import com.example.serverdrivenui.shared.HostQuotesProvider
 import com.example.serverdrivenui.shared.HostSnackbar
@@ -94,6 +95,18 @@ object HostWallpapersProviderBridge {
  */
 object HostExploreNavigatorBridge {
     var instance: HostExploreNavigator? = null
+}
+
+/**
+ * Guest-side reference to the host's [HostExploreSaver] — turns a
+ * (quoteId, wallpaperId) pair into a saved-status JPEG in the device
+ * gallery. Optional: when the host hasn't bound it, the ExploreScreen
+ * heart pill still toggles visually but doesn't persist anything. Same
+ * deferred-proxy lifecycle as [HostQuotesProviderBridge] (validated at
+ * route time in `RootUi.kt`).
+ */
+object HostExploreSaverBridge {
+    var instance: HostExploreSaver? = null
 }
 
 /**
@@ -187,38 +200,43 @@ fun main() {
         println("Zipline JS: Failed to take host snackbar: ${e.message}")
     }
 
-    // OPTIONAL host services for the QuotesScreen route. Bind failures
-    // are non-fatal — the presenter falls back to Tier 1 showcase if
-    // these aren't provided.
+    // OPTIONAL host services. `zipline.take<T>("name")` returns a
+    // DEFERRED proxy that is non-null even when the host never bound
+    // the service — the proxy fails only on its FIRST method call
+    // ("no such service (service closed?)"). So we can't use bridge
+    // nullity to decide routing here; we just stash whatever take<>
+    // returns and let RootUi validate at composition time, AFTER the
+    // host's bindServices has completed.
     try {
         HostQuotesProviderBridge.instance = zipline.take<HostQuotesProvider>("quotes")
-        println("Zipline JS: HostQuotesProvider bound — routing to QuotesScreen")
+        println("Zipline JS: HostQuotesProvider taken (deferred — validated at route time)")
     } catch (e: Throwable) {
         println("Zipline JS: HostQuotesProvider take failed: ${e::class.simpleName} — ${e.message}")
     }
     try {
         HostQuoteNavigatorBridge.instance = zipline.take<HostQuoteNavigator>("quote-nav")
-        println("Zipline JS: HostQuoteNavigator bound")
     } catch (e: Throwable) {
         println("Zipline JS: HostQuoteNavigator take failed: ${e::class.simpleName} — ${e.message}")
     }
-
-    // OPTIONAL host services for the ExploreScreen route. Same opt-in
-    // contract as the Quotes pair — when these aren't bound, the
-    // presenter doesn't route to ExploreScreen.
     try {
         HostWallpapersProviderBridge.instance =
             zipline.take<HostWallpapersProvider>("wallpapers")
-        println("Zipline JS: HostWallpapersProvider bound — routing eligible for ExploreScreen")
+        println("Zipline JS: HostWallpapersProvider taken (deferred — validated at route time)")
     } catch (e: Throwable) {
         println("Zipline JS: HostWallpapersProvider take failed: ${e::class.simpleName} — ${e.message}")
     }
     try {
         HostExploreNavigatorBridge.instance =
             zipline.take<HostExploreNavigator>("explore-nav")
-        println("Zipline JS: HostExploreNavigator bound")
     } catch (e: Throwable) {
         println("Zipline JS: HostExploreNavigator take failed: ${e::class.simpleName} — ${e.message}")
+    }
+    try {
+        HostExploreSaverBridge.instance =
+            zipline.take<HostExploreSaver>("explore-saver")
+        println("Zipline JS: HostExploreSaver taken (deferred — calls no-op if host didn't bind)")
+    } catch (e: Throwable) {
+        println("Zipline JS: HostExploreSaver take failed: ${e::class.simpleName} — ${e.message}")
     }
 
     // Capture original console for fallback

@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -722,6 +723,11 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
     private val mod = StateModifier()
     private var url by mutableStateOf("")
     private var contentDescription by mutableStateOf("")
+    // Property 3 — how the loaded bitmap scales into the slot. Default
+    // SchemaContentScale.Fit matches Compose's default for AsyncImage,
+    // so older payloads (no Property 3 on the wire) decode and render
+    // identically to today. ExploreScreen wallpapers override to Crop.
+    private var contentScale by mutableStateOf(SchemaContentScale.Fit)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -734,6 +740,7 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
                 model = url,
                 contentDescription = contentDescription,
                 modifier = composed,
+                contentScale = contentScale.toComposeContentScale(),
                 onState = { state ->
                     when (state) {
                         is coil3.compose.AsyncImagePainter.State.Loading ->
@@ -753,6 +760,20 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
     override fun contentDescription(contentDescription: String) {
         this.contentDescription = contentDescription
     }
+    override fun contentScale(contentScale: SchemaContentScale) {
+        this.contentScale = contentScale
+    }
+}
+
+/** Schema → Compose ContentScale mapping. Total — every enum value mapped. */
+private fun SchemaContentScale.toComposeContentScale(): ContentScale = when (this) {
+    SchemaContentScale.Fit -> ContentScale.Fit
+    SchemaContentScale.Crop -> ContentScale.Crop
+    SchemaContentScale.FillBounds -> ContentScale.FillBounds
+    SchemaContentScale.FillWidth -> ContentScale.FillWidth
+    SchemaContentScale.FillHeight -> ContentScale.FillHeight
+    SchemaContentScale.Inside -> ContentScale.Inside
+    SchemaContentScale.None -> ContentScale.None
 }
 
 class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {

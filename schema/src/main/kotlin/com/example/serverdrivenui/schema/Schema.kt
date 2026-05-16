@@ -356,6 +356,20 @@ data class Text(
 data class AsyncImage(
     @Property(1) val url: String,
     @Property(2) val contentDescription: String,
+    /**
+     * How the loaded bitmap scales to fill the slot the modifier chain
+     * hands the widget. Defaults to [SchemaContentScale.Fit] which is
+     * Compose's default for `AsyncImage`/`Image` — older payloads decode
+     * cleanly and render unchanged.
+     *
+     * Use [SchemaContentScale.Crop] for hero/banner imagery where the
+     * slot has a fixed aspect (e.g. a 0.75-aspect Card with the wallpaper
+     * as background) and you want the image to fill it edge-to-edge
+     * regardless of the source aspect — ExploreScreen wallpapers do this.
+     *
+     * Wire-additive (Property 3).
+     */
+    @Property(3) val contentScale: SchemaContentScale = SchemaContentScale.Fit,
 )
 
 /** Material icon. Sized via modifier (Size/Width/Height); default is 24dp. */

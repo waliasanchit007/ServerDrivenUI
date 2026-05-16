@@ -7,8 +7,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.serverdrivenui.presenter.HostExploreNavigatorBridge
+import com.example.serverdrivenui.presenter.HostExploreSaverBridge
 import com.example.serverdrivenui.presenter.HostQuotesProviderBridge
 import com.example.serverdrivenui.presenter.HostWallpapersProviderBridge
+import com.example.serverdrivenui.shared.HostExploreSaverObserver
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.shared.Quote
@@ -16,6 +18,7 @@ import com.example.serverdrivenui.shared.Wallpaper
 import com.example.serverdrivenui.schema.SchemaArrangement
 import com.example.serverdrivenui.schema.SchemaBoxAlignment
 import com.example.serverdrivenui.schema.SchemaColor
+import com.example.serverdrivenui.schema.SchemaContentScale
 import com.example.serverdrivenui.schema.SchemaFontWeight
 import com.example.serverdrivenui.schema.SchemaHorizontalAlignment
 import com.example.serverdrivenui.schema.SchemaIconName
@@ -279,9 +282,50 @@ private fun ExploreCard(
     wallpaper: Wallpaper?,
     onClick: () -> Unit,
 ) {
-    // Local "liked" state — visual only; the schema can express the
-    // toggle but the actual save-to-gallery action lives in the host.
+    // Heart visual state. Optimistic update: flip to true on tap, fire
+    // HostExploreSaver.saveQuoteCard, then revert to false in the
+    // failure callback (mirrors native ExploreCard semantics — the heart
+    // un-fills if the save throws + a Toast shows on the host).
+    //
+    // Like native, a SECOND tap is a no-op — saving once is the only
+    // user-visible action; un-saving would require a MediaStore round-
+    // trip the native version doesn't do either.
     var liked by remember { mutableStateOf(false) }
+
+    val onHeartTap: () -> Unit = {
+        if (!liked) {
+            liked = true
+            val saver = HostExploreSaverBridge.instance
+            if (saver != null) {
+                try {
+                    saver.saveQuoteCard(
+                        quoteId = quote.id,
+                        wallpaperId = wallpaper?.id,
+                        observer = object : HostExploreSaverObserver {
+                            override fun onSaveResult(success: Boolean) {
+                                // Single-use observer — host calls .close()
+                                // after this fires (gotcha #12 territory:
+                                // we don't close() it ourselves).
+                                if (!success) liked = false
+                            }
+                        },
+                    )
+                } catch (t: Throwable) {
+                    // RPC threw synchronously (no such service / wire
+                    // error). Revert the visual + log; the host will
+                    // surface its own Toast if it can.
+                    println("HostExploreSaver.saveQuoteCard threw: ${t.message}")
+                    liked = false
+                }
+            } else {
+                // Host didn't bind explore-saver — keep the visual flip
+                // so the schema's "liked" state still works in screens
+                // that don't care about persistence (e.g. demo / preview
+                // hosts).
+                println("HostExploreSaver not bound — heart is visual only")
+            }
+        }
+    }
 
     // Saffron 0xFFFF6F00, PrimaryMaroon 0xFF7A1F1F — DevoStatus brand
     // colors, expressed as raw ARGB so the gradient works regardless of
@@ -310,6 +354,12 @@ private fun ExploreCard(
                 AsyncImage(
                     url = wallpaper.imageUrl,
                     contentDescription = "Background",
+                    // Match the native ExploreCard: scale uniformly so the
+                    // smaller dim covers the 0.75-aspect slot and center-
+                    // crop the overflow. Without this, the loaded bitmap
+                    // letterboxes (ContentScale.Fit) instead of filling
+                    // the card.
+                    contentScale = SchemaContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
@@ -343,38 +393,36 @@ private fun ExploreCard(
             ) {}
 
             // ─── Heart pill (top-right) ──────────────────────────
+            // Outer wrapper: positions the pill at top-right. NO onClick
+            // here — it would swallow taps over the empty area of the
+            // card and make the entire card act as a heart-tap target,
+            // which is what was happening before. Keep the click area
+            // confined to the 36×36 pill below (native does the same
+            // with Modifier.align).
             Box(
-                onClick = { liked = !liked },
+                onClick = null,
                 contentAlignment = SchemaBoxAlignment.TopEnd,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8, 8, 8, 8),
             ) {
                 Box(
-                    onClick = { liked = !liked },
+                    onClick = onHeartTap,
                     contentAlignment = SchemaBoxAlignment.Center,
                     modifier = Modifier
                         .size(36, 36)
-                        .clip(cornerRadiusDp = 18),
+                        .clip(cornerRadiusDp = 18)
+                        .background(
+                            color = if (liked) SchemaColor.Tertiary else SchemaColor.OnBackground,
+                            alpha = if (liked) 0.9 else 0.2,
+                            cornerRadiusDp = 18,
+                        ),
                 ) {
-                    Box(
-                        onClick = null,
-                        contentAlignment = SchemaBoxAlignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(cornerRadiusDp = 18)
-                            .background(
-                                color = if (liked) SchemaColor.Tertiary else SchemaColor.OnBackground,
-                                alpha = if (liked) 0.9 else 0.2,
-                                cornerRadiusDp = 18,
-                            ),
-                    ) {
-                        Icon(
-                            name = if (liked) SchemaIconName.Favorite else SchemaIconName.FavoriteBorder,
-                            tint = SchemaColor.Background,  // white-on-tinted-bg
-                            modifier = Modifier.size(20, 20),
-                        )
-                    }
+                    Icon(
+                        name = if (liked) SchemaIconName.Favorite else SchemaIconName.FavoriteBorder,
+                        tint = SchemaColor.Background,  // white-on-tinted-bg
+                        modifier = Modifier.size(20, 20),
+                    )
                 }
             }
 

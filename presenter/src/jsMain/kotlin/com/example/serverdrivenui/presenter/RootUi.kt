@@ -27,18 +27,41 @@ import com.example.serverdrivenui.schema.compose.ScreenStack
 @Composable
 fun RootUi(@Suppress("UNUSED_PARAMETER") initialRoute: String = "auto") {
     val navigator = remember {
+        // Route by validating the proxies via a real method call. The
+        // bridges in Main.kt are populated with DEFERRED proxies that
+        // are non-null regardless of whether the host actually bound
+        // the service (see Main.kt comment). Calling the getter is the
+        // only reliable signal of "this service is wired through to a
+        // live host implementation." By RootUi composition time, the
+        // host's bindServices has finished, so the call either returns
+        // data or throws "no such service" cleanly.
+        //
+        // Routing priority: Explore wiring beats Quotes, beats default
+        // showcase. The host binds whichever services its current
+        // screen needs; the guest mounts the matching screen. If both
+        // are bound, Explore wins — DevoStatus uses two separate
+        // TreehouseApps so this conflict can't occur in practice.
+        val isWallpapersLive = try {
+            HostWallpapersProviderBridge.instance?.also { it.getWallpapers(null) } != null
+        } catch (_: Throwable) {
+            false
+        }
+        val isQuotesLive = try {
+            HostQuotesProviderBridge.instance?.also { it.getQuotes(null) } != null
+        } catch (_: Throwable) {
+            false
+        }
+        println("Zipline JS: Routing — wallpapersLive=$isWallpapersLive quotesLive=$isQuotesLive")
+        // Clear bridges that proxy unbound services so downstream code
+        // (LaunchedEffects in QuotesScreen / ExploreScreen) doesn't try
+        // to call them and re-trigger "no such service" errors.
+        if (!isWallpapersLive) HostWallpapersProviderBridge.instance = null
+        if (!isQuotesLive) HostQuotesProviderBridge.instance = null
+
         Navigator().apply {
-            // Routing priority: explicit Explore wiring beats Quotes,
-            // beats default showcase. The host binds whichever services
-            // its current screen needs; the guest mounts the matching
-            // screen. If both are bound (e.g. the host pre-warms BOTH
-            // before user navigates), Explore wins — DevoStatus mounts
-            // them via two separate TreehouseApps so this conflict
-            // can't occur in practice, but the deterministic ordering
-            // is documented for any future single-app integrators.
             val firstScreen = when {
-                HostWallpapersProviderBridge.instance != null -> ExploreScreen()
-                HostQuotesProviderBridge.instance != null -> QuotesScreen()
+                isWallpapersLive -> ExploreScreen()
+                isQuotesLive -> QuotesScreen()
                 else -> Tier1ShowcaseScreen()
             }
             push(firstScreen)

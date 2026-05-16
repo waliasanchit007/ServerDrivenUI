@@ -159,3 +159,36 @@ enum class SchemaTransition {
     FadeAndSlide,
     FadeAndScale,
 }
+
+/**
+ * How an [com.example.serverdrivenui.schema.AsyncImage]'s loaded bitmap is
+ * scaled to fit the slot the modifier chain hands it. Maps to
+ * `androidx.compose.ui.layout.ContentScale.{Fit,Crop,FillBounds,FillWidth,
+ * FillHeight,Inside,None}` on the host.
+ *
+ * Wire-additive on [com.example.serverdrivenui.schema.AsyncImage]
+ * (Property 3) with [Fit] as the default — that's Compose's default for
+ * `Image`/`AsyncImage`, so older payloads decode and render unchanged.
+ *
+ * `Crop` is the most common override: scale uniformly so the SMALLER
+ * dimension matches the slot, then center-crop the overflow. Use when
+ * the slot has a fixed aspect ratio and a "hero" image needs to fill it.
+ * That's what DevoStatus's native ExploreScreen does on every card.
+ */
+@Serializable
+enum class SchemaContentScale {
+    /** Uniform scale; whole image visible inside the slot (default). */
+    Fit,
+    /** Uniform scale; SMALLER dim matches slot; overflow is center-cropped. */
+    Crop,
+    /** Non-uniform scale; image distorts to fill the slot. */
+    FillBounds,
+    /** Uniform scale; image WIDTH matches slot; vertical may overflow/letterbox. */
+    FillWidth,
+    /** Uniform scale; image HEIGHT matches slot; horizontal may overflow/letterbox. */
+    FillHeight,
+    /** Like [Fit] but never scales UP — small images render at native size. */
+    Inside,
+    /** No scaling at all — image renders at native pixel size. */
+    None,
+}
