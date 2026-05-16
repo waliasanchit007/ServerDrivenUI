@@ -58,10 +58,20 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
+            // Coil 3 network fetcher — Android-side. Uses OkHttp directly
+            // (which Zipline already brings in transitively), so there's
+            // no Ktor on the Android consumer's runtime classpath. See
+            // docs/KNOWN_BUGS.md #6 for the conflict this avoids.
+            implementation(libs.coil.network.okhttp)
         }
 
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            // Coil 3 network fetcher — iOS-side. Ktor 2 here matches the
+            // ktor-client-darwin client elsewhere in iosMain. Move to
+            // coil-network-ktor3 if/when the project-wide ktor version
+            // bumps.
+            implementation(libs.coil.network.ktor2)
         }
 
         commonMain {
@@ -87,7 +97,11 @@ kotlin {
             implementation(libs.zipline.loader)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor2)
+            // NOTE: Coil network fetchers live in the platform source sets
+            // (`coil-network-okhttp` in androidMain, `coil-network-ktor2`
+            // in iosMain). Keeping them out of commonMain means Android
+            // consumers don't transitively pick up Ktor 2 — see
+            // docs/KNOWN_BUGS.md #6.
         }
     }
         

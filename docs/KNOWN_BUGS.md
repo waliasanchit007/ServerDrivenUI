@@ -5,12 +5,31 @@ consuming Konduit as a submodule + Maven library). Each entry lists
 symptom, reproduction, current workaround, and what an upstream fix
 would look like.
 
-> Treat this file as the punch list. When a bug is fixed, move its
-> section to `docs/CHANGELOG.md` with the fixing commit.
+Entries are split into two sections:
+
+- **Upstream-only** — the fix has to land in the Konduit fork
+  (`waliasanchit007/konduit`) or in Zipline itself. The integration
+  ships a workaround; the doc keeps a record so future readers
+  understand *why* the workaround is there.
+- **Actionable here** — anything that could be fixed in this repo
+  (schema, composeApp, presenter). When fixed, it moves to
+  `docs/CHANGELOG.md` and gets removed from this file.
+
+Resolved bugs live in [`CHANGELOG.md`](./CHANGELOG.md).
+
+> Treat this file as the punch list. When a bug becomes fixed, move it
+> to `CHANGELOG.md` with the fixing commit.
 
 ---
 
-## 1. `suspend` `ZiplineService` methods returning `List<@Serializable T>` hang `bind<>()`
+## Upstream-only
+
+These cannot be fixed without modifying Konduit (the
+`waliasanchit007/konduit` fork that this repo consumes as a Maven
+dependency) or Zipline. Workarounds are in place; documenting the
+shape so a future upstream PR can pick them up.
+
+### U1. `suspend` `ZiplineService` methods returning `List<@Serializable T>` hang `bind<>()`
 
 **Severity:** high (silent failure mode; integrators give up before
 finding the workaround).
@@ -45,9 +64,9 @@ hang immediately.
 `0d18809` in this repo). Not investigated for whether the issue is in
 Zipline's compiler plugin codegen or the host-side proxy construction.
 
-**Workaround.** Keep `getQuotes` non-suspend; have the host pre-cache
-the data before binding. See `HostQuotesProvider`'s kdoc and Step 4½ in
-`USAGE.md`.
+**Workaround in place.** Keep `getQuotes` non-suspend; have the host
+pre-cache the data before binding. See `HostQuotesProvider`'s kdoc and
+Step 4½ in `USAGE.md`. Used throughout shared/Protocol.kt.
 
 **Upstream fix.** Investigate the Zipline 1.26 compiler-plugin codegen
 for `suspend fun … : List<@Serializable T>` signatures. A workaround
@@ -64,7 +83,7 @@ a silent runtime hang.
 
 ---
 
-## 2. Zipline Gradle plugin is mandatory on every module that calls `bind`/`take`, silently hangs otherwise
+### U2. Zipline Gradle plugin is mandatory on every module that calls `bind`/`take`, silently hangs otherwise
 
 **Severity:** high (silent failure; same "give up" outcome).
 
@@ -78,7 +97,8 @@ successfully. At runtime, `bind` hangs forever and `take` throws
 add `alias(libs.plugins.zipline)` to its `plugins {}` block. Call
 `zipline.bind<HostConsole>(...)` — never returns.
 
-**Workaround.** Always apply the plugin:
+**Workaround in place.** Always apply the plugin in every module that
+touches `bind`/`take`:
 
 ```kotlin
 plugins {
@@ -96,7 +116,7 @@ this at compile time.
 
 ---
 
-## 3. `kotlinx-serialization` plugin is required on every module that defines a `@Serializable` wire type used by a `ZiplineService`
+### U3. `kotlinx-serialization` plugin required on every module defining `@Serializable` wire types used by a `ZiplineService`
 
 **Severity:** medium (runtime error has good message, but error fires
 late in integration).
@@ -115,7 +135,8 @@ serialization compiler plugin is applied.
 **Reproduce.** Add `@Serializable` to a data class in a module that has
 only `alias(libs.plugins.kotlinMultiplatform)` — no `kotlinSerialization`.
 
-**Workaround.** Apply the plugin:
+**Workaround in place.** Apply the plugin in every module with wire
+types:
 
 ```kotlin
 plugins {
@@ -134,48 +155,7 @@ kotlinSerialization plugin isn't also applied.
 
 ---
 
-## 4. Schema lacks `alpha`, `offset`, `border`, and custom-font modifiers
-
-**Severity:** medium (visual fidelity gap; integrators ship subpar UX or
-fall back to native screens).
-
-**Symptom.** Common visual treatments — semi-transparent watermarks,
-absolutely-positioned decorative glyphs, custom borders on cards,
-serif/custom-typeface text — cannot be expressed in the schema. The
-result is "close but not pixel-identical" SDUI screens vs the native
-Compose originals they replace.
-
-**Reproduce.** Port any production Compose screen with:
-- `Modifier.alpha(0.1f)` → no schema equivalent
-- `Modifier.offset(x = 12.dp, y = -12.dp)` → no schema equivalent
-- `BorderStroke(1.dp, Color.X.copy(alpha = 0.2f))` on a `Card` → no
-  `border` param on `schema.compose.Card`
-- `TextStyle(fontFamily = FontFamily.Serif, color = Color(0xFF7A1F1F))`
-  → enum-based `SchemaTextStyle` + `SchemaColor` can't carry custom
-  hex or family
-
-DevoStatus's `QuotesScreen` is the case study — see the comparison
-table in `KONDUIT_INTEGRATION_REPORT.md` (DevoStatus side).
-
-**Workaround.** Approximate the look using available widgets (smaller
-inline icons in place of corner watermarks, default fonts, theme
-colors). Accept ~80% visual fidelity. Or fall back to a native screen
-for the highest-fidelity surfaces.
-
-**Upstream fix.** Add to the schema:
-1. `SchemaModifier.Alpha(value: Float)` — directly maps to
-   `Modifier.alpha`. Cheapest change with highest visual return.
-2. `SchemaModifier.Offset(x: Int, y: Int)` — maps to
-   `Modifier.offset(x.dp, y.dp)`. Unlocks decorative absolute placement.
-3. `Card.border: SchemaBorderStroke?` — new optional param. Already
-   trivially mapped (M3 `Card` accepts `border`).
-4. Optional: `SchemaFontFamily` enum (Default, Serif, Monospace) or a
-   `SchemaTypography` schema-derived from M3's typography slots. Carries
-   custom typefaces through theme rather than per-call.
-
----
-
-## 5. Coil 3's singleton `ImageLoader` has no network fetcher by default
+### U5. Coil 3's singleton `ImageLoader` has no network fetcher by default
 
 **Severity:** low (already documented in USAGE.md), but listing here
 because the failure mode is silent.
@@ -189,7 +169,11 @@ artifact adds a network fetcher, but the integrator has to call
 `setSingletonImageLoaderFactory { … }` before any `AsyncImage` is
 composed.
 
-**Workaround.** See `USAGE.md` "⚠️ If you use AsyncImage" callout.
+**Workaround in place.** See `USAGE.md` "⚠️ If you use AsyncImage"
+callout. This repo's `:composeApp` `App.kt` calls
+`setSingletonImageLoaderFactory` with the right platform fetcher; each
+DevoStatus screen (`KonduitDemoScreen`, `KonduitQuotesScreen`,
+`KonduitExploreScreen`) does the same.
 
 **Upstream fix.** Konduit could supply a default
 `setSingletonImageLoaderFactory` call from within
@@ -201,27 +185,7 @@ been initialized would help.
 
 ---
 
-## 6. `coil-network-ktor2` conflicts at runtime with apps that use Ktor 3
-
-**Severity:** low (DevoStatus-specific, but generalizable).
-
-**Symptom.** App that uses Supabase 3.x (which pulls in Ktor 3) +
-Konduit (which historically pulls in `coil-network-ktor2`) crashes at
-first `AsyncImage` load with `NoClassDefFoundError` on
-`io.ktor.utils.io.jvm.nio.WritingKt`.
-
-**Workaround.** Switch to `coil-network-okhttp` on Android (already done
-in `:konduit-host`). For iOS, switch to `coil-network-ktor3`.
-
-**Upstream fix.** Konduit's `:composeApp` should prefer
-`coil-network-okhttp` over the ktor2 variant — OkHttp is already a
-required Android-side dep for the Zipline HTTP loader, so it adds no
-new transitive weight. For iOS, switch to `ktor3` matching the rest of
-the iOS-side networking story.
-
----
-
-## 7. `TreehouseApp.Spec` services held as anonymous inline references get GC'd
+### U7. `TreehouseApp.Spec` services held as anonymous inline references get GC'd
 
 **Severity:** medium (documented in code as "gotcha #6", but trips
 every new integrator on the first try).
@@ -237,8 +201,8 @@ The anonymous instance becomes GC-eligible the moment `bindServices`
 returns; the host's underlying weak reference gets cleared before the
 guest's first call.
 
-**Workaround.** Hold each service as a `val` or `lateinit var` property
-of the `Spec` (its lifetime survives the GC pressure that anon
+**Workaround in place.** Hold each service as a `val` or `lateinit var`
+property of the `Spec` (its lifetime survives the GC pressure that anon
 instances don't):
 
 ```kotlin
@@ -261,7 +225,7 @@ strong ref until `Zipline.close()`.
 
 ---
 
-## 8. Host `ZiplineService` method bodies execute on the Zipline dispatcher, not Main — UI touches silently no-op
+### U8. Host `ZiplineService` method bodies execute on the Zipline dispatcher, not Main — UI touches silently no-op
 
 **Severity:** high (silent failure on Android, possible crash on iOS K/N).
 **Counterpart to gotcha #12** in `docs/HANDOVER.md`, which documents the
@@ -303,8 +267,8 @@ JVM-backed Zipline (Android) tolerates the wrong-thread state mutation
 quietly. iOS Kotlin/Native may crash (we haven't reproduced this one on
 iOS yet, but the symmetric outbound case in gotcha #12 does).
 
-**Workaround.** Take a `CoroutineScope` in the service's constructor,
-launch the side effect onto Main:
+**Workaround in place.** Take a `CoroutineScope` in the service's
+constructor, launch the side effect onto Main:
 
 ```kotlin
 private class RealHostNavigator(
@@ -346,84 +310,29 @@ threading bug rather than a wiring bug.
 
 ---
 
-## 9. ~~`lateinit var` services inside `bindServices` silently skip binding on 2nd `TreehouseApp` mount~~ — NOT a Konduit bug. Root cause: integrator's `remember(...)` keying on unstable lambdas.
+## Actionable here
 
-**Severity:** high when present (silent failure of host-side service
-binding).
-**Status:** root cause PINNED — this was never a Konduit bug. The fix
-lives entirely in the integrator's Composable.
+No outstanding actionable bugs at the moment — the punch list is
+empty. When a new bug surfaces, add it here; when fixed, move it to
+`CHANGELOG.md`.
 
-**The real story.** When this gotcha was first observed, every recompo-
-sition was creating a new `TreehouseApp` instance, and the "second
-mount" with the lateinit-var pattern silently dropped service binding.
-Both directions — "Konduit is caching" and "lateinit var inside
-bindServices is bad" — were hypotheses; both were wrong.
+---
 
-Actual root cause: the integrator's Composable held the TreehouseApp
-in a `remember(activity, quotesSource, onQuoteSelected, quotesFlow) {
-createTreehouseApp(...) }`. `quotesSource` and `onQuoteSelected` were
-anonymous lambdas at the call site, which means they got a new
-identity on every recomposition. `remember`'s key list saw "new keys"
-and invalidated, calling the factory block again — building a brand
-new TreehouseApp with a brand new Spec. The OLD TreehouseApp was
-still alive (no one closed it) and shared the same `appScope` and
-`manifestUrlFlow`. The two specs raced for the Zipline runtime; the
-later spec's bindServices either no-op'd or its log statements went
-to a thread whose stdout never made it to logcat.
+## Recently resolved
 
-**The fix (integrator-side).** Make the `remember` key list stable by
-wrapping unstable lambdas in `rememberUpdatedState`, then pass thin
-adapter lambdas (declared once inside `remember`) that delegate to the
-always-current State:
+These were resolved in this repo. Full entries with commit references
+live in [`CHANGELOG.md`](./CHANGELOG.md):
 
-```kotlin
-@Composable
-fun MyScreen(
-    sourceLambda: (Filter) -> Data,         // unstable identity per recomposition
-    callbackLambda: (Result) -> Unit,       // same
-    stableFlow: Flow<…>,                    // stable (caller used remember)
-) {
-    val currentSource by rememberUpdatedState(sourceLambda)
-    val currentCallback by rememberUpdatedState(callbackLambda)
-    val treehouseApp = remember(activity, stableFlow) {           // ← stable keys only
-        createTreehouseApp(
-            source = { filter -> currentSource(filter) },          // ← stable adapter
-            callback = { result -> currentCallback(result) },      // ← stable adapter
-            flow = stableFlow,
-        )
-    }
-    // … TreehouseContent(treehouseApp, …)
-}
-```
-
-Net effect: exactly **one** `TreehouseApp` per Composable lifetime,
-even across hundreds of recompositions. The lateinit-var-in-bindServices
-pattern (per gotcha #12 outbound dispatch) then works fine — verified
-on DevoStatus commit `<bump>` after the fix.
-
-**Why this is gotcha-list-worthy even though it's not a Konduit bug.**
-The two related gotchas (lateinit-var-in-bindServices for #12 outbound
-dispatch + unstable remember keys for screen wiring) form a pair where
-either alone is fine but TOGETHER they create a silent failure mode
-that's nearly impossible to debug from logs. New integrators following
-RealHostSnackbar's lateinit-var pattern get tripped if they also keyed
-their `remember` on unstable lambdas. The right fix is documenting the
-pairing, not changing the pattern.
-
-**Where Konduit could help (still worth doing).**
-
-1. **`TreehouseApp.Spec.bindServices` log instrumentation.** When an
-   integrator's bindServices is called the second time on the same
-   process, Konduit could detect it (or detect a previous-Spec leak
-   in the same appScope) and log a warning. Right now the failure is
-   diagnostically silent.
-2. **`USAGE.md` Step 2 callout.** Add a "remember stability"
-   subsection right after the Spec example — link forward to
-   `rememberUpdatedState` and provide the stable-adapter pattern as
-   the canonical shape.
-3. **A `rememberTreehouseApp { ... }` Compose helper.** Internalize
-   the stable-key contract in the API surface itself, so integrators
-   can't get it wrong.
+- **#4** Schema lacks alpha/offset/border/custom-font modifiers —
+  Alpha (modifier 11), Border (modifier 12), Offset (modifier 18),
+  `SchemaFontFamily` enum all shipped. See CHANGELOG.
+- **#6** `coil-network-ktor2` conflicts with Ktor-3-using consumer
+  apps — composeApp now uses `coil-network-okhttp` on Android. See
+  CHANGELOG.
+- **#9** `lateinit var` services inside `bindServices` skip 2nd
+  TreehouseApp mount — not actually a Konduit bug; root cause was
+  integrator's unstable `remember` keys. Resolution + canonical
+  `rememberKonduitApp` helper documented. See CHANGELOG.
 
 ---
 
