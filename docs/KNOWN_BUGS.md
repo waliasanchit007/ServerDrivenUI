@@ -185,7 +185,33 @@ been initialized would help.
 
 ---
 
-### U7. `TreehouseApp.Spec` services held as anonymous inline references get GC'd
+### U7. ~~`TreehouseApp.Spec` services held as anonymous inline references get GC'd~~ — FIXED in Konduit `1.0.0-caliclan.3`
+
+**Status:** Fixed in commit `<TBD-konduit-hash>` via
+`TreehouseApp.Spec.retain()`. The `val`/`lateinit var` workaround
+documented previously still works; `retain()` is just the cleaner
+shape when the service is an inline anonymous object.
+
+**Use:**
+```kotlin
+val spec = object : TreehouseApp.Spec<…>() {
+    override suspend fun bindServices(treehouseApp, zipline) {
+        zipline.bind<HostConsole>("console", retain(object : HostConsole {
+            override fun log(message: String) = println(message)
+        }))
+    }
+}
+```
+
+`retain(service)` returns the service unchanged but adds it to an
+internal strong-ref list on the Spec. Equivalent semantics to holding
+the service as a `val` field of the Spec, but easier to remember when
+you're tempted to inline an anon object.
+
+Historical entry preserved below for context.
+
+<details>
+<summary>Original entry</summary>
 
 **Severity:** medium (documented in code as "gotcha #6", but trips
 every new integrator on the first try).
@@ -201,9 +227,9 @@ The anonymous instance becomes GC-eligible the moment `bindServices`
 returns; the host's underlying weak reference gets cleared before the
 guest's first call.
 
-**Workaround in place.** Hold each service as a `val` or `lateinit var`
-property of the `Spec` (its lifetime survives the GC pressure that anon
-instances don't):
+**Workaround (still valid).** Hold each service as a `val` or
+`lateinit var` property of the `Spec` (its lifetime survives the GC
+pressure that anon instances don't):
 
 ```kotlin
 val spec = object : TreehouseApp.Spec<…>() {
@@ -217,11 +243,7 @@ val spec = object : TreehouseApp.Spec<…>() {
     }
 }
 ```
-
-**Upstream fix.** `TreehouseApp.Spec` could hold a strong-ref map of
-bound services internally — the API user shouldn't have to know about
-the leak detector's quirks. Or `Zipline.bind` could itself hold a
-strong ref until `Zipline.close()`.
+</details>
 
 ---
 
@@ -335,8 +357,8 @@ empty. When a new bug surfaces, add it here; when fixed, move it to
 
 ## Recently resolved
 
-These were resolved in this repo. Full entries with commit references
-live in [`CHANGELOG.md`](./CHANGELOG.md):
+These were resolved in this repo or in the Konduit fork. Full entries
+with commit references live in [`CHANGELOG.md`](./CHANGELOG.md):
 
 - **#4** Schema lacks alpha/offset/border/custom-font modifiers —
   Alpha (modifier 11), Border (modifier 12), Offset (modifier 18),
@@ -348,6 +370,13 @@ live in [`CHANGELOG.md`](./CHANGELOG.md):
   TreehouseApp mount — not actually a Konduit bug; root cause was
   integrator's unstable `remember` keys. Resolution + canonical
   `rememberKonduitApp` helper documented. See CHANGELOG.
+- **U7** Anonymous service GC'd — `TreehouseApp.Spec.retain()` helper
+  shipped in Konduit `1.0.0-caliclan.3`. See CHANGELOG.
+- **U8 part 2** (dispatcher exposure) — `TreehouseDispatchers.ui`
+  has been public API since `1.0.0-caliclan.2`; KNOWN_BUGS doc
+  previously listed it as an unshipped fix. Corrected, with all
+  DevoStatus host services migrated to `treehouseApp.dispatchers.ui`
+  from `Dispatchers.Main`.
 
 ---
 

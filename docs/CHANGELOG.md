@@ -12,6 +12,16 @@ summary, and the fix commit.
 
 ## Unreleased
 
+### Konduit fork (`1.0.0-caliclan.3-SNAPSHOT`)
+
+- **KNOWN_BUGS U7** — `TreehouseApp.Spec.retain(service)` helper shipped.
+  Strong-ref pass-through that keeps anonymous inline service
+  implementations alive for the lifetime of the Spec, so the first
+  guest call no longer fails with "no such service (service closed?)".
+  Use as `zipline.bind<HostX>("x", retain(object : HostX { … }))`.
+  Lives in `konduit-treehouse-host`'s `TreehouseApp.kt`. Validated end-
+  to-end in DevoStatus (`KonduitDemoScreen.kt`).
+
 ### Fixed
 
 - **KNOWN_BUGS #6** — `coil-network-ktor2` conflict with consumer apps
