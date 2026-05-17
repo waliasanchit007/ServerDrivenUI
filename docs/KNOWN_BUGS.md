@@ -101,6 +101,13 @@ a silent runtime hang.
 ### U2. Zipline Gradle plugin is mandatory on every module that calls `bind`/`take`, silently hangs otherwise
 
 **Severity:** high (silent failure; same "give up" outcome).
+**Mitigation shipped in Konduit `1.0.0-caliclan.3`:**
+`Spec.bindWithTimeout { … }` catches U2's hang shape too (same surface
+as U1). The `ZiplineBindTimeoutException` message lists both U1 and U2
+as candidates so the integrator knows to check the `plugins {}` block
+in addition to the suspect-signature shape. `take` already throws a
+clear "is the Zipline plugin configured?" error — only `bind` was
+silent before.
 
 **Symptom.** A module that calls `zipline.bind<Foo>(...)` or
 `zipline.take<Foo>(...)` but doesn't apply the
@@ -135,6 +142,13 @@ this at compile time.
 
 **Severity:** medium (runtime error has good message, but error fires
 late in integration).
+**Mitigation shipped in Konduit `1.0.0-caliclan.3`:**
+`Spec.requireSerializerOf<T>()` is a bind-time pre-flight check that
+throws `MissingSerializerException` with a clear diagnostic when a
+`@Serializable` wire type's serializer can't be resolved. Move the
+failure point from "first guest call" to "bind time" by calling
+`requireSerializerOf<Quote>()` etc. at the top of `bindServices`.
+DevoStatus's `KonduitQuotesScreen.kt` shows the pattern.
 
 **Symptom.** Defining `@Serializable data class Quote(...)` in a module
 that doesn't apply `org.jetbrains.kotlin.plugin.serialization` compiles
