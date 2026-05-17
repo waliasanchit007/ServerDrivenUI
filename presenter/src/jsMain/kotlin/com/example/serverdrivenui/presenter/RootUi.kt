@@ -55,8 +55,20 @@ fun RootUi(@Suppress("UNUSED_PARAMETER") initialRoute: String = "auto") {
         // Clear bridges that proxy unbound services so downstream code
         // (LaunchedEffects in QuotesScreen / ExploreScreen) doesn't try
         // to call them and re-trigger "no such service" errors.
-        if (!isWallpapersLive) HostWallpapersProviderBridge.instance = null
-        if (!isQuotesLive) HostQuotesProviderBridge.instance = null
+        //
+        // .close() the deferred proxy before nulling — otherwise Konduit's
+        // leak detector logs `serviceLeaked name=quotes/wallpapers` because
+        // the proxy goes out of scope without being closed. Cosmetic but
+        // noisy, and adopters following this routing pattern will see the
+        // warnings for any service their host doesn't bind.
+        if (!isWallpapersLive) {
+            try { HostWallpapersProviderBridge.instance?.close() } catch (_: Throwable) {}
+            HostWallpapersProviderBridge.instance = null
+        }
+        if (!isQuotesLive) {
+            try { HostQuotesProviderBridge.instance?.close() } catch (_: Throwable) {}
+            HostQuotesProviderBridge.instance = null
+        }
 
         Navigator().apply {
             val firstScreen = when {
