@@ -45,6 +45,20 @@ summary, and the fix commit.
   of waiting for the first guest call to send the type across the
   wire. DevoStatus's `KonduitQuotesScreen.kt` validates `Quote` this
   way.
+- **KNOWN_BUGS U6** — Konduit's schema parser now rejects function-typed
+  `@Modifier` properties at parse time with a clear error pointing at
+  the canonical workaround (put click handlers on widgets, not
+  modifiers). Eliminates the cryptic "expecting class body" error in
+  generated `:shared-protocol-guest:compileKotlinJs` output. Fixed in
+  Konduit `konduit-tooling-schema/schemaParserFir.kt`.
+- **KNOWN_BUGS U11** (mitigation) — `:shared:validateZiplineServiceShapes`
+  Gradle task scans `shared/Protocol.kt` for `ZiplineService`
+  interfaces with function-typed parameters and fails the build with a
+  clear message. Wired into `:shared:check`. Doesn't fix the
+  Zipline-upstream root cause, but prevents the silent-runtime-no-op
+  shape from ever shipping. Verified: passes for current Protocol.kt,
+  fails with named diagnostic when a `(Boolean) -> Unit` parameter is
+  introduced.
 
 ### Fixed
 

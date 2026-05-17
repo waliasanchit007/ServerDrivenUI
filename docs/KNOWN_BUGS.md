@@ -221,7 +221,29 @@ been initialized would help.
 
 ---
 
-### U6. Konduit codegen emits invalid Kotlin for lambda-typed `@Modifier` properties on Kotlin/JS
+### U6. ~~Konduit codegen emits invalid Kotlin for lambda-typed `@Modifier` properties on Kotlin/JS~~ — FIXED in Konduit `1.0.0-caliclan.3`
+
+**Status:** Fixed. Konduit's schema parser now rejects function-typed
+`@Modifier` properties at build time with a clear error message that
+points integrators at the canonical workaround (put click handlers on
+widgets, not modifiers). The cryptic "expecting class body" error in
+generated `:shared-protocol-guest:compileKotlinJs` output can no longer
+happen — the bad shape is caught at `:schema:redwoodJsonGenerate` time
+with a message like:
+
+```
+@Modifier com.example.MyMod#onClick cannot be a function type.
+Konduit codegen for lambda-typed modifier properties is broken on
+Kotlin/JS — the generated `ContextualSerializer(Function0<Unit>::class)`
+is invalid Kotlin syntax and breaks `:shared-protocol-guest:compileKotlinJs`.
+Move the handler onto the widget as a regular `@Property` instead
+(see Konduit's `Button.onClick` / `Box.onClick` for the canonical shape).
+```
+
+Historical entry preserved below for context.
+
+<details>
+<summary>Original entry</summary>
 
 **Severity:** high (the build silently produces uncompilable codegen
 output if you happen to add a `() -> Unit` field on a `@Modifier`).
@@ -258,6 +280,8 @@ should special-case function-typed properties on `@Modifier` — either
 generate a `ZiplineService`-backed proxy (matching the U11 fix pattern)
 or emit a compile-time error so integrators see the rejection upfront
 rather than discover it through a broken JS codegen output.
+
+</details>
 
 ---
 
@@ -351,6 +375,17 @@ Option (1) is the right fix.
 **Severity:** high (build succeeds, `zipline.take<T>` returns
 non-null-but-broken proxy, every method call is a silent no-op).
 **Origin:** HANDOVER.md gotcha #11.
+**Mitigation shipped:** `:shared:validateZiplineServiceShapes` Gradle
+task scans `shared/Protocol.kt` for ZiplineService interfaces with
+function-typed parameters and fails the build with a clear message
+pointing at this entry. Wired into `:shared:check` so it runs as part
+of the normal verification flow. Adopters consuming Konduit can copy
+the same task into their own protocol module — see `shared/build.gradle.kts`.
+
+The root cause is still upstream in Zipline's compiler plugin (which
+accepts the bad signature shape but produces a runtime-broken proxy);
+this lint just prevents the bad shape from ever reaching that code
+path.
 
 **Symptom.** Defining a `ZiplineService` interface method with a
 function-typed parameter compiles fine. The host's `bind<T>` succeeds.
@@ -613,6 +648,18 @@ with commit references live in [`CHANGELOG.md`](./CHANGELOG.md):
   so the white screen can no longer happen. The `SduiSerializersModule`
   workaround is now redundant but kept (harmless when fallback works).
   See CHANGELOG.
+- **U6** Lambda-on-modifier JS codegen broken — Konduit
+  `1.0.0-caliclan.3` schema parser now rejects function-typed
+  `@Modifier` properties at parse time with a clear error message
+  instead of producing invalid Kotlin/JS codegen output that breaks
+  `:shared-protocol-guest:compileKotlinJs` with a cryptic error in
+  generated code the integrator never wrote.
+- **U11** ZiplineService lambda-param silent failure — `:shared` ships
+  a `validateZiplineServiceShapes` Gradle task that rejects the bad
+  shape at build time (wired into `:shared:check`). Doesn't fix the
+  Zipline-upstream root cause, but prevents the silent runtime no-op
+  from ever shipping. Adopters can copy the same task into their
+  protocol modules.
 
 ---
 
