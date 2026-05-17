@@ -48,6 +48,28 @@ Production-readiness reality check before you commit to this path:
 
 ---
 
+## Silent-failure cheat sheet — read this BEFORE you write code
+
+These five failure shapes account for most "looks like Konduit is broken"
+debug sessions. All five are documented in detail in `KNOWN_BUGS.md`;
+this section is the at-a-glance index so you can search for the symptom
+and jump straight to the fix.
+
+| Symptom | Likely cause | Quick fix |
+|---|---|---|
+| `bindServices` hangs forever, no log | **U1** — `suspend fun X(...): List<@Serializable T>` | Drop `suspend` from the method; wrap suspect binds in `bindWithTimeout { … }` so you see a clear `ZiplineBindTimeoutException` after 30s instead of a frozen build. |
+| `bindServices` hangs forever, no log | **U2** — Zipline Gradle plugin missing on this module | Add `alias(libs.plugins.zipline)` to `plugins {}`. `bindWithTimeout` catches this too — message names both U1 and U2 as candidates. |
+| First guest call fails with `Serializer for class 'X' is not found` | **U3** — kotlinx-serialization plugin missing on the module declaring `X` | Add `alias(libs.plugins.kotlinSerialization)` to that module. Or call `requireSerializerOf<X>()` at the top of `bindServices` to catch the same failure at bind time instead. |
+| `AsyncImage` with HTTP URL renders blank, no exception | **U5** — Coil 3 default ImageLoader has no network fetcher | Call `setSingletonImageLoaderFactory { … }` at host startup with a platform-appropriate fetcher. See [§"⚠️ If you use AsyncImage" below](#-if-you-use-asyncimage-register-a-coil-3-imageloader-yourself). |
+| Host service callback runs (log fires) but the UI doesn't react | **U8** — host service body runs on the Zipline dispatcher, not the UI thread | Take `uiDispatcher = treehouseApp.dispatchers.ui` as a constructor param; `scope.launch(uiDispatcher) { … }` around `NavController.navigate` / Compose state mutations. |
+
+Production-readiness note: U1, U2, U3 ship with mitigations as of
+Konduit `1.0.0-caliclan.3` (the `Spec.bindWithTimeout` /
+`Spec.requireSerializerOf` helpers). U5 is still doc-level. U8 is
+already actionable via `dispatchers.ui`.
+
+---
+
 ## Architecture, in 30 seconds
 
 ```

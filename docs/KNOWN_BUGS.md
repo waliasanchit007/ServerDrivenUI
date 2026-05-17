@@ -188,6 +188,13 @@ kotlinSerialization plugin isn't also applied.
 
 **Severity:** low (already documented in USAGE.md), but listing here
 because the failure mode is silent.
+**Documentation strengthened:** USAGE.md now has a top-level
+"Silent-failure cheat sheet" table that surfaces U5 (and the other four
+silent-failure shapes) at-a-glance with symptom → cause → fix. The
+detailed Coil setup section lower in the doc is now cross-linked from
+the cheat sheet. We deliberately did not auto-install a default
+ImageLoader from Konduit — production integrators want to configure
+their own (custom cache, interceptors, telemetry).
 
 **Symptom.** A schema `AsyncImage` with an `http://…` URL renders blank.
 No exception, no log line. Looks like the schema widget is broken.
