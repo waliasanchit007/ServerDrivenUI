@@ -118,6 +118,19 @@ jobs:
       - name: Compile guest .zipline (development)
         run: ./gradlew :presenter:compileDevelopmentExecutableKotlinJsZipline --stacktrace
 
+      # Run pure-JVM unit tests across the modules that have them. Two
+      # suites at the time of writing:
+      #   * :shared-protocol-host:jvmTest — verifies the generated
+      #     BackgroundImpl decoder treats `cornerRadiusDp` as additive
+      #     (old payload missing the field → 0). Guards against schema
+      #     changes that would silently break older guest bundles.
+      #   * :shared:jvmTest — pins down the SnackbarResultCallback
+      #     wrapper pattern that survived two separate regressions
+      #     (raw-lambda marshalling + override name-shadow recursion).
+      # Both run in seconds and don't need an emulator.
+      - name: Run unit tests
+        run: ./gradlew :shared-protocol-host:jvmTest :shared:jvmTest --stacktrace
+
       # Optional: also assemble the iOS .app via xcodebuild. Skipped by
       # default because it adds ~2 minutes and the framework link above
       # is what would actually catch a regression. Enable later if we

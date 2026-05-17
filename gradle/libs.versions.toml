@@ -12,8 +12,8 @@ androidx-testExt = "1.3.0"
 composeMultiplatform = "1.8.0"
 junit = "4.13.2"
 kotlin = "2.1.0"
-redwood = "1.0.0-caliclan.2"
-zipline = "1.24.0"
+redwood = "1.0.0-caliclan.3"
+zipline = "1.26.0"
 okhttp = "4.12.0"
 ktor = "2.3.12"
 
@@ -46,6 +46,15 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor"
 ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 ktor-server-host-common = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version = "3.0.4" }
+# Android: OkHttp-backed fetcher (Coil 3). Zero new transitive weight —
+# OkHttp is already pulled in by Zipline's HTTP loader on Android.
+# Preferred over coil-network-ktor2 in androidMain so consumer apps that
+# use Ktor 3 (Supabase 3.x etc.) don't have to chase a Ktor 1.x/2.x/3.x
+# conflict on first AsyncImage load. See docs/KNOWN_BUGS.md #6.
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version = "3.0.4" }
+# iOS: Ktor-2 fetcher matches the rest of the iOS networking story
+# (ktor-client-darwin in iosMain). Swap to coil-network-ktor3 when we
+# bump the project-wide ktor version.
 coil-network-ktor2 = { module = "io.coil-kt.coil3:coil-network-ktor2", version = "3.0.4" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }

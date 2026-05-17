@@ -156,6 +156,49 @@ These will bite you again on Tier 2+. Documented in detail in `KONDUIT_PLAN.md` 
    - The guest's `StandardAppLifecycle` via `json = Json { serializersModule = SduiSerializersModule }`
    Enums used only as widget `@Property` (not modifier fields) work fine — codegen calls `MyEnum.serializer()` directly there. Only modifier fields trigger Contextual codegen. Remember to add new enums to the module when you introduce new modifier types.
 
+11. **Zipline `ZiplineService` methods can declare `(T) -> Unit` lambda parameters — and the build succeeds — but the runtime proxy fails to construct on the guest side, leaving `take<T>()` silently null.** Zipline marshals values across the QuickJS boundary in exactly two flavors: `@Serializable` values, or `ZiplineService` proxies. A raw function-typed parameter (or return) is neither. Symptom: host's `bindService` log line appears fine, the guest's `take<T>(name)` doesn't throw an observable exception (the catch fires before the host-console polyfill is installed so the failure println goes to a dropped Zipline stdout), and every later call to the service uses a null bridge → silent no-op. We shipped this bug in commit `62ccff1` (the original `HostSnackbar.showWithResult(... onResult: (Boolean) -> Unit)`) and the regression broke the snackbar queue end-to-end despite `bindServices` still showing `snackbar service bound`. Fix: declare a callback `ZiplineService` (e.g. `SnackbarResultCallback` with `fun onResult(actionPerformed: Boolean)`), make the host method take that, and the guest wraps the user lambda in an anonymous impl. Lifecycle: host must `callback.close()` after invoking, or the proxy leaks (`serviceLeaked` warning).
+
+12. **Outbound calls to a `ZiplineService` proxy MUST be issued from Zipline's thread-confined dispatcher, NOT from `Dispatchers.Main` (or any other arbitrary dispatcher). On iOS Kotlin/Native this crashes reliably with `QuickJsException: stack overflow` inside `QuickJs.toKotlinInstanceOrNull`; on JVM it tolerates the wrong thread by luck.**
+
+    **Repro:** the original `RealHostSnackbar.showWithResult(...)` launched a `Dispatchers.Main` coroutine to drive the M3 snackbar UI, then called `callback.onResult(...)` directly from that coroutine. On iOS K/N: `QuickJsException: stack overflow`, user's `onResult` body never runs. On Android: works fine.
+
+    **Root cause** (cashapp/zipline #1429, #1592): each `TreehouseApp` owns a thread-confined `dispatchers.zipline` — that's the single thread QuickJS runs on. Any outbound call into the JS guest (`callback.onResult(...)`, `callback.close()`, `flow.value`, etc.) must execute on that dispatcher. JVM-backed Zipline silently accepts the wrong thread; iOS K/N's stricter threading reliably blows up inside the QuickJS call dispatch.
+
+    **Fix:** make the dispatcher a **constructor-required** parameter on the host service and `withContext(...)` around every outbound proxy call. As of 2026-05-13 the field is no longer a mutable nullable `var` — type system enforces the wiring:
+    ```kotlin
+    // commonMain RealHostSnackbar:
+    class RealHostSnackbar(
+        private val ziplineDispatcher: CoroutineDispatcher,  // required, not nullable
+    ) : HostSnackbar {
+        // ...
+        scope.launch {
+            val actionPerformed = SnackbarHub.state.showSnackbar(...)  // Dispatchers.Main
+            withContext(ziplineDispatcher) {   // ← hop to Zipline thread
+                try { callback.onResult(actionPerformed) }
+                finally { callback.close() }   // close() is ALSO an outbound call
+            }
+        }
+    }
+    // Spec.bindServices (both Android + iOS):
+    private lateinit var androidHostSnackbar: RealHostSnackbar  // strong ref, late init
+    // ...
+    androidHostSnackbar = RealHostSnackbar(treehouseApp.dispatchers.zipline)
+    zipline.bind<HostSnackbar>("snackbar", androidHostSnackbar)
+    ```
+
+    **Verification (2026-05-12, Pixel 9 + iPhone 17 Pro sim):**
+    - iOS sim: diagnostic auto-trigger fires snackbar, callback round-trips, `DIAGNOSTIC: onResult lambda invoked with actionPerformed=false` confirmed in console. No QuickJsException.
+    - Pixel 9 emulator: same diagnostic, same success. No regression.
+
+    **Investigation false leads** (recorded so we don't repeat them):
+    - Bumping Zipline 1.24 → 1.25 (issue #1618 Unit-return adapter fix) — orthogonal, doesn't fix this. We kept 1.25.0 anyway since it's a legit upstream improvement, but the dispatcher hop is what actually closes the bug.
+    - Changing `onResult` return type from `Unit` to `Boolean` — orthogonal, bug is not Unit-related.
+    - QuickJS `maxStackSize` (defaults to 512 KiB on both K/N and JVM) — not a size issue. The "stack overflow" is QuickJS's internal recursion-depth guard tripping because the call dispatch on the wrong thread re-enters itself.
+
+    **Generalization for future ZiplineService callbacks:** any host service that receives a `ZiplineService` callback or returns one (StateFlow, Flow, custom service) MUST hop to `treehouseApp.dispatchers.zipline` before invoking proxy methods. The pattern: take the dispatcher as a **constructor parameter** on the host service (non-nullable, no defaults), construct the service inside the Spec's `bindServices` from `treehouseApp.dispatchers.zipline`, hold it as `lateinit var` for the strong-ref guarantee, and `withContext(...)` around every proxy touch. The constructor-required pattern was deliberately chosen over a mutable `var` + runtime null-check because it makes the wiring impossible to forget for the next contributor. See `RealHostSnackbar` for the canonical example.
+
+    **Konduit-generated widget callbacks (AlertDialog onDismissRequest, DropdownMenu onClick, etc.)** do NOT need this wiring on our side — Konduit's `EventBridge` in `konduit-treehouse-host/.../TreehouseAppContent.kt` already hops to `dispatchers.zipline` for `UiEventSink.sendEvent`. The bug was specific to OUR hand-written `RealHostSnackbar` which bypassed Konduit's event sink. This gotcha only fires when you add a new HostX service that takes/returns a `ZiplineService` proxy.
+
 ## Course corrections (May 2026, post-Tier 1) — see `KONDUIT_PLAN.md` §7
 
 Five corrections agreed before Tier 2 starts:
@@ -231,10 +274,10 @@ Open questions:
 - Snackbar host queue — design a host-side `SnackbarHostState` + `Snackbar.show(message)` event so the guest doesn't have to manage timing.
 
 ### Snackbar host queue ✅ landed + verified
-- `HostSnackbar` Zipline service in `:shared/Protocol.kt` — `show(message, actionLabel, durationMillis)` for fire-and-forget; `showWithResult(message, actionLabel, durationMillis, onResult)` to learn whether the user tapped the action button (`onResult(true)` = ActionPerformed, `onResult(false)` = Dismissed). `durationMillis` semantics: `<=0` indefinite, `1..6000` short (~4 s), `>6000` long (~10 s).
+- `HostSnackbar` Zipline service in `:shared/Protocol.kt` — `show(message, actionLabel, durationMillis)` for fire-and-forget; `showWithResult(message, actionLabel, durationMillis, callback: SnackbarResultCallback)` to learn whether the user tapped the action button. The callback is a `ZiplineService` subtype with `onResult(actionPerformed: Boolean)`; the host closes it after firing exactly once. Why a callback service rather than a `(Boolean) -> Unit` lambda parameter: **Zipline can only marshal `@Serializable` values or `ZiplineService` proxies across the QuickJS boundary** — raw function types compile but break the runtime proxy construction (see gotcha #11). `durationMillis` semantics: `<=0` indefinite, `1..6000` short (~4 s), `>6000` long (~10 s).
 - `RealHostSnackbar` (composeApp/Protocol.kt) wraps M3's `SnackbarHostState` from a singleton `SnackbarHub` so the queue survives recompositions.
 - `App.kt` renders `SnackbarHost(SnackbarHub.state)` aligned to the bottom-center of the root Box.
-- Guest helper: top-level `showHostSnackbar(message, actionLabel?, durationMillis = 4000L, onResult?)` in `presenter/Main.kt`. Backed by `HostSnackbarBridge.instance` set during Zipline take. Routes to the cheaper fire-and-forget `show()` when `onResult` is null; otherwise calls `showWithResult()` so the callback fires.
+- Guest helper: top-level `showHostSnackbar(message, actionLabel?, durationMillis = 4000L, onResult?)` in `presenter/Main.kt`. Backed by `HostSnackbarBridge.instance` set during Zipline take. Routes to the cheaper fire-and-forget `show()` when `onResult` is null; otherwise wraps the user's lambda in an anonymous `SnackbarResultCallback` impl and calls `showWithResult()`. The wrapper is single-use — the host calls `.close()` after firing.
 - Showcase has a "Host snackbar queue (Tier 3)" section with three buttons (Short / Long / With action).
 
 **Defensive code in place** (added after iOS testing observed app blanking):
@@ -247,9 +290,48 @@ Open questions:
 - Symptom: `take<HostSnackbar>("snackbar")` succeeds (returns a proxy), but every guest call errors with `no such service (service closed?)` — the guest side has no way to know the host never bound it. Confirmed on Android via logcat (`"available services: ... console, ... (no snackbar)"`).
 - Fix: snackbar bind now lives in both platform Specs (with strong refs as class-field properties to dodge `serviceLeaked`). Dead code removed: `androidApp/AndroidSduiAppSpec.kt` deleted entirely; `SduiAppSpec` and `RealHostConsole` removed from `composeApp/commonMain/Protocol.kt`.
 - Architecturally still platform-divergent — Android uses `AndroidRealHostConsole` (logs via `android.util.Log`), iOS uses `IosRealHostConsole` (logs via `println` → stderr). Both share `RealHostSnackbar` from commonMain since it talks to commonMain's `SnackbarHub`.
-- **On-device verification still pending** as of this write-up because the test device's wifi was flaky during the debug loop. Re-test after restart.
+
+**ZiplineService callback regression + fix (2026-05-11):**
+- After fixing the bind-site bug we added `showWithResult` with an `(Boolean) -> Unit` lambda parameter. Build was green but the guest's `take<HostSnackbar>` silently failed on proxy construction because Zipline only marshals `@Serializable` values or `ZiplineService` proxies — see gotcha #11. Guest bridge was null, every snackbar fizzled.
+- Fix #1 (commit `7c259ac`): introduce `SnackbarResultCallback : ZiplineService` with `onResult(actionPerformed: Boolean)`. Host closes the proxy after firing once.
+- Fix #2 (commit `cb06a60`): the anonymous `SnackbarResultCallback` impl on the guest had a name-shadowing bug — calling `onResult(actionPerformed)` from inside the override resolves to the override itself, not the outer lambda parameter → infinite self-recursion → StackOverflow on Undo tap → app crash. Aliased the outer lambda to `resultLambda` before the object expression.
+- **Verified end-to-end on Android device (2026-05-11)**: tap "With action" → "Item deleted" + "Undo" snackbar appears; tap "Undo" → mirror text updates to `"Last result: Undo tapped ✓"`. Both the `show()` queue path and the `showWithResult()` round-trip work.
+
+**iOS sim verification (2026-05-12) — fixed:**
+- Initial state: `show()` worked on iOS but `showWithResult()` callback crashed with `QuickJsException: stack overflow` (logged as gotcha #12 partial). Spent a session bumping Zipline 1.24 → 1.25 → 1.26 and trying Unit-vs-Boolean return-type workarounds; none fixed it.
+- Root cause found via cashapp/zipline #1429 + #1592: outbound calls to a ZiplineService proxy must execute on `treehouseApp.dispatchers.zipline` (the QuickJS-confined thread). Our snackbar coroutine ran on `Dispatchers.Main` to drive the M3 SnackbarHostState, then called `callback.onResult(...)` and `callback.close()` directly from that dispatcher → iOS K/N stack overflow. JVM tolerated the wrong thread by luck.
+- Fix: added `RealHostSnackbar.ziplineDispatcher: CoroutineDispatcher?`, wired in both Specs' `bindServices` from `treehouseApp.dispatchers.zipline`, and wrapped both the `onResult` and `close()` calls in a single `withContext(ziplineDispatcher)`. Both Spec files (`MainActivity.kt` Android + `MainViewController.kt` iOS) updated symmetrically.
+- Verified on iPhone 17 Pro sim (iOS 26.3): diagnostic auto-trigger → `auto-firing showHostSnackbar` → snackbar timeout → `DIAGNOSTIC: onResult lambda invoked with actionPerformed=false`. No crash.
+- Verified on Pixel 9 emulator (API 36): same diagnostic, same successful round-trip. No Android regression.
+- See gotcha #12 below for the generalization that applies to every new ZiplineService callback we add.
+
+**Tier 3 interaction verification (2026-05-12, Pixel 9 API 36 emulator):**
+- `AlertDialog` — tap "Show dialog" → "Confirm action / Are you sure you want to delete this item?" dialog renders; tap "Delete" → mirror text updates to `"Dialog: Delete confirmed"`. Callback round-trip works.
+- `ModalBottomSheet` — tap "Show sheet" → sheet slides up with "Bottom sheet" header + Cancel/Save buttons; tap "Save" → mirror text updates to `"Sheet: Save"`. Callback works.
+- `DropdownMenu` — tap the menu icon → Edit/Share/Delete items appear; tap "Share" → mirror text updates to `"Picked: Share"`. Anchoring + selection callback work.
+- `DatePicker` — tap "Pick date" → M3 dialog appears with today highlighted; tap day 15 → tap "OK" → mirror text updates to `"Picked: 1778803200000 (UTC midnight ms)"` (= May 15 2026 UTC). Callback delivers the ms-precision UTC timestamp.
+- All four use the same `(T) -> Unit` lambda callback pattern that bit us with snackbars on iOS (gotcha #12). Android (JVM-backed Zipline) works fine for all of them. **Konduit dispatch audit (2026-05-13)**: read `konduit-treehouse-host/.../TreehouseAppContent.kt` `EventBridge` (line 606) — it already does the correct `bindingScope.launch(ziplineDispatcher)` hop for widget UI events. So Tier 3 widget callbacks should work on iOS without further intervention. The original bug was specific to OUR hand-written `RealHostSnackbar` which bypassed Konduit's EventBridge by invoking the callback proxy directly from `Dispatchers.Main`. Live iOS verification of the four widgets still pending (requires UI tap input which the overnight session couldn't drive through a locked Mac screen lock).
+
+**Dispatcher pattern tightening (2026-05-13, overnight):**
+- After gotcha #12 was closed, the field on `RealHostSnackbar` was a mutable `var ziplineDispatcher: CoroutineDispatcher? = null` with a runtime null-check + warning println. A copy-paste of the Spec without the `androidHostSnackbar.ziplineDispatcher = ...` line would have silently crashed iOS for the next HostX service.
+- Promoted `ziplineDispatcher` to a constructor parameter (non-nullable, required). Both Specs now construct the snackbar inside `bindServices` and hold it as `lateinit var` (still a strong ref for `serviceLeaked` prevention, just delayed). Removed the nullable-fallback path + warning println — no longer reachable.
+- Pixel 9 emulator verification (API 36): `bindServices called` → `console service bound` → `snackbar service bound`. Tap-tested both `actionPerformed=false` (timeout) and `actionPerformed=true` (Undo) paths — mirror text confirmed both.
+- iPhone 17 Pro sim verification (iOS 26.3, same session): diagnostic auto-trigger fires snackbar → `DIAG-CTOR-REFACTOR: onResult invoked ap=false` printed cleanly after the 1500ms timeout. No `QuickJsException: stack overflow`. The constructor refactor preserves the gotcha-#12 fix end-to-end.
+- The constructor-required pattern is the template for every future HostX service that owns a `ZiplineService` callback. Documented in `docs/USAGE.md` + `RealHostSnackbar`'s KDoc.
+
+**Integration docs landed (2026-05-13):** new `docs/USAGE.md` walks downstream consumers through vendoring Caliclan as a git submodule, the minimum host boilerplate (Android Spec example + lateinit pattern), guest-screen authoring, the dev loop, and the top-5 gotchas to internalize before writing a first screen. Read this if you're integrating Caliclan into a separate Compose Multiplatform project; read this HANDOVER if you're working on Caliclan itself.
+
+### Regression tests ✅ landed (2026-05-12)
+
+Two pure-JVM unit suites now run in CI to catch the regressions from this batch:
+
+- **`:shared-protocol-host:jvmTest` → `BackgroundProtocolTest`.** Drives the generated `SduiSchemaHostProtocol.createModifier` decoder with two `ModifierElement` JSON payloads (old without `cornerRadiusDp`, new with it) and asserts the decoded `Background` modifier shape. Guards against a future Konduit codegen change that would drop the additive default and silently break older guest bundles — exactly the failure mode gotcha #10 warns about (white screen on protocol mismatch).
+- **`:shared:jvmTest` → `SnackbarResultCallbackTest`.** Pins down the wrapper pattern that survived two regressions (62ccff1 raw-lambda marshalling, 7c259ac override name-shadow recursion). Three tests: positive callback delivery, false-path for dismissed snackbar, and an explicit stack-overflow guard that fails with a clear message if anyone "simplifies" the wrapper by removing the `val resultLambda = outerLambda` alias.
+
+Both run in ~30s each on a warm gradle daemon. CI wired via `.github/workflows/ci.yml` "Run unit tests" step right after the guest .zipline compile.
 
 ### Tier 3 modifier additions ✅ landed
+- `Background(color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 5 — `cornerRadiusDp` shipped in the rounded-Background follow-up; default 0 keeps the original rectangular fill, positive values paint a rounded fill of that radius. Independent of any sibling `Clip` (use Clip when you also need to clip overflow).
 - `Border(thicknessDp, color: SchemaColor, cornerRadiusDp: Int = 0)` @ tag 12 — `cornerRadiusDp` shipped in the rounded-Border follow-up; default 0 keeps the original rectangular behavior, positive values render a rounded stroke that matches a sibling `Clip(cornerRadiusDp)`.
 - `Clip(cornerRadiusDp)` @ tag 13 — rounded-corner clip; 0 = no-op.
 - `ClipCircle` @ tag 14 — perfect circle inscribed in widget bounds.
@@ -260,7 +342,7 @@ Total modifier count: 16 (10 original + 6 Tier 3). Tag 7 still unused (was reser
 
 ### Open Tier 3 modifier follow-ups
 - ✅ Rounded `Border` — additive `cornerRadiusDp: Int = 0` parameter shipped. `Border(thicknessDp = 2, color = SchemaColor.Primary, cornerRadiusDp = 16)` now renders a rounded stroke matching a sibling `Clip(16)`. Backward-compatible: omit `cornerRadiusDp` (or pass 0) for the original rectangular behavior. Konduit's modifier codegen + kotlinx.serialization accept default values on `@Modifier` data classes (verified end-to-end).
-- `RoundedCorners` shape parameter for `Background` so a colored fill can match a clipped shape without needing both Clip and Background to overlap perfectly. (Not strictly necessary — Compose's clip applies to subsequent fills, so chain order works today.)
+- ✅ Rounded `Background` — additive `cornerRadiusDp: Int = 0` parameter shipped using the same pattern. `Background(SchemaColor.SurfaceVariant, cornerRadiusDp = 12)` paints a rounded fill on its own (no Clip required). When you also want clipped content (e.g. an image inside the rounded card), still chain `Clip(cornerRadiusDp)` — Background's shape only affects the fill, not the children.
 
 ### Phase 5 — Rest of dev tooling ✅ landed
 

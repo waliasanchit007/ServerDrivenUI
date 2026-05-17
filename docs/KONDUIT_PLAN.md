@@ -869,10 +869,18 @@ Filter to just the curated stream:
 - iOS: prefix `Konduit/` so `grep '^Konduit/'` against the Xcode
   console works (no level concept on stdout).
 
-Source maps (`zipline { sourceMapEnabled = true }`) NOT yet enabled —
-deferred until we hit a guest crash that's hard to triangulate. The
-Konduit Logcat formatter already surfaces the lifecycle phase + cause
-message; line numbers from JS stack traces would be additive on top.
+Source maps — closed as "not actually a Zipline 1.24 feature." The
+Zipline gradle plugin's `ZiplineExtension` exposes `stripLineNumbers`
+(default `false` — line numbers ARE retained in QuickJS bytecode) and
+`optimizeForDeveloperExperience()` / `optimizeForSmallArtifactSize()`
+presets that toggle line numbers + Terser, but NOT a `.kt`→QuickJS
+source-map pipeline. So guest stack traces give us **QuickJS bytecode
+line numbers** today, which is what the `KonduitDevLog` formatter
+surfaces, not Kotlin source lines. Full source mapping would need a
+Zipline upstream contribution (or fork) to embed Kotlin/JS source maps
+into the .zipline blob and symbolicate at throw time. Not worth that
+investment until/unless we hit a guest crash the lifecycle formatter
+can't triangulate.
 
 ### Phase 6 — Standalone library principles (NOT a phase, just guardrails)
 
@@ -1108,6 +1116,17 @@ on every PR + push to main. macOS-only (same reasoning as Konduit's CI).
 
 Land this AFTER Batch 2.0 (the LayoutModifier migration) so the CI
 exercises the new modifier system from day one.
+
+**Update (2026-05-12):** CI now also runs `:shared-protocol-host:jvmTest`
+and `:shared:jvmTest` after the build matrix. Two suites — see
+HANDOVER §"Regression tests" — both pin down regressions we hit during
+Batch 2.x: the additive `cornerRadiusDp` default on `Background` and
+the SnackbarResultCallback wrapper pattern. Both are pure-JVM, run in
+~30s on a warm daemon, and don't require an emulator. Future test
+additions should follow this shape (commonTest source set in the
+relevant module, exercised through public API where possible) rather
+than adding instrumented Android tests, until we have a real
+device-loop CI need.
 
 ---
 

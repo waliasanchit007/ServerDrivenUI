@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
-import coil3.network.ktor2.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import com.example.serverdrivenui.schema.widget.SduiSchemaWidgetSystem
 import dev.konduit.treehouse.TreehouseApp
@@ -25,15 +24,29 @@ import dev.konduit.treehouse.ZiplineTreehouseUi
 import dev.konduit.treehouse.composeui.TreehouseContent
 
 /**
- * Builds the singleton ImageLoader Coil uses for AsyncImage. ktor3-based
- * network fetcher (multiplatform — works on Android via okhttp engine,
- * iOS via Darwin engine).
+ * Builds the singleton ImageLoader Coil uses for AsyncImage. Network
+ * fetcher is platform-specific (see [installCoilNetworkFetcher]):
+ *   - Android: OkHttp-backed `OkHttpNetworkFetcherFactory` (no Ktor in
+ *     the consumer's transitive deps).
+ *   - iOS:    Ktor2-backed `KtorNetworkFetcherFactory` (matches
+ *     `ktor-client-darwin` used elsewhere in iosMain).
+ *
+ * See `docs/KNOWN_BUGS.md` #6 for the rationale (avoiding Ktor 2/3
+ * version conflict in Android consumer apps like DevoStatus that use
+ * Supabase 3.x).
  */
 private fun newImageLoader(context: PlatformContext): ImageLoader =
     ImageLoader.Builder(context)
-        .components { add(KtorNetworkFetcherFactory()) }
+        .components { installCoilNetworkFetcher() }
         .crossfade(true)
         .build()
+
+/**
+ * Per-platform install of the right Coil 3 network fetcher into the
+ * given `ComponentRegistry.Builder`. Implemented in androidMain (OkHttp)
+ * and iosMain (Ktor2) to keep network deps platform-confined.
+ */
+internal expect fun coil3.ComponentRegistry.Builder.installCoilNetworkFetcher()
 
 /**
  * Content source that creates the ZiplineTreehouseUi.

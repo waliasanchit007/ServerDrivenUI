@@ -5,11 +5,16 @@ package com.example.serverdrivenui.shared
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn as ComposeLazyColumn
 import androidx.compose.foundation.lazy.LazyRow as ComposeLazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid as ComposeLazyVerticalGrid
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon as ComposeIcon
@@ -21,8 +26,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage as CoilAsyncImage
 import dev.konduit.Modifier as KonduitModifier
 import dev.konduit.treehouse.TreehouseApp
@@ -37,11 +44,20 @@ import com.example.serverdrivenui.schema.modifier.Background as MBackground
 import com.example.serverdrivenui.schema.modifier.Border as MBorder
 import com.example.serverdrivenui.schema.modifier.Clip as MClip
 import com.example.serverdrivenui.schema.modifier.ClipCircle as MClipCircle
+import com.example.serverdrivenui.schema.modifier.CustomBackground as MCustomBackground
+import com.example.serverdrivenui.schema.modifier.LinearGradient as MLinearGradient
 import com.example.serverdrivenui.schema.modifier.FillMaxHeight as MFillMaxHeight
 import com.example.serverdrivenui.schema.modifier.FillMaxSize as MFillMaxSize
 import com.example.serverdrivenui.schema.modifier.FillMaxWidth as MFillMaxWidth
+import com.example.serverdrivenui.schema.modifier.DisplayCutoutPadding as MDisplayCutoutPadding
 import com.example.serverdrivenui.schema.modifier.Height as MHeight
+import com.example.serverdrivenui.schema.modifier.ImePadding as MImePadding
+import com.example.serverdrivenui.schema.modifier.NavigationBarsPadding as MNavigationBarsPadding
+import com.example.serverdrivenui.schema.modifier.Offset as MOffset
 import com.example.serverdrivenui.schema.modifier.Padding as MPadding
+import com.example.serverdrivenui.schema.modifier.SafeContentPadding as MSafeContentPadding
+import com.example.serverdrivenui.schema.modifier.StatusBarsPadding as MStatusBarsPadding
+import com.example.serverdrivenui.schema.modifier.SystemBarsPadding as MSystemBarsPadding
 import com.example.serverdrivenui.schema.modifier.Size as MSize
 import com.example.serverdrivenui.schema.modifier.Weight as MWeight
 import com.example.serverdrivenui.schema.modifier.Width as MWidth
@@ -146,8 +162,12 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.Menu -> Icons.Filled.Menu
     SchemaIconName.Close -> Icons.Filled.Close
     SchemaIconName.Add -> Icons.Filled.Add
-    SchemaIconName.ArrowBack -> Icons.Filled.ArrowBack
-    SchemaIconName.ArrowForward -> Icons.Filled.ArrowForward
+    // AutoMirrored variants flip horizontally under RTL layouts — the
+    // M3 deprecation note on Icons.Filled.ArrowBack/ArrowForward points
+    // here. Semantics are identical for LTR (our only target today),
+    // and free RTL correctness later.
+    SchemaIconName.ArrowBack -> Icons.AutoMirrored.Filled.ArrowBack
+    SchemaIconName.ArrowForward -> Icons.AutoMirrored.Filled.ArrowForward
     SchemaIconName.Person -> Icons.Filled.Person
     SchemaIconName.Notifications -> Icons.Filled.Notifications
     SchemaIconName.Email -> Icons.Filled.Email
@@ -158,6 +178,58 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
     SchemaIconName.Check -> Icons.Filled.Check
     SchemaIconName.Info -> Icons.Filled.Info
     SchemaIconName.Warning -> Icons.Filled.Warning
+    SchemaIconName.FormatQuote -> Icons.Filled.FormatQuote
+    SchemaIconName.Brush -> Icons.Filled.Brush
+    SchemaIconName.AutoStories -> Icons.AutoMirrored.Filled.MenuBook
+    SchemaIconName.FavoriteBorder -> Icons.Filled.FavoriteBorder
+    SchemaIconName.Share -> Icons.Filled.Share
+}
+
+// Schema-property -> Compose mappings for the wire-additive Text +
+// Box property extensions. Kept private so they don't leak into the
+// integrator's namespace.
+
+private fun SchemaTextAlign.toComposeTextAlign(): androidx.compose.ui.text.style.TextAlign = when (this) {
+    SchemaTextAlign.Start -> androidx.compose.ui.text.style.TextAlign.Start
+    SchemaTextAlign.Center -> androidx.compose.ui.text.style.TextAlign.Center
+    SchemaTextAlign.End -> androidx.compose.ui.text.style.TextAlign.End
+    SchemaTextAlign.Justify -> androidx.compose.ui.text.style.TextAlign.Justify
+}
+
+private fun SchemaFontWeight.toComposeFontWeight(): androidx.compose.ui.text.font.FontWeight = when (this) {
+    SchemaFontWeight.Light -> androidx.compose.ui.text.font.FontWeight.Light
+    SchemaFontWeight.Normal -> androidx.compose.ui.text.font.FontWeight.Normal
+    SchemaFontWeight.Medium -> androidx.compose.ui.text.font.FontWeight.Medium
+    SchemaFontWeight.SemiBold -> androidx.compose.ui.text.font.FontWeight.SemiBold
+    SchemaFontWeight.Bold -> androidx.compose.ui.text.font.FontWeight.Bold
+    SchemaFontWeight.ExtraBold -> androidx.compose.ui.text.font.FontWeight.ExtraBold
+}
+
+/**
+ * @return `null` for [SchemaFontFamily.Default] so [CmpText] can keep
+ *   the base TextStyle's family (the M3 typography default). Non-Default
+ *   maps to the corresponding [androidx.compose.ui.text.font.FontFamily].
+ *   A host that wants a brand typeface can swap the [Default] arm to
+ *   `FontFamily(myBrandFont)` here without touching the schema.
+ */
+private fun SchemaFontFamily.toComposeFontFamily(): androidx.compose.ui.text.font.FontFamily? = when (this) {
+    SchemaFontFamily.Default -> null
+    SchemaFontFamily.Serif -> androidx.compose.ui.text.font.FontFamily.Serif
+    SchemaFontFamily.SansSerif -> androidx.compose.ui.text.font.FontFamily.SansSerif
+    SchemaFontFamily.Monospace -> androidx.compose.ui.text.font.FontFamily.Monospace
+    SchemaFontFamily.Cursive -> androidx.compose.ui.text.font.FontFamily.Cursive
+}
+
+private fun SchemaBoxAlignment.toComposeAlignment(): Alignment = when (this) {
+    SchemaBoxAlignment.TopStart -> Alignment.TopStart
+    SchemaBoxAlignment.TopCenter -> Alignment.TopCenter
+    SchemaBoxAlignment.TopEnd -> Alignment.TopEnd
+    SchemaBoxAlignment.CenterStart -> Alignment.CenterStart
+    SchemaBoxAlignment.Center -> Alignment.Center
+    SchemaBoxAlignment.CenterEnd -> Alignment.CenterEnd
+    SchemaBoxAlignment.BottomStart -> Alignment.BottomStart
+    SchemaBoxAlignment.BottomCenter -> Alignment.BottomCenter
+    SchemaBoxAlignment.BottomEnd -> Alignment.BottomEnd
 }
 
 // ============================================================================
@@ -175,6 +247,14 @@ private fun SchemaIconName.toImageVector(): ImageVector = when (this) {
 private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifier {
     var m = base
     var bgSchemaColor: SchemaColor? = null
+    // Background corner radius — added in the rounded-Background follow-up.
+    // 0 = rectangular fill (the original behavior); >0 = rounded fill of
+    // that radius. Same additive-with-default pattern as Border.
+    var bgCornerRadiusDp: Int = 0
+    // Background alpha — added in the schema-features follow-up. 1.0 =
+    // fully opaque (preserves the pre-extension behavior). Values in
+    // [0.0, 1.0] tint the color; Compose's Color.copy clamps internally.
+    var bgAlpha: Double = 1.0
     // Border state hoisted same way as Background — `toComposeColor()`
     // is @Composable and can't run inside the (non-composable)
     // forEachUnscoped lambda. Latest Border in the chain wins (matches
@@ -199,7 +279,11 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MSize -> m = m.size(width = el.width.dp, height = el.height.dp)
             is MWidth -> m = m.width(el.value.dp)
             is MHeight -> m = m.height(el.value.dp)
-            is MBackground -> bgSchemaColor = el.color
+            is MBackground -> {
+                bgSchemaColor = el.color
+                bgCornerRadiusDp = el.cornerRadiusDp
+                bgAlpha = el.alpha
+            }
             is MAlpha -> m = m.alpha(el.value.toFloat())
             is MWeight -> { /* applied by parent Row/Column */ }
             // Tier 3 modifier additions (tags 12–17). Clip / WrapContent /
@@ -217,10 +301,96 @@ private fun KonduitModifier.applyToCompose(base: ComposeModifier): ComposeModifi
             is MWrapContentWidth -> m = m.wrapContentWidth()
             is MWrapContentHeight -> m = m.wrapContentHeight()
             is MAspectRatio -> m = m.aspectRatio(el.ratio.toFloat())
+            // Offset (tag 18) — paints the widget at a different position
+            // without participating in the layout pass. Ordering note: in
+            // Compose, `Modifier.offset` BEFORE clip-to-parent lets the
+            // glyph extend outside its parent's bounds (the "watermark
+            // overhang" case); the guest controls order by where it
+            // chains .offset(...).
+            is MOffset -> m = m.offset(x = el.x.dp, y = el.y.dp)
+            // Window-inset modifiers (tags 19–24). Each maps 1:1 to its
+            // Compose Foundation extension; Compose's WindowInsets
+            // pipeline handles density + animation (IME show/hide) so
+            // we get correct behavior for free.
+            is MStatusBarsPadding -> m = m.statusBarsPadding()
+            is MNavigationBarsPadding -> m = m.navigationBarsPadding()
+            is MImePadding -> m = m.imePadding()
+            is MSystemBarsPadding -> m = m.systemBarsPadding()
+            is MDisplayCutoutPadding -> m = m.displayCutoutPadding()
+            is MSafeContentPadding -> m = m.safeContentPadding()
+            // CustomBackground (tag 25) — brand-color escape hatch.
+            // Applied INLINE rather than deferred (the way regular
+            // Background is) because the color comes from a raw ARGB
+            // literal — no theme lookup, no @Composable required, so
+            // we can build the Color synchronously here. `Color()`
+            // takes an Int; the schema's Long widens to fit any ARGB
+            // value but we narrow back via `toInt()`.
+            is MCustomBackground -> m = m.background(
+                color = Color(el.argb.toInt()).copy(alpha = el.alpha.toFloat()),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp),
+            )
+            // LinearGradient (tag 26) — two-stop linear gradient
+            // background painted via Compose's Brush.linearGradient.
+            // angleDegrees maps to start/end offsets: 0° = top→bottom,
+            // 90° = start→end (LTR), 45° = TL→BR, etc. We resolve to a
+            // unit-circle direction vector and scale to the widget's
+            // bounding box at paint time. For arbitrary angles outside
+            // 0/90/180/270 we sample two points on the box edge along
+            // the chosen direction; for the 4 cardinals we use the
+            // simpler axis-aligned constants for visual fidelity.
+            is MLinearGradient -> {
+                val startColor = Color(el.startArgb.toInt()).copy(alpha = el.startAlpha.toFloat())
+                val endColor = Color(el.endArgb.toInt()).copy(alpha = el.endAlpha.toFloat())
+                val brush = when (((el.angleDegrees % 360) + 360) % 360) {
+                    0 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(startColor, endColor)
+                    )
+                    90 -> androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(startColor, endColor)
+                    )
+                    180 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(endColor, startColor)
+                    )
+                    270 -> androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(endColor, startColor)
+                    )
+                    else -> {
+                        // General case: derive start/end Offset on a unit
+                        // box (Brush.linearGradient interprets coords in
+                        // pixels but accepts Offset.Infinite for "the
+                        // widget's max extent"). For arbitrary angles
+                        // the simplest workable approximation: rotate a
+                        // diagonal Brush via start/end offsets scaled
+                        // to a large constant — fidelity is good enough
+                        // for typical 45° / 135° accents. Use TileMode.Clamp.
+                        val rad = el.angleDegrees.toDouble() * kotlin.math.PI / 180.0
+                        val largeDim = 10_000f
+                        val dx = (kotlin.math.sin(rad) * largeDim).toFloat()
+                        val dy = (kotlin.math.cos(rad) * largeDim).toFloat()
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(startColor, endColor),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(dx, dy),
+                        )
+                    }
+                }
+                m = m.background(
+                    brush = brush,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(el.cornerRadiusDp.dp),
+                )
+            }
         }
     }
     val bg = bgSchemaColor
-    if (bg != null) m = m.background(bg.toComposeColor())
+    if (bg != null) {
+        // RoundedCornerShape(0.dp) ≡ RectangleShape — single code path,
+        // no branch needed for the rectangular case (same trick as Border).
+        // bgAlpha = 1.0 (the default) leaves Color.copy a no-op tint.
+        m = m.background(
+            color = bg.toComposeColor().copy(alpha = bgAlpha.toFloat()),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(bgCornerRadiusDp.dp),
+        )
+    }
     val bColor = borderSchemaColor
     if (bColor != null) {
         // RoundedCornerShape(0.dp) is equivalent to RectangleShape, so we
@@ -260,6 +430,12 @@ private class StateModifier {
 class CmpBox : Box<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive property (Schema Property 2). Default TopStart matches
+    // Compose's Box default and the previous pre-extension behavior.
+    private var contentAlignment by mutableStateOf(SchemaBoxAlignment.TopStart)
+    // Properties 3-4 — long-press / double-tap gesture handlers.
+    private var onLongClick by mutableStateOf<(() -> Unit)?>(null)
+    private var onDoubleClick by mutableStateOf<(() -> Unit)?>(null)
     override val children: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
         get() = mod.value
@@ -267,14 +443,42 @@ class CmpBox : Box<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val click = onClick
-        val composed = modifier.applyToCompose(incoming)
-            .let { if (click != null) it.clickable { click() } else it }
-        androidx.compose.foundation.layout.Box(modifier = composed) {
+        val longCb = onLongClick
+        val doubleCb = onDoubleClick
+        val composed = modifier.applyToCompose(incoming).let { base ->
+            // Pick the most specific clickable variant that covers what
+            // the guest asked for. combinedClickable is required for
+            // long-press / double-tap; plain clickable is cheaper for
+            // single-tap-only (it doesn't allocate a gesture detector
+            // capable of multi-event tracking).
+            when {
+                longCb != null || doubleCb != null -> base.combinedClickable(
+                    onClick = { click?.invoke() },
+                    onLongClick = longCb?.let { { it() } },
+                    onDoubleClick = doubleCb?.let { { it() } },
+                )
+                click != null -> base.clickable { click() }
+                else -> base
+            }
+        }
+        androidx.compose.foundation.layout.Box(
+            modifier = composed,
+            contentAlignment = contentAlignment.toComposeAlignment(),
+        ) {
             (children as CmpChildren).render()
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun contentAlignment(contentAlignment: SchemaBoxAlignment) {
+        this.contentAlignment = contentAlignment
+    }
+    override fun onLongClick(onLongClick: (() -> Unit)?) {
+        this.onLongClick = onLongClick
+    }
+    override fun onDoubleClick(onDoubleClick: (() -> Unit)?) {
+        this.onDoubleClick = onDoubleClick
+    }
 }
 
 class CmpColumn : com.example.serverdrivenui.schema.widget.Column<CmpRender> {
@@ -385,6 +589,35 @@ class CmpLazyRow : LazyRow<CmpRender> {
     }
 }
 
+class CmpLazyVerticalGrid : com.example.serverdrivenui.schema.widget.LazyVerticalGrid<CmpRender> {
+    private val mod = StateModifier()
+    private var columns by mutableStateOf(2)
+    private var contentPaddingDp by mutableStateOf(0)
+    private var itemSpacingDp by mutableStateOf(0)
+    override val items: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        val cols = if (columns < 1) 1 else columns
+        ComposeLazyVerticalGrid(
+            columns = GridCells.Fixed(cols),
+            modifier = composed,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(contentPaddingDp.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(itemSpacingDp.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(itemSpacingDp.dp),
+        ) {
+            (items as CmpChildren).renderInLazyGridScope(this)
+        }
+    }
+
+    override fun columns(columns: Int) { this.columns = columns }
+    override fun contentPaddingDp(contentPaddingDp: Int) { this.contentPaddingDp = contentPaddingDp }
+    override fun itemSpacingDp(itemSpacingDp: Int) { this.itemSpacingDp = itemSpacingDp }
+}
+
 class CmpLazyItem : LazyItem<CmpRender> {
     private val mod = StateModifier()
     override val children: Widget.Children<CmpRender> = CmpChildren()
@@ -405,6 +638,21 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
     private var text by mutableStateOf("")
     private var color by mutableStateOf(SchemaColor.OnSurface)
     private var style by mutableStateOf(SchemaTextStyle.BodyMedium)
+    // Wire-additive properties (Schema Properties 4–7). Defaults preserve
+    // the pre-extension behavior: TextAlign.Start, default weight/family
+    // from the chosen SchemaTextStyle, unbounded line count.
+    private var textAlign by mutableStateOf(SchemaTextAlign.Start)
+    private var fontWeight by mutableStateOf(SchemaFontWeight.Normal)
+    private var fontFamily by mutableStateOf(SchemaFontFamily.Default)
+    private var maxLines by mutableStateOf(0)
+    // Wire-additive Properties 8-10 — typography overrides. `0` is the
+    // "don't override" sentinel for each; positive values win over the
+    // baked style.
+    private var fontSizeSp by mutableStateOf(0)
+    private var lineHeightSp by mutableStateOf(0)
+    private var letterSpacingHundredthsSp by mutableStateOf(0)
+    // Property 11 — custom text color overlay (brand-color escape hatch).
+    private var customColorArgb by mutableStateOf<Long?>(null)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -412,23 +660,74 @@ class CmpText : com.example.serverdrivenui.schema.widget.Text<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
+        // Merge guest-requested overrides into the base TextStyle from
+        // M3 typography. Passing `FontWeight.Normal` as an override is
+        // ambiguous (could mean "I really want Normal" or "use default"),
+        // but in practice the M3 body/title slots use specific weights
+        // and a guest that wanted Normal would explicitly pick it — so
+        // treating Normal as a real override is honest. The `null`
+        // shortcut just avoids redundant TextStyle reconstruction when
+        // the guest passed no overrides at all.
+        val baseStyle = style.toTextStyle()
+        val effectiveStyle = baseStyle.copy(
+            fontWeight = fontWeight.toComposeFontWeight(),
+            fontFamily = fontFamily.toComposeFontFamily() ?: baseStyle.fontFamily,
+            textAlign = textAlign.toComposeTextAlign(),
+            // Size / line-height / letter-spacing: 0 = preserve baseline.
+            // We use Unspecified in those cases so M3 keeps the M3 value
+            // instead of substituting a literal 0.sp (which would render
+            // invisible glyphs).
+            fontSize = if (fontSizeSp > 0) fontSizeSp.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+            lineHeight = if (lineHeightSp > 0) lineHeightSp.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+            letterSpacing = if (letterSpacingHundredthsSp != 0) {
+                (letterSpacingHundredthsSp / 100.0).sp
+            } else androidx.compose.ui.unit.TextUnit.Unspecified,
+        )
+        // Custom ARGB overlay wins over the SchemaColor theme slot — the
+        // common pattern is "use Tertiary, BUT for the maroon brand
+        // color, override". A null `customColorArgb` falls through.
+        val effectiveColor = customColorArgb?.let { Color(it.toInt()) }
+            ?: color.toComposeColor()
         ComposeText(
             text = text,
-            color = color.toComposeColor(),
-            style = style.toTextStyle(),
+            color = effectiveColor,
+            style = effectiveStyle,
             modifier = composed,
+            maxLines = if (maxLines <= 0) Int.MAX_VALUE else maxLines,
+            overflow = if (maxLines <= 0) {
+                androidx.compose.ui.text.style.TextOverflow.Clip
+            } else {
+                androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            },
         )
     }
 
     override fun text(text: String) { this.text = text }
     override fun color(color: SchemaColor) { this.color = color }
     override fun style(style: SchemaTextStyle) { this.style = style }
+    override fun textAlign(textAlign: SchemaTextAlign) { this.textAlign = textAlign }
+    override fun fontWeight(fontWeight: SchemaFontWeight) { this.fontWeight = fontWeight }
+    override fun fontFamily(fontFamily: SchemaFontFamily) { this.fontFamily = fontFamily }
+    override fun maxLines(maxLines: Int) { this.maxLines = maxLines }
+    override fun fontSizeSp(fontSizeSp: Int) { this.fontSizeSp = fontSizeSp }
+    override fun lineHeightSp(lineHeightSp: Int) { this.lineHeightSp = lineHeightSp }
+    override fun letterSpacingHundredthsSp(letterSpacingHundredthsSp: Int) {
+        this.letterSpacingHundredthsSp = letterSpacingHundredthsSp
+    }
+    override fun customColorArgb(customColorArgb: Long?) {
+        this.customColorArgb = customColorArgb
+    }
 }
 
 class CmpAsyncImage : AsyncImage<CmpRender> {
     private val mod = StateModifier()
     private var url by mutableStateOf("")
     private var contentDescription by mutableStateOf("")
+    // Property 3 — how the loaded bitmap scales into the slot. Default
+    // SchemaContentScale.Fit matches Compose's default for AsyncImage,
+    // so older payloads (no Property 3 on the wire) decode and render
+    // identically to today. ExploreScreen wallpapers override to Crop.
+    private var contentScale by mutableStateOf(SchemaContentScale.Fit)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -441,6 +740,7 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
                 model = url,
                 contentDescription = contentDescription,
                 modifier = composed,
+                contentScale = contentScale.toComposeContentScale(),
                 onState = { state ->
                     when (state) {
                         is coil3.compose.AsyncImagePainter.State.Loading ->
@@ -460,12 +760,28 @@ class CmpAsyncImage : AsyncImage<CmpRender> {
     override fun contentDescription(contentDescription: String) {
         this.contentDescription = contentDescription
     }
+    override fun contentScale(contentScale: SchemaContentScale) {
+        this.contentScale = contentScale
+    }
+}
+
+/** Schema → Compose ContentScale mapping. Total — every enum value mapped. */
+private fun SchemaContentScale.toComposeContentScale(): ContentScale = when (this) {
+    SchemaContentScale.Fit -> ContentScale.Fit
+    SchemaContentScale.Crop -> ContentScale.Crop
+    SchemaContentScale.FillBounds -> ContentScale.FillBounds
+    SchemaContentScale.FillWidth -> ContentScale.FillWidth
+    SchemaContentScale.FillHeight -> ContentScale.FillHeight
+    SchemaContentScale.Inside -> ContentScale.Inside
+    SchemaContentScale.None -> ContentScale.None
 }
 
 class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
     private val mod = StateModifier()
     private var name by mutableStateOf(SchemaIconName.Star)
     private var tint by mutableStateOf(SchemaColor.OnSurface)
+    // Property 3 — custom tint overlay (brand-color escape hatch).
+    private var customTintArgb by mutableStateOf<Long?>(null)
 
     override var modifier: KonduitModifier
         get() = mod.value
@@ -473,16 +789,21 @@ class CmpIcon : com.example.serverdrivenui.schema.widget.Icon<CmpRender> {
 
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
+        val effectiveTint = customTintArgb?.let { Color(it.toInt()) }
+            ?: tint.toComposeColor()
         ComposeIcon(
             imageVector = name.toImageVector(),
             contentDescription = name.name,
-            tint = tint.toComposeColor(),
+            tint = effectiveTint,
             modifier = composed,
         )
     }
 
     override fun name(name: SchemaIconName) { this.name = name }
     override fun tint(tint: SchemaColor) { this.tint = tint }
+    override fun customTintArgb(customTintArgb: Long?) {
+        this.customTintArgb = customTintArgb
+    }
 }
 
 // ============================================================================
@@ -497,12 +818,24 @@ private class ButtonStateText {
     var text by mutableStateOf("")
     var enabled by mutableStateOf(true)
     var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // -1 = M3 default; positive = RoundedCornerShape override.
+    var cornerRadiusDp by mutableStateOf(-1)
 }
 
 @Composable
 private fun ButtonLabel(text: String) {
     ComposeText(text = text)
 }
+
+/**
+ * Helper: pick a M3 shape. `cornerRadiusDp < 0` returns `null` so the
+ * caller falls through to the widget's M3 default; otherwise returns
+ * a `RoundedCornerShape(cornerRadiusDp.dp)`. Large radii (>= height/2)
+ * collapse to a pill, exactly like the FilterChip pattern.
+ */
+private fun shapeFromRadius(cornerRadiusDp: Int): androidx.compose.ui.graphics.Shape? =
+    if (cornerRadiusDp < 0) null
+    else androidx.compose.foundation.shape.RoundedCornerShape(cornerRadiusDp.dp)
 
 class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     private val mod = StateModifier()
@@ -515,9 +848,12 @@ class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.shape
         androidx.compose.material3.Button(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -525,6 +861,7 @@ class CmpButton : com.example.serverdrivenui.schema.widget.Button<CmpRender> {
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButton<CmpRender> {
@@ -538,9 +875,12 @@ class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButto
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.outlinedShape
         androidx.compose.material3.OutlinedButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -548,6 +888,7 @@ class CmpOutlinedButton : com.example.serverdrivenui.schema.widget.OutlinedButto
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRender> {
@@ -561,9 +902,12 @@ class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRen
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.textShape
         androidx.compose.material3.TextButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -571,6 +915,7 @@ class CmpTextButton : com.example.serverdrivenui.schema.widget.TextButton<CmpRen
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTonalButton<CmpRender> {
@@ -584,9 +929,12 @@ class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTona
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.filledTonalShape
         androidx.compose.material3.FilledTonalButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -594,6 +942,7 @@ class CmpFilledTonalButton : com.example.serverdrivenui.schema.widget.FilledTona
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButton<CmpRender> {
@@ -607,9 +956,12 @@ class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButto
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = s.onClick
+        val shape = shapeFromRadius(s.cornerRadiusDp)
+            ?: androidx.compose.material3.ButtonDefaults.elevatedShape
         androidx.compose.material3.ElevatedButton(
             onClick = { cb?.invoke() },
             enabled = s.enabled,
+            shape = shape,
             modifier = composed,
         ) { ButtonLabel(s.text) }
     }
@@ -617,6 +969,7 @@ class CmpElevatedButton : com.example.serverdrivenui.schema.widget.ElevatedButto
     override fun text(text: String) { s.text = text }
     override fun enabled(enabled: Boolean) { s.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { s.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) { s.cornerRadiusDp = cornerRadiusDp }
 }
 
 class CmpIconButton : com.example.serverdrivenui.schema.widget.IconButton<CmpRender> {
@@ -1021,6 +1374,20 @@ class CmpSegmentedButtonRow :
 class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive properties (Schema Properties 2-3). Defaults match
+    // M3's CardDefaults.cardColors() resolution — Surface + OnSurface
+    // give a clean white card on a default Material theme, vs the
+    // surfaceContainerHighest tint Material picks by default.
+    private var containerColor by mutableStateOf(SchemaColor.Surface)
+    private var contentColor by mutableStateOf(SchemaColor.OnSurface)
+    private var cornerRadiusDp by mutableStateOf(-1)
+    // Properties 5-6 — custom-color overlays. Non-null wins over the
+    // SchemaColor theme slot.
+    private var customContainerColorArgb by mutableStateOf<Long?>(null)
+    private var customContentColorArgb by mutableStateOf<Long?>(null)
+    // Properties 7-8 — gesture handlers.
+    private var onLongClick by mutableStateOf<(() -> Unit)?>(null)
+    private var onDoubleClick by mutableStateOf<(() -> Unit)?>(null)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1028,25 +1395,88 @@ class CmpCard : com.example.serverdrivenui.schema.widget.Card<CmpRender> {
         set(v) { mod.value = v }
 
     override val value: CmpRender = { incoming ->
-        val composed = modifier.applyToCompose(incoming)
+        val baseModifier = modifier.applyToCompose(incoming)
         val cb = onClick
-        if (cb != null) {
-            androidx.compose.material3.Card(onClick = { cb() }, modifier = composed) {
+        val longCb = onLongClick
+        val doubleCb = onDoubleClick
+        val effectiveContainer = customContainerColorArgb?.let { Color(it.toInt()) }
+            ?: containerColor.toComposeColor()
+        val effectiveContent = customContentColorArgb?.let { Color(it.toInt()) }
+            ?: contentColor.toComposeColor()
+        val colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = effectiveContainer,
+            contentColor = effectiveContent,
+        )
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.shape
+
+        // If gesture handlers beyond simple onClick are wired, we can't
+        // route through M3 `Card(onClick = …)` — it has no longPress /
+        // doubleClick parameters. Instead apply `combinedClickable` to
+        // the modifier chain ourselves and use the non-clickable Card
+        // overload. Plain-onClick stays on the M3 overload (gets free
+        // ripple + indication).
+        if (longCb != null || doubleCb != null) {
+            val gestured = baseModifier.combinedClickable(
+                onClick = { cb?.invoke() },
+                onLongClick = longCb?.let { { it() } },
+                onDoubleClick = doubleCb?.let { { it() } },
+            )
+            androidx.compose.material3.Card(
+                modifier = gestured,
+                shape = shape,
+                colors = colors,
+            ) {
+                (content as CmpChildren).render()
+            }
+        } else if (cb != null) {
+            androidx.compose.material3.Card(
+                onClick = { cb() },
+                modifier = baseModifier,
+                shape = shape,
+                colors = colors,
+            ) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.Card(modifier = composed) {
+            androidx.compose.material3.Card(
+                modifier = baseModifier,
+                shape = shape,
+                colors = colors,
+            ) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun containerColor(containerColor: SchemaColor) {
+        this.containerColor = containerColor
+    }
+    override fun contentColor(contentColor: SchemaColor) {
+        this.contentColor = contentColor
+    }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
+    override fun customContainerColorArgb(customContainerColorArgb: Long?) {
+        this.customContainerColorArgb = customContainerColorArgb
+    }
+    override fun customContentColorArgb(customContentColorArgb: Long?) {
+        this.customContentColorArgb = customContentColorArgb
+    }
+    override fun onLongClick(onLongClick: (() -> Unit)?) {
+        this.onLongClick = onLongClick
+    }
+    override fun onDoubleClick(onDoubleClick: (() -> Unit)?) {
+        this.onDoubleClick = onDoubleClick
+    }
 }
 
 class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1056,23 +1486,29 @@ class CmpElevatedCard : com.example.serverdrivenui.schema.widget.ElevatedCard<Cm
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.elevatedShape
         if (cb != null) {
-            androidx.compose.material3.ElevatedCard(onClick = { cb() }, modifier = composed) {
+            androidx.compose.material3.ElevatedCard(onClick = { cb() }, shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.ElevatedCard(modifier = composed) {
+            androidx.compose.material3.ElevatedCard(shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 class CmpOutlinedCard : com.example.serverdrivenui.schema.widget.OutlinedCard<CmpRender> {
     private val mod = StateModifier()
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val content: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1082,18 +1518,23 @@ class CmpOutlinedCard : com.example.serverdrivenui.schema.widget.OutlinedCard<Cm
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.CardDefaults.outlinedShape
         if (cb != null) {
-            androidx.compose.material3.OutlinedCard(onClick = { cb() }, modifier = composed) {
+            androidx.compose.material3.OutlinedCard(onClick = { cb() }, shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         } else {
-            androidx.compose.material3.OutlinedCard(modifier = composed) {
+            androidx.compose.material3.OutlinedCard(shape = shape, modifier = composed) {
                 (content as CmpChildren).render()
             }
         }
     }
 
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
@@ -1106,18 +1547,24 @@ class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
         get() = mod.value
         set(v) { mod.value = v }
 
+    private var cornerRadiusDp by mutableStateOf(-1)
+
     override val value: CmpRender = { incoming ->
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.MaterialTheme.shapes.medium
         if (cb != null) {
             androidx.compose.material3.Surface(
                 onClick = { cb() },
                 tonalElevation = tonalElevationDp.dp,
+                shape = shape,
                 modifier = composed,
             ) { (content as CmpChildren).render() }
         } else {
             androidx.compose.material3.Surface(
                 tonalElevation = tonalElevationDp.dp,
+                shape = shape,
                 modifier = composed,
             ) { (content as CmpChildren).render() }
         }
@@ -1127,6 +1574,9 @@ class CmpSurface : com.example.serverdrivenui.schema.widget.Surface<CmpRender> {
         this.tonalElevationDp = tonalElevationDp
     }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 // ============================================================================
@@ -1550,6 +2000,13 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    // Wire-additive properties (Schema Properties 5-8). Defaults match
+    // M3's FilterChipDefaults so existing guests render identically.
+    private var selectedContainerColor by mutableStateOf(SchemaColor.SecondaryContainer)
+    private var selectedLabelColor by mutableStateOf(SchemaColor.OnSecondaryContainer)
+    private var borderColor by mutableStateOf(SchemaColor.OutlineVariant)
+    private var selectedBorderColor by mutableStateOf(SchemaColor.Transparent)
+    private var cornerRadiusDp by mutableStateOf(8)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1560,16 +2017,43 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        // Merge guest overrides into M3's default chip colors. Only the
+        // selected-side slots are customizable today; unselected-side
+        // colors fall through to M3 defaults. Add more overrides here
+        // (with matching schema properties) if/when the gap surfaces.
+        val colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+            selectedContainerColor = selectedContainerColor.toComposeColor(),
+            selectedLabelColor = selectedLabelColor.toComposeColor(),
+            selectedLeadingIconColor = selectedLabelColor.toComposeColor(),
+        )
+        // The border is a separate concern in M3; we resolve both states
+        // here and let M3 pick the right one based on `selected`.
+        val border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+            enabled = enabled,
+            selected = selected,
+            borderColor = borderColor.toComposeColor(),
+            selectedBorderColor = selectedBorderColor.toComposeColor(),
+        )
         androidx.compose.material3.FilterChip(
             selected = selected,
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
-            // M3 renders a check glyph when selected; surrender the
-            // leadingIcon slot in that branch so we don't stack two icons.
-            leadingIcon = if (hasIcon && !selected) {
+            // Always pass through whatever leadingIcon the guest sent —
+            // the guest is in control of "should I show a glyph here?".
+            // Previously we suppressed it when `selected` so we wouldn't
+            // stack two icons next to M3's auto-rendered check; but M3's
+            // auto-check only fires when leadingIcon is null AND
+            // selected, and the guest sometimes wants to render its own
+            // explicit check (e.g. for a custom tint or icon). Trusting
+            // the guest is simpler and matches DevoStatus's native
+            // chip-with-explicit-check pattern.
+            leadingIcon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
+            colors = colors,
+            border = border,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(cornerRadiusDp.dp),
             modifier = composed,
         )
     }
@@ -1578,6 +2062,21 @@ class CmpFilterChip : com.example.serverdrivenui.schema.widget.FilterChip<CmpRen
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun selectedContainerColor(selectedContainerColor: SchemaColor) {
+        this.selectedContainerColor = selectedContainerColor
+    }
+    override fun selectedLabelColor(selectedLabelColor: SchemaColor) {
+        this.selectedLabelColor = selectedLabelColor
+    }
+    override fun borderColor(borderColor: SchemaColor) {
+        this.borderColor = borderColor
+    }
+    override fun selectedBorderColor(selectedBorderColor: SchemaColor) {
+        this.selectedBorderColor = selectedBorderColor
+    }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1586,6 +2085,7 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1596,10 +2096,13 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.AssistChipDefaults.shape
         androidx.compose.material3.AssistChip(
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             leadingIcon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
@@ -1610,6 +2113,9 @@ class CmpAssistChip : com.example.serverdrivenui.schema.widget.AssistChip<CmpRen
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1620,6 +2126,7 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
     private var onClose by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1631,11 +2138,14 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
         val click = onClick
         val close = onClose
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.InputChipDefaults.shape
         androidx.compose.material3.InputChip(
             selected = selected,
             onClick = { click?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             // FilterChip's check-glyph branch logic doesn't apply to
             // InputChip — M3 InputChip doesn't auto-render a selected
             // glyph; the avatar/icon slot is always honored.
@@ -1663,6 +2173,9 @@ class CmpInputChip : com.example.serverdrivenui.schema.widget.InputChip<CmpRende
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
     override fun onClose(onClose: (() -> Unit)?) { this.onClose = onClose }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -1672,6 +2185,13 @@ class CmpSuggestionChip :
     private var label by mutableStateOf("")
     private var enabled by mutableStateOf(true)
     private var onClick by mutableStateOf<(() -> Unit)?>(null)
+    private var cornerRadiusDp by mutableStateOf(-1)
+    // Wire-additive properties (Schema Properties 5-7). Defaults map to
+    // M3 SuggestionChipDefaults — passing them through is a no-op
+    // visually, so existing payloads render identically.
+    private var containerColor by mutableStateOf(SchemaColor.Surface)
+    private var labelColor by mutableStateOf(SchemaColor.OnSurface)
+    private var borderColor by mutableStateOf(SchemaColor.OutlineVariant)
 
     override val leadingIcon: Widget.Children<CmpRender> = CmpChildren()
     override var modifier: KonduitModifier
@@ -1682,13 +2202,27 @@ class CmpSuggestionChip :
         val composed = modifier.applyToCompose(incoming)
         val cb = onClick
         val hasIcon = (leadingIcon as CmpChildren).widgets.isNotEmpty()
+        val shape = shapeFromRadius(cornerRadiusDp)
+            ?: androidx.compose.material3.SuggestionChipDefaults.shape
+        val colors = androidx.compose.material3.SuggestionChipDefaults.suggestionChipColors(
+            containerColor = containerColor.toComposeColor(),
+            labelColor = labelColor.toComposeColor(),
+            iconContentColor = labelColor.toComposeColor(),
+        )
+        val border = androidx.compose.material3.SuggestionChipDefaults.suggestionChipBorder(
+            enabled = enabled,
+            borderColor = borderColor.toComposeColor(),
+        )
         androidx.compose.material3.SuggestionChip(
             onClick = { cb?.invoke() },
             label = { ComposeText(text = label) },
             enabled = enabled,
+            shape = shape,
             icon = if (hasIcon) {
                 { (leadingIcon as CmpChildren).render() }
             } else null,
+            colors = colors,
+            border = border,
             modifier = composed,
         )
     }
@@ -1696,6 +2230,18 @@ class CmpSuggestionChip :
     override fun label(label: String) { this.label = label }
     override fun enabled(enabled: Boolean) { this.enabled = enabled }
     override fun onClick(onClick: (() -> Unit)?) { this.onClick = onClick }
+    override fun cornerRadiusDp(cornerRadiusDp: Int) {
+        this.cornerRadiusDp = cornerRadiusDp
+    }
+    override fun containerColor(containerColor: SchemaColor) {
+        this.containerColor = containerColor
+    }
+    override fun labelColor(labelColor: SchemaColor) {
+        this.labelColor = labelColor
+    }
+    override fun borderColor(borderColor: SchemaColor) {
+        this.borderColor = borderColor
+    }
 }
 
 // ============================================================================
@@ -2509,6 +3055,97 @@ class CmpPagerIndicator :
 }
 
 // ============================================================================
+// Tier 3 — Animations
+// ============================================================================
+
+/**
+ * Maps a [SchemaTransition] enum to a Compose [EnterTransition] +
+ * [ExitTransition] pair using a single shared `tween(durationMillis)`
+ * spec. Returns `null`/`null` for [SchemaTransition.None] so the host
+ * can pass `EnterTransition.None` / `ExitTransition.None` to disable
+ * the animation on that side without paying for an animation-system
+ * snapshot.
+ */
+@Composable
+private fun SchemaTransition.toEnterTransition(
+    durationMillis: Int,
+): androidx.compose.animation.EnterTransition {
+    val spec = androidx.compose.animation.core.tween<Float>(durationMillis)
+    val ispec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(durationMillis)
+    val sizespec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntSize>(durationMillis)
+    return when (this) {
+        SchemaTransition.None -> androidx.compose.animation.EnterTransition.None
+        SchemaTransition.Fade -> androidx.compose.animation.fadeIn(spec)
+        SchemaTransition.SlideVertical -> androidx.compose.animation.slideInVertically(ispec)
+        SchemaTransition.SlideHorizontal -> androidx.compose.animation.slideInHorizontally(ispec)
+        SchemaTransition.Expand -> androidx.compose.animation.expandIn(sizespec)
+        SchemaTransition.Scale -> androidx.compose.animation.scaleIn(spec)
+        SchemaTransition.FadeAndSlide -> androidx.compose.animation.fadeIn(spec) +
+            androidx.compose.animation.slideInVertically(ispec)
+        SchemaTransition.FadeAndScale -> androidx.compose.animation.fadeIn(spec) +
+            androidx.compose.animation.scaleIn(spec)
+    }
+}
+
+@Composable
+private fun SchemaTransition.toExitTransition(
+    durationMillis: Int,
+): androidx.compose.animation.ExitTransition {
+    val spec = androidx.compose.animation.core.tween<Float>(durationMillis)
+    val ispec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(durationMillis)
+    val sizespec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntSize>(durationMillis)
+    return when (this) {
+        SchemaTransition.None -> androidx.compose.animation.ExitTransition.None
+        SchemaTransition.Fade -> androidx.compose.animation.fadeOut(spec)
+        SchemaTransition.SlideVertical -> androidx.compose.animation.slideOutVertically(ispec)
+        SchemaTransition.SlideHorizontal -> androidx.compose.animation.slideOutHorizontally(ispec)
+        SchemaTransition.Expand -> androidx.compose.animation.shrinkOut(sizespec)
+        SchemaTransition.Scale -> androidx.compose.animation.scaleOut(spec)
+        SchemaTransition.FadeAndSlide -> androidx.compose.animation.fadeOut(spec) +
+            androidx.compose.animation.slideOutVertically(ispec)
+        SchemaTransition.FadeAndScale -> androidx.compose.animation.fadeOut(spec) +
+            androidx.compose.animation.scaleOut(spec)
+    }
+}
+
+class CmpAnimatedVisibility :
+    com.example.serverdrivenui.schema.widget.AnimatedVisibility<CmpRender> {
+    private val mod = StateModifier()
+    private var visible by mutableStateOf(false)
+    private var enterTransition by mutableStateOf(SchemaTransition.Fade)
+    private var exitTransition by mutableStateOf(SchemaTransition.Fade)
+    private var durationMillis by mutableStateOf(300)
+
+    override val content: Widget.Children<CmpRender> = CmpChildren()
+    override var modifier: KonduitModifier
+        get() = mod.value
+        set(v) { mod.value = v }
+
+    override val value: CmpRender = { incoming ->
+        val composed = modifier.applyToCompose(incoming)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = enterTransition.toEnterTransition(durationMillis),
+            exit = exitTransition.toExitTransition(durationMillis),
+            modifier = composed,
+        ) {
+            (content as CmpChildren).render()
+        }
+    }
+
+    override fun visible(visible: Boolean) { this.visible = visible }
+    override fun enterTransition(enterTransition: SchemaTransition) {
+        this.enterTransition = enterTransition
+    }
+    override fun exitTransition(exitTransition: SchemaTransition) {
+        this.exitTransition = exitTransition
+    }
+    override fun durationMillis(durationMillis: Int) {
+        this.durationMillis = durationMillis
+    }
+}
+
+// ============================================================================
 // Caliclan navigation primitives
 // ============================================================================
 
@@ -2589,6 +3226,15 @@ class CmpChildren : Widget.Children<CmpRender> {
         }
     }
 
+    /** Renders each child as a separate item() in a LazyVerticalGrid scope. */
+    fun renderInLazyGridScope(scope: LazyGridScope) {
+        _widgets.forEach { widget ->
+            scope.item {
+                widget.value(ComposeModifier)
+            }
+        }
+    }
+
     /**
      * Render inside a compose RowScope. Extracts Weight from each child's
      * modifier chain and applies it via RowScope.weight() before delegating.
@@ -2638,6 +3284,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun LazyColumn() = CmpLazyColumn()
     override fun LazyRow() = CmpLazyRow()
     override fun LazyItem() = CmpLazyItem()
+    override fun LazyVerticalGrid() = CmpLazyVerticalGrid()
     override fun Text() = CmpText()
     override fun AsyncImage() = CmpAsyncImage()
     override fun Icon() = CmpIcon()
@@ -2695,6 +3342,7 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun NavigationDrawerItem() = CmpNavigationDrawerItem()
     override fun DatePickerDialog() = CmpDatePickerDialog()
     override fun TimePickerDialog() = CmpTimePickerDialog()
+    override fun AnimatedVisibility() = CmpAnimatedVisibility()
     override fun ScreenStack() = CmpScreenStack()
     override fun BackHandler() = CmpBackHandler()
 
@@ -2717,6 +3365,18 @@ object CmpWidgetFactory : SduiSchemaWidgetFactory<CmpRender> {
     override fun WrapContentWidth(value: CmpRender, modifier: MWrapContentWidth) {}
     override fun WrapContentHeight(value: CmpRender, modifier: MWrapContentHeight) {}
     override fun AspectRatio(value: CmpRender, modifier: MAspectRatio) {}
+    // Tier 3 modifier addition (tag 18). No-op factory callback — actual
+    // application happens via applyToCompose reading from the chain.
+    override fun Offset(value: CmpRender, modifier: MOffset) {}
+    // Window-inset modifiers (tags 19–24). Same no-op pattern.
+    override fun StatusBarsPadding(value: CmpRender, modifier: MStatusBarsPadding) {}
+    override fun NavigationBarsPadding(value: CmpRender, modifier: MNavigationBarsPadding) {}
+    override fun ImePadding(value: CmpRender, modifier: MImePadding) {}
+    override fun SystemBarsPadding(value: CmpRender, modifier: MSystemBarsPadding) {}
+    override fun DisplayCutoutPadding(value: CmpRender, modifier: MDisplayCutoutPadding) {}
+    override fun SafeContentPadding(value: CmpRender, modifier: MSafeContentPadding) {}
+    override fun CustomBackground(value: CmpRender, modifier: MCustomBackground) {}
+    override fun LinearGradient(value: CmpRender, modifier: MLinearGradient) {}
 }
 
 // ============================================================================
@@ -2763,8 +3423,30 @@ object SnackbarHub {
  * serializes them via a Mutex so calls naturally queue FIFO. No extra
  * queue state needed on our side.
  */
+/**
+ * @param ziplineDispatcher Zipline's thread-confined dispatcher
+ *   ([dev.konduit.treehouse.TreehouseDispatchers.zipline]). REQUIRED at
+ *   construction so the type system makes the wiring impossible to forget.
+ *
+ *   Why it must be passed in (gotcha #12 in docs/HANDOVER.md): Zipline's
+ *   QuickJS instance is single-thread confined. Any outbound call to a
+ *   guest ZiplineService — including `callback.onResult(...)` and
+ *   `callback.close()` — MUST be issued from this dispatcher. Calling from
+ *   any other thread (e.g. Dispatchers.Main, which our scope uses to drive
+ *   the M3 Snackbar UI) crashes with `QuickJsException: stack overflow` on
+ *   iOS Kotlin/Native. JVM-backed Zipline silently tolerates the wrong
+ *   thread by luck. See cashapp/zipline#1429 + #1592.
+ *
+ *   Construct + bind from inside [TreehouseApp.Spec.bindServices], which
+ *   is the first lifecycle hook that has access to `treehouseApp.dispatchers`.
+ *   Hold the resulting instance as a `lateinit var` on the Spec to keep
+ *   it alive (Zipline holds only a weak-ish ref; without a strong host-side
+ *   ref the service GCs and emits `serviceLeaked`).
+ */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
+class RealHostSnackbar(
+    private val ziplineDispatcher: kotlinx.coroutines.CoroutineDispatcher,
+) : com.example.serverdrivenui.shared.HostSnackbar {
     // Lazy scope — defer Dispatchers.Main resolution until first show()
     // call, NOT at construction. On iOS Kotlin/Native, accessing
     // Dispatchers.Main during bindServices() (which runs before the
@@ -2803,28 +3485,62 @@ class RealHostSnackbar : com.example.serverdrivenui.shared.HostSnackbar {
         message: String,
         actionLabel: String?,
         durationMillis: Long,
-        onResult: (Boolean) -> Unit,
+        callback: com.example.serverdrivenui.shared.SnackbarResultCallback,
     ) {
         try {
             scope.launch {
-                val result = SnackbarHub.state.showSnackbar(
-                    message = message,
-                    actionLabel = actionLabel,
-                    duration = mapDuration(durationMillis),
-                )
-                // Inner try/catch — onResult is a guest-side lambda
-                // proxied over Zipline; if the guest's callback throws
-                // (or has been disposed because the guest screen
-                // unmounted), we DON'T want that to kill our coroutine
-                // scope or surface as a bigger failure.
-                try {
-                    onResult(result == androidx.compose.material3.SnackbarResult.ActionPerformed)
+                // Show the snackbar on Dispatchers.Main (current coroutine
+                // context). M3 SnackbarHostState.showSnackbar is a suspend
+                // that lives on the UI thread.
+                val actionPerformed = try {
+                    val result = SnackbarHub.state.showSnackbar(
+                        message = message,
+                        actionLabel = actionLabel,
+                        duration = mapDuration(durationMillis),
+                    )
+                    result == androidx.compose.material3.SnackbarResult.ActionPerformed
                 } catch (t: Throwable) {
-                    println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+                    println("RealHostSnackbar.showWithResult($message) showSnackbar threw: ${t.message}")
+                    false
+                }
+
+                // Both callback.onResult AND callback.close are outbound
+                // Zipline calls and MUST be issued from the zipline-confined
+                // dispatcher (gotcha #12). If we forget to hop, iOS K/N
+                // crashes with QuickJsException: stack overflow; JVM tolerates
+                // it by luck. Group both ZiplineService touches inside a
+                // single withContext to amortize the dispatch hop.
+                kotlinx.coroutines.withContext(ziplineDispatcher) {
+                    invokeAndClose(message, callback, actionPerformed)
                 }
             }
         } catch (t: Throwable) {
             println("RealHostSnackbar.showWithResult($message) failed: ${t.message}")
+            // We couldn't even launch — best-effort close on the calling
+            // thread; if that crashes, so be it.
+            try { callback.close() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Single-pass invoke + close, intended to run on the zipline dispatcher.
+     * Splits out so both the "happy path" and the "no dispatcher wired"
+     * fallback share the same try/catch + close shape.
+     */
+    private fun invokeAndClose(
+        message: String,
+        callback: com.example.serverdrivenui.shared.SnackbarResultCallback,
+        actionPerformed: Boolean,
+    ) {
+        try {
+            callback.onResult(actionPerformed)
+        } catch (t: Throwable) {
+            println("RealHostSnackbar.showWithResult($message) onResult callback threw: ${t.message}")
+        } finally {
+            // Always close the proxy exactly once — otherwise it leaks the
+            // Zipline service binding and we get spurious `serviceLeaked`
+            // warnings.
+            try { callback.close() } catch (_: Throwable) { /* already gone */ }
         }
     }
 

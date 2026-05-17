@@ -15,6 +15,18 @@ pluginManagement {
                 password = (providers.gradleProperty("gpr.token").orNull
                     ?: System.getenv("GITHUB_TOKEN")).orEmpty()
             }
+            // Restrict to dev.konduit.* — without this, Gradle queries GH
+            // Packages for every androidx/kotlin transitive dep, and the
+            // server responds slowly enough to non-existent coordinates
+            // that fresh builds hang for ~10 minutes before falling
+            // through to google()/mavenCentral(). Cached builds don't
+            // hit this because modules-2 already has every coordinate.
+            // See docs/USAGE.md §"Mandatory: restrict the Konduit Maven
+            // repo to dev.konduit".
+            content {
+                includeGroup("dev.konduit")
+                includeGroupByRegex("dev\\.konduit\\..*")
+            }
         }
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         google {
@@ -47,6 +59,18 @@ dependencyResolutionManagement {
                     ?: System.getenv("GITHUB_ACTOR")).orEmpty()
                 password = (providers.gradleProperty("gpr.token").orNull
                     ?: System.getenv("GITHUB_TOKEN")).orEmpty()
+            }
+            // Restrict to dev.konduit.* — without this, Gradle queries GH
+            // Packages for every androidx/kotlin transitive dep, and the
+            // server responds slowly enough to non-existent coordinates
+            // that fresh builds hang for ~10 minutes before falling
+            // through to google()/mavenCentral(). Cached builds don't
+            // hit this because modules-2 already has every coordinate.
+            // See docs/USAGE.md §"Mandatory: restrict the Konduit Maven
+            // repo to dev.konduit".
+            content {
+                includeGroup("dev.konduit")
+                includeGroupByRegex("dev\\.konduit\\..*")
             }
         }
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")

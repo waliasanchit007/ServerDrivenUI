@@ -5,6 +5,7 @@ import dev.konduit.treehouse.ZiplineTreehouseUi
 import app.cash.zipline.ZiplineService
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 
 interface SduiAppService : AppService {
     fun launch(): ZiplineTreehouseUi
@@ -19,6 +20,31 @@ interface SduiAppService : AppService {
 
 interface HostConsole : ZiplineService {
     fun log(message: String)
+}
+
+/**
+ * Callback `ZiplineService` for [HostSnackbar.showWithResult]. The guest
+ * implements this, passes the implementation into `showWithResult(...)`,
+ * and the host invokes [onResult] when the snackbar resolves.
+ *
+ * Why a service instead of a `(Boolean) -> Unit` lambda parameter: Zipline
+ * can only marshal across the QuickJS boundary values that are either
+ * (a) `@Serializable`, or (b) `ZiplineService` proxies. A raw function-typed
+ * parameter is neither — the codegen accepts the signature at compile time
+ * but the runtime proxy fails to construct, which is the bug that broke
+ * snackbars in commit 62ccff1.
+ *
+ * Lifecycle: the host calls [close] after invoking [onResult] exactly once,
+ * so the guest impl doesn't have to manage its own ref. The guest is free
+ * to share a single instance across calls — Zipline scopes the proxy.
+ */
+interface SnackbarResultCallback : ZiplineService {
+    /**
+     * @param actionPerformed true if the user tapped the action button
+     *   (M3 `ActionPerformed`); false if the snackbar timed out, was
+     *   swiped away, or was dismissed by a subsequent show().
+     */
+    fun onResult(actionPerformed: Boolean)
 }
 
 /**
@@ -65,6 +91,270 @@ interface HostSnackbar : ZiplineService {
         message: String,
         actionLabel: String?,
         durationMillis: Long,
-        onResult: (Boolean) -> Unit,
+        callback: SnackbarResultCallback,
     )
+}
+
+/**
+ * A single quote shown in a feed-style list. Cross-platform value
+ * shape used by both host (Android / iOS) and guest (Kotlin/JS).
+ *
+ * Konduit-the-library is not opinionated about what a quote is — this
+ * is a deliberately generic shape that maps to common content cards:
+ * `text` is the headline, `language` is an optional locale tag,
+ * `tag` is an optional grouping (e.g. an author, deity, category id)
+ * that the host can use for downstream navigation.
+ */
+@Serializable
+data class Quote(
+    val id: String,
+    val text: String,
+    val language: String = "en",
+    val tag: String? = null,
+)
+
+/**
+ * Host-side data provider for a quote feed. The host implements this
+ * to feed quotes (from a database, network, cache, etc.) into a
+ * guest-rendered quote-feed screen.
+ *
+ * Why a service: the guest doesn't know how to fetch from your app's
+ * data source. Bind one of these from the host's
+ * `Spec.bindServices(...)` and the guest takes it as
+ * `zipline.take<HostQuotesProvider>("quotes")`.
+ *
+ * If the guest's `take("quotes")` fails (no provider bound), the
+ * presenter falls back to its default Tier 1 showcase screen.
+ *
+ * @see HostQuoteNavigator for the companion callback service that
+ *   the guest uses to notify the host when a quote is tapped.
+ */
+interface HostQuotesProvider : ZiplineService {
+    /**
+     * Fetch the current quotes list synchronously from the host's
+     * in-memory cache. The host should have its data ready before
+     * navigating to a QuotesScreen — typically by kicking off the
+     * network fetch in `LaunchedEffect(Unit)` of the route's
+     * composable before binding this service.
+     *
+     * Why non-suspend: Konduit-Zipline 1.26's compiler plugin causes
+     * the host's `bind<>()` to hang silently when this method is
+     * declared `suspend`. Empirically reproducible with
+     * `List<@Serializable Quote>` return type. A future Konduit
+     * release may lift this restriction.
+     *
+     * The host should respect [languageFilter] when non-null: "en",
+     * "hi", "sa" (extensible). Pass null to mean "all languages".
+     */
+    fun getQuotes(languageFilter: String?): List<Quote>
+
+    /**
+     * Register a [HostQuotesObserver] so the host can push
+     * change-notifications when its underlying data updates (a refresh
+     * lands, a new quote is added, a user-driven filter change happens
+     * out-of-band, etc.). The guest is expected to re-fetch via
+     * [getQuotes] when [HostQuotesObserver.onQuotesChanged] fires.
+     *
+     * Calling [observe] a second time replaces the previous observer —
+     * the host must drop its reference to the old one. The guest is
+     * free to pass the same [HostQuotesObserver] instance across calls;
+     * Zipline scopes the proxy.
+     *
+     * Why a separate method rather than embedding the data in the
+     * callback: keeping `getQuotes()` as the single source of truth
+     * means the host doesn't have to know about the guest's current
+     * language filter when notifying. The guest re-asks with the right
+     * filter, and the host serves the same in-memory cache.
+     *
+     * Why additive on the existing service rather than a new
+     * `HostQuotesObservable` service: ZiplineService method addition is
+     * wire-additive (per [HostSnackbar.showWithResult]'s rationale),
+     * and integrators are more likely to remember to wire one service
+     * than to wire two. Old guests that never call [observe] keep
+     * working unchanged. Old hosts that don't override [observe] would
+     * surface as a "no such method" runtime error on the guest side —
+     * the guest should wrap [observe] in try/catch for graceful
+     * degradation against older host binaries.
+     */
+    fun observe(observer: HostQuotesObserver)
+}
+
+/**
+ * Companion to [HostQuotesProvider]: the guest calls [onQuoteSelected]
+ * when the user taps a quote card. The host typically responds by
+ * navigating to its own creation flow.
+ */
+interface HostQuoteNavigator : ZiplineService {
+    fun onQuoteSelected(quoteId: String, tag: String?)
+}
+
+// ─── Explore-feed shapes (Wallpaper + provider + navigator) ─────────────
+
+/**
+ * A wallpaper image surfaced to the guest as part of an explore /
+ * gallery feed. Like [Quote], this is a deliberately minimal value
+ * shape — `imageUrl` is enough for an `AsyncImage`, [tag] gives the
+ * host a way to group / filter (e.g. by deity, mood, category) when
+ * the user picks one.
+ */
+@Serializable
+data class Wallpaper(
+    val id: String,
+    val imageUrl: String,
+    val tag: String? = null,
+)
+
+/**
+ * Host-side provider for a wallpaper feed. Same shape as
+ * [HostQuotesProvider]:
+ *   - Non-suspend `getWallpapers(tagFilter)` for the same reason
+ *     (Konduit-Zipline 1.26 suspend-bind hang).
+ *   - Optional [HostWallpapersObserver] for reactive pushes when the
+ *     host's cache updates.
+ *
+ * The DevoStatus Explore screen pairs `getQuotes(...)` with a random
+ * matching wallpaper per card; in that pattern the guest fetches both
+ * lists once on mount and zips them in the presenter. For screens
+ * where wallpapers are the primary feed (a pure gallery), provider +
+ * observer give the full reactive contract.
+ */
+interface HostWallpapersProvider : ZiplineService {
+    fun getWallpapers(tagFilter: String?): List<Wallpaper>
+    fun observe(observer: HostWallpapersObserver)
+}
+
+interface HostWallpapersObserver : ZiplineService {
+    fun onWallpapersChanged()
+}
+
+/**
+ * Companion navigator for an explore-feed tap. The guest passes the
+ * selected quote id + wallpaper id; the host typically navigates to a
+ * preview / creation screen pre-populated with that pair.
+ *
+ * [wallpaperId] is nullable because the screen may render quote-only
+ * cards when no wallpaper is available (gradient fallback).
+ */
+interface HostExploreNavigator : ZiplineService {
+    fun onExploreItemSelected(quoteId: String, wallpaperId: String?)
+}
+
+/**
+ * Host-side service that turns a (quote, wallpaper) pair into a saved
+ * status card on the device gallery. The guest can't do this work
+ * itself — Bitmap / Canvas / MediaStore are platform APIs that have no
+ * Kotlin/JS equivalent, and the QuickJS runtime has no Android Context.
+ *
+ * Contract:
+ *   - The host composes the card (download wallpaper → resize to 9:16
+ *     → draw scrim + word-wrapped quote text → save to
+ *     `Pictures/<app>/` via MediaStore).
+ *   - The Saved tab reads from MediaStore on its own; this service
+ *     doesn't return the saved Uri because the guest has no use for it.
+ *   - Optional [observer] receives one-shot result callbacks so the
+ *     guest can flip its visual "liked" state back to `false` if the
+ *     save failed (matching native ExploreCard semantics where the
+ *     heart un-fills + a Toast shows on error).
+ *
+ * Non-suspend for the same reason the rest of this protocol is
+ * (Konduit-Zipline 1.26 suspend-bind hang). The actual save runs
+ * off-thread on the host; the call returns immediately.
+ */
+interface HostExploreSaver : ZiplineService {
+    /**
+     * Kick off the save pipeline for the given quote + wallpaper. Fire-
+     * and-forget; observer (if supplied) fires asynchronously when the
+     * pipeline finishes.
+     *
+     * @param quoteId Stable id from [Quote.id]. The host looks the
+     *   text + tag back up by id rather than receiving the payload
+     *   inline so older + newer code paths agree on which quote was saved.
+     * @param wallpaperId Optional [Wallpaper.id]. When null the host
+     *   uses a gradient-only background (saffron→maroon, matching the
+     *   on-screen card fallback).
+     * @param observer Optional one-shot result callback. Host calls
+     *   [HostExploreSaverObserver.onSaveResult] exactly once then closes
+     *   the service. Pass null for fire-and-forget.
+     */
+    fun saveQuoteCard(
+        quoteId: String,
+        wallpaperId: String?,
+        observer: HostExploreSaverObserver?,
+    )
+
+    /**
+     * Snapshot of every (quoteId, wallpaperId) pair the host has saved
+     * during the current process lifetime. Used by the guest to seed
+     * the "heart liked" visual state of Explore cards on mount, so the
+     * saffron-filled heart survives Composable re-mounts (e.g. tab
+     * navigation away + back).
+     *
+     * Process-scoped, not persistent: the host doesn't query MediaStore
+     * for prior saves on cold start. That's intentional — the guest's
+     * source of truth for "is this saved" is the Saved tab itself, which
+     * already reads MediaStore. This RPC is only a visual hint to avoid
+     * the user re-saving the same card three times in one session.
+     *
+     * Non-suspend (Konduit-Zipline 1.26 suspend-bind hang). Returns
+     * cheaply — the host maintains the set in-memory.
+     */
+    fun getSavedCardKeys(): List<SavedCardKey>
+}
+
+/**
+ * The (quoteId, wallpaperId) pair the host saved via
+ * [HostExploreSaver.saveQuoteCard]. Returned by
+ * [HostExploreSaver.getSavedCardKeys] for the guest to seed its visual
+ * "liked" state on mount.
+ *
+ * Distinct serializable type rather than `Pair<String, String?>`
+ * because kotlinx-serialization doesn't ship a default Pair serializer
+ * — wrapping in a named data class is the standard Kotlin/Zipline
+ * pattern for tuple-shaped wire values.
+ */
+@Serializable
+data class SavedCardKey(
+    val quoteId: String,
+    val wallpaperId: String? = null,
+)
+
+/**
+ * One-shot result for [HostExploreSaver.saveQuoteCard]. Single-use:
+ * host calls [onSaveResult] then [close] (or just closes after a single
+ * call). Modeled on `SnackbarResultCallback` in this same file.
+ */
+interface HostExploreSaverObserver : ZiplineService {
+    /**
+     * @param success true if the bitmap was written to MediaStore;
+     *   false if any step (download, scale, write) failed.
+     */
+    fun onSaveResult(success: Boolean)
+}
+
+/**
+ * Reactive push channel for a quote feed. The guest implements this
+ * service, passes it to [HostQuotesProvider.observe], and the host calls
+ * [onQuotesChanged] whenever its in-memory data changes.
+ *
+ * The guest is expected to respond by re-calling
+ * [HostQuotesProvider.getQuotes] with its current language filter — the
+ * callback intentionally doesn't carry the new data because the host
+ * doesn't know the guest's filter state.
+ *
+ * Lifecycle: Zipline's leak detector will surface a `serviceLeaked`
+ * event if the host stops holding a reference to the observer before
+ * calling [close], so hosts should null out their stored reference (or
+ * call [close]) when the guest screen unmounts. The guest doesn't need
+ * to manage anything — its LaunchedEffect scope handles teardown.
+ */
+interface HostQuotesObserver : ZiplineService {
+    /**
+     * Fires when host data may have changed. Guest should re-fetch via
+     * [HostQuotesProvider.getQuotes] with its current filter.
+     *
+     * Non-suspend for the same reason [HostQuotesProvider.getQuotes] is
+     * non-suspend (Konduit-Zipline 1.26 suspend-bind hang). A future
+     * release may lift this.
+     */
+    fun onQuotesChanged()
 }

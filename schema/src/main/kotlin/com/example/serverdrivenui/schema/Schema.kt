@@ -36,6 +36,7 @@ import dev.konduit.schema.Widget
         LazyColumn::class,
         LazyRow::class,
         LazyItem::class,
+        LazyVerticalGrid::class,
         Text::class,
         AsyncImage::class,
         Icon::class,
@@ -107,6 +108,8 @@ import dev.konduit.schema.Widget
         // Tier 3 — Pickers (IDs 170–171)
         DatePickerDialog::class,
         TimePickerDialog::class,
+        // Tier 3 — Animations (IDs 180+)
+        AnimatedVisibility::class,
         // Caliclan navigation primitives (IDs 1000+)
         ScreenStack::class,
         BackHandler::class,
@@ -128,6 +131,23 @@ import dev.konduit.schema.Widget
         WrapContentWidth::class,
         WrapContentHeight::class,
         AspectRatio::class,
+        // Tier 3 modifier addition (tag 18) — Offset for decorative
+        // overlays (watermarks, badge nudges). Wire-additive: the
+        // generated runtime accepts unknown modifiers gracefully, but
+        // including the class in `members` is required for codegen to
+        // emit the interface + .offset() extension function.
+        Offset::class,
+        // Tier 3 window-inset modifiers (tags 19–24) — full safe-area
+        // story for root containers and IME-aware sheets.
+        StatusBarsPadding::class,
+        NavigationBarsPadding::class,
+        ImePadding::class,
+        SystemBarsPadding::class,
+        DisplayCutoutPadding::class,
+        SafeContentPadding::class,
+        // Tag 25 — brand-color escape hatch (ARGB literal).
+        CustomBackground::class,
+        LinearGradient::class,
     ],
 )
 interface SduiSchema
@@ -147,6 +167,28 @@ interface SduiSchema
 @Widget(1)
 data class Box(
     @Property(1) val onClick: (() -> Unit)?,
+    /**
+     * Default alignment for unconstrained children. Wire-additive
+     * (Property 2, added after initial release) — older guests serialize
+     * the default [SchemaBoxAlignment.TopStart] and round-trip cleanly.
+     *
+     * Use `TopEnd` for decorative overlays (a watermark glyph anchored
+     * at the top-right of a card), `Center` for centered loading
+     * spinners, and the defaults for the legacy "stack children at
+     * top-start" behavior.
+     */
+    @Property(2) val contentAlignment: SchemaBoxAlignment = SchemaBoxAlignment.TopStart,
+    /**
+     * Long-press handler. `null` = no long-press response. When non-null,
+     * the host wires `Modifier.combinedClickable(onLongClick = …)` so the
+     * regular [onClick] still fires on tap. Wire-additive (Property 3).
+     */
+    @Property(3) val onLongClick: (() -> Unit)? = null,
+    /**
+     * Double-tap handler. `null` = no double-tap response. Wire-additive
+     * (Property 4). Same combinedClickable wiring as [onLongClick].
+     */
+    @Property(4) val onDoubleClick: (() -> Unit)? = null,
     @Children(1) val children: () -> Unit,
 )
 
@@ -201,12 +243,112 @@ data class LazyItem(
     @Children(1) val children: () -> Unit,
 )
 
+/**
+ * Lazily-rendered grid with a fixed column count, laid out vertically
+ * (rows grow downward, items flow left → right then wrap). Children
+ * must be [LazyItem] widgets — each item occupies one cell.
+ *
+ * Maps to Compose's `LazyVerticalGrid(columns = GridCells.Fixed(N))`.
+ * The `columns` count is fixed at the protocol layer for wire economy;
+ * adaptive grids (`GridCells.Adaptive(minSize)`) can be added later as
+ * a sibling widget without breaking this one.
+ *
+ * Spacing between cells (both axes) can be tuned via [contentPaddingDp]
+ * and [itemSpacingDp]. Default 0 reproduces the M3 default; pass
+ * positive values to add gutters around / between cells.
+ */
+@Widget(11)
+data class LazyVerticalGrid(
+    /** Number of equal-width columns. Must be >= 1. */
+    @Property(1) val columns: Int,
+    /** Padding (dp) around the entire grid's content area. */
+    @Property(2) val contentPaddingDp: Int = 0,
+    /** Vertical + horizontal gap (dp) between cells. */
+    @Property(3) val itemSpacingDp: Int = 0,
+    @Children(1) val items: () -> Unit,
+)
+
 /** Display a string. */
 @Widget(8)
 data class Text(
     @Property(1) val text: String,
     @Property(2) val color: SchemaColor,
     @Property(3) val style: SchemaTextStyle,
+    /**
+     * Horizontal alignment of the text within its laid-out box. Combined
+     * with a width-constraining modifier (e.g. `Modifier.fillMaxWidth()`),
+     * this determines whether the text glyphs sit at the start/center/end.
+     * Wire-additive (Property 4) with default [SchemaTextAlign.Start] —
+     * the default preserves the previous behavior and lets older guests
+     * compile without changes (Redwood codegen propagates the Kotlin
+     * default to the generated composable signature).
+     */
+    @Property(4) val textAlign: SchemaTextAlign = SchemaTextAlign.Start,
+    /**
+     * Font weight override. The selected [SchemaTextStyle] already
+     * carries a default weight from M3's typography scale; this lets the
+     * guest pick a heavier or lighter cut without redefining the whole
+     * style. Wire-additive (Property 5) with default
+     * [SchemaFontWeight.Normal]; passing [Normal] preserves the previous
+     * "use the style's default weight" behavior because the host
+     * interprets Normal as "don't override".
+     */
+    @Property(5) val fontWeight: SchemaFontWeight = SchemaFontWeight.Normal,
+    /**
+     * Typeface family override. Same opt-in semantics as [fontWeight]:
+     * the host interprets [SchemaFontFamily.Default] as "use the style's
+     * default family", and any other value overrides it. Wire-additive
+     * (Property 6).
+     */
+    @Property(6) val fontFamily: SchemaFontFamily = SchemaFontFamily.Default,
+    /**
+     * Maximum number of lines. `0` means unbounded (the previous default).
+     * When the text would exceed this many lines, the host applies
+     * `TextOverflow.Ellipsis`. Wire-additive (Property 7).
+     */
+    @Property(7) val maxLines: Int = 0,
+    /**
+     * Font size override, in sp. `0` (the default) means "use the size
+     * baked into the chosen [SchemaTextStyle]" (M3's typography scale).
+     * Positive values override — useful for one-off display sizes
+     * ("Hero" headlines bigger than `DisplayLarge`, or compact
+     * timestamps below `LabelSmall`).
+     *
+     * Wire-additive (Property 8). The host treats `0` as a sentinel for
+     * "don't override" so existing payloads stay rendered identically.
+     */
+    @Property(8) val fontSizeSp: Int = 0,
+    /**
+     * Line-height override, in sp. `0` (the default) means "use the
+     * line height baked into the chosen [SchemaTextStyle]" (M3 derives
+     * line height from typography). Positive values override.
+     *
+     * Wire-additive (Property 9). Same `0`-as-sentinel pattern as
+     * [fontSizeSp].
+     */
+    @Property(9) val lineHeightSp: Int = 0,
+    /**
+     * Letter-spacing override, in 0.01-sp units (so `5` = `0.05.sp`).
+     * `0` means "use style default". Wire-additive (Property 10).
+     *
+     * Why hundredths-of-sp instead of a real Double: most CMP M3 type
+     * scales use letter-spacing values like 0.5, 0.25, -0.4 — three
+     * digits of precision is overkill, and an Int wire is cheaper to
+     * serialize. Mapping back: `value / 100.0`.
+     */
+    @Property(10) val letterSpacingHundredthsSp: Int = 0,
+    /**
+     * Custom text color as a packed ARGB Long. `null` (the default,
+     * wire-additive) means "use the [color] theme slot". When non-null,
+     * the raw color wins — bypasses [SchemaColor] entirely.
+     *
+     * Format: `0xAARRGGBB` (alpha is the high byte). The host hands
+     * this to `Color(argb.toInt())`. Wire-additive (Property 11).
+     *
+     * Use case: brand text colors that aren't in the M3 theme palette
+     * (e.g. DevoStatus's PrimaryMaroon `0xFF7A1F1F`).
+     */
+    @Property(11) val customColorArgb: Long? = null,
 )
 
 /** Display an image fetched from a URL. */
@@ -214,6 +356,20 @@ data class Text(
 data class AsyncImage(
     @Property(1) val url: String,
     @Property(2) val contentDescription: String,
+    /**
+     * How the loaded bitmap scales to fill the slot the modifier chain
+     * hands the widget. Defaults to [SchemaContentScale.Fit] which is
+     * Compose's default for `AsyncImage`/`Image` — older payloads decode
+     * cleanly and render unchanged.
+     *
+     * Use [SchemaContentScale.Crop] for hero/banner imagery where the
+     * slot has a fixed aspect (e.g. a 0.75-aspect Card with the wallpaper
+     * as background) and you want the image to fill it edge-to-edge
+     * regardless of the source aspect — ExploreScreen wallpapers do this.
+     *
+     * Wire-additive (Property 3).
+     */
+    @Property(3) val contentScale: SchemaContentScale = SchemaContentScale.Fit,
 )
 
 /** Material icon. Sized via modifier (Size/Width/Height); default is 24dp. */
@@ -221,6 +377,12 @@ data class AsyncImage(
 data class Icon(
     @Property(1) val name: SchemaIconName,
     @Property(2) val tint: SchemaColor,
+    /**
+     * Custom tint color as a packed ARGB Long. `null` (the default,
+     * wire-additive) → use the [tint] theme slot. Non-null wins.
+     * See [Text.customColorArgb] for the format.
+     */
+    @Property(3) val customTintArgb: Long? = null,
 )
 
 // ============================================================================
@@ -240,6 +402,17 @@ data class Button(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /**
+     * Corner radius in dp. `-1` (the default, wire-additive sentinel)
+     * means "use the M3 default for this widget" — the host falls
+     * through to `ButtonDefaults.shape`. Positive values override:
+     * `0` for sharp corners, large values (>= height/2) for a pill.
+     *
+     * Wire-additive (Property 4). Across the button family this same
+     * pattern with the same Property tag is used everywhere, so a
+     * single guest helper can apply it uniformly.
+     */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Outlined (medium-emphasis) button. */
@@ -248,6 +421,8 @@ data class OutlinedButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Text-only (low-emphasis) button. */
@@ -256,6 +431,8 @@ data class TextButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Filled tonal (medium-emphasis) button — softer than [Button]. */
@@ -264,6 +441,8 @@ data class FilledTonalButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Elevated (medium-emphasis) button with shadow. */
@@ -272,6 +451,8 @@ data class ElevatedButton(
     @Property(1) val text: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
 )
 
 /** Icon-only button. The single child should be an [Icon]. */
@@ -420,6 +601,42 @@ data class SegmentedButtonRow(
 @Widget(51)
 data class Card(
     @Property(1) val onClick: (() -> Unit)?,
+    /**
+     * Container fill color. Wire-additive (Property 2, default Surface).
+     * Material3's `Card` defaults to `surfaceContainerHighest` which in
+     * many themes is a tinted variant of Surface — too dark when the
+     * integrator wanted a clean white card. Use [SchemaColor.Background]
+     * or [SchemaColor.Surface] for a white card matching native
+     * `containerColor = Color.White` semantics.
+     *
+     * Note: M3 `Card` already rounds and clips its content; sibling
+     * [Border] / [Clip] modifiers still work for additional outline /
+     * corner control beyond the M3 defaults.
+     */
+    @Property(2) val containerColor: SchemaColor = SchemaColor.Surface,
+    /**
+     * Text/icon color inside the card. Wire-additive (Property 3,
+     * default OnSurface). Material3's `Card` derives this from
+     * `containerColor` but doesn't always give the right contrast on
+     * custom containerColors — this lets the guest pick explicitly.
+     */
+    @Property(3) val contentColor: SchemaColor = SchemaColor.OnSurface,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (~12dp for Card). */
+    @Property(4) val cornerRadiusDp: Int = -1,
+    /**
+     * Custom container color as packed ARGB. `null` → use [containerColor].
+     * See [Text.customColorArgb] for format. Wire-additive (Property 5).
+     */
+    @Property(5) val customContainerColorArgb: Long? = null,
+    /**
+     * Custom content color as packed ARGB. `null` → use [contentColor].
+     * Wire-additive (Property 6).
+     */
+    @Property(6) val customContentColorArgb: Long? = null,
+    /** Long-press handler. See [Box.onLongClick]. Wire-additive (Property 7). */
+    @Property(7) val onLongClick: (() -> Unit)? = null,
+    /** Double-tap handler. See [Box.onDoubleClick]. Wire-additive (Property 8). */
+    @Property(8) val onDoubleClick: (() -> Unit)? = null,
     @Children(1) val content: () -> Unit,
 )
 
@@ -427,6 +644,8 @@ data class Card(
 @Widget(52)
 data class ElevatedCard(
     @Property(1) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(2) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -434,6 +653,8 @@ data class ElevatedCard(
 @Widget(53)
 data class OutlinedCard(
     @Property(1) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(2) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -445,6 +666,8 @@ data class OutlinedCard(
 data class Surface(
     @Property(1) val tonalElevationDp: Int,
     @Property(2) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (0dp / rectangle for Surface). */
+    @Property(3) val cornerRadiusDp: Int = -1,
     @Children(1) val content: () -> Unit,
 )
 
@@ -623,6 +846,43 @@ data class FilterChip(
     @Property(2) val label: String,
     @Property(3) val enabled: Boolean,
     @Property(4) val onClick: (() -> Unit)?,
+    /**
+     * Background color when [selected] = true. Wire-additive (Property 5).
+     * Default [SchemaColor.SecondaryContainer] matches M3's
+     * `FilterChipDefaults.filterChipColors().selectedContainerColor`.
+     * Use [SchemaColor.Tertiary] for the "selected = brand accent"
+     * pattern (e.g. DevoStatus's saffron-filled chip).
+     */
+    @Property(5) val selectedContainerColor: SchemaColor = SchemaColor.SecondaryContainer,
+    /**
+     * Label text color when [selected] = true. Wire-additive (Property 6).
+     * Default [SchemaColor.OnSecondaryContainer]; pair with whatever
+     * gives the right contrast against [selectedContainerColor].
+     */
+    @Property(6) val selectedLabelColor: SchemaColor = SchemaColor.OnSecondaryContainer,
+    /**
+     * Border color in the UNSELECTED state. Wire-additive (Property 7).
+     * Default [SchemaColor.OutlineVariant] matches M3's default
+     * filter-chip border. Use [SchemaColor.Tertiary] (etc.) for a
+     * branded outline.
+     */
+    @Property(7) val borderColor: SchemaColor = SchemaColor.OutlineVariant,
+    /**
+     * Border color in the SELECTED state. Wire-additive (Property 8).
+     * Default [SchemaColor.Transparent] matches M3's filled-when-
+     * selected look (no visible border on top of the container fill).
+     * Set the same color as [selectedContainerColor] to get a "filled
+     * chip with matching outline" look.
+     */
+    @Property(8) val selectedBorderColor: SchemaColor = SchemaColor.Transparent,
+    /**
+     * Corner radius in dp. Wire-additive (Property 9, default 8). M3's
+     * filter chip default is `MaterialTheme.shapes.small` which
+     * approximates 8dp; pass a large value (>= chip height / 2 — 50
+     * comfortably overshoots the M3 32dp height) for a fully pill /
+     * circular shape matching native chip styling.
+     */
+    @Property(9) val cornerRadiusDp: Int = 8,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -635,6 +895,8 @@ data class AssistChip(
     @Property(1) val label: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default (8dp for chips). */
+    @Property(4) val cornerRadiusDp: Int = -1,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -652,6 +914,8 @@ data class InputChip(
     @Property(3) val enabled: Boolean,
     @Property(4) val onClick: (() -> Unit)?,
     @Property(5) val onClose: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(6) val cornerRadiusDp: Int = -1,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -664,6 +928,36 @@ data class SuggestionChip(
     @Property(1) val label: String,
     @Property(2) val enabled: Boolean,
     @Property(3) val onClick: (() -> Unit)?,
+    /** See [Button.cornerRadiusDp]. `-1` = M3 default. */
+    @Property(4) val cornerRadiusDp: Int = -1,
+    /**
+     * Container fill color. Wire-additive (Property 5).
+     *
+     * Default [SchemaColor.Surface] matches the closest M3 slot to
+     * `SuggestionChipDefaults.suggestionChipColors().containerColor`
+     * (M3 uses `surfaceContainerLow`, which isn't on our SchemaColor
+     * enum yet; Surface is the next-best stand-in and renders nearly
+     * identically on most themes). Pass [SchemaColor.Tertiary] (etc.)
+     * for a branded "this chip is always emphasized" look — DevoStatus's
+     * native code does exactly that to make "Trending" stand out from
+     * the neutral siblings.
+     *
+     * Unlike [FilterChip], `SuggestionChip` has no selected/unselected
+     * state, so there's only one color slot here.
+     */
+    @Property(5) val containerColor: SchemaColor = SchemaColor.Surface,
+    /**
+     * Label text color. Wire-additive (Property 6, default OnSurface).
+     */
+    @Property(6) val labelColor: SchemaColor = SchemaColor.OnSurface,
+    /**
+     * Border color in the resting state. Wire-additive (Property 7).
+     * Default [SchemaColor.OutlineVariant] matches the M3 default chip
+     * border. Pass [SchemaColor.Transparent] for a borderless filled
+     * chip (the canonical branded look — pair with a non-default
+     * [containerColor]).
+     */
+    @Property(7) val borderColor: SchemaColor = SchemaColor.OutlineVariant,
     @Children(1) val leadingIcon: () -> Unit,
 )
 
@@ -1023,6 +1317,41 @@ data class TimePickerDialog(
 )
 
 // ============================================================================
+// Tier 3 — Animations (IDs 180–189)
+//
+// AnimatedVisibility is the foundational primitive — show/hide a subtree
+// with a tween. The schema's enter/exit transition is a curated enum
+// (SchemaTransition) rather than a free-form spec because:
+//   - Compose's EnterTransition / ExitTransition factories are not
+//     serializable (lambdas, animation specs, internal state)
+//   - 80% of usage is one of the named families (fade, slide, scale,
+//     expand, fade-and-slide combos)
+//
+// Duration is exposed as a single Int millis. Future versions may add
+// per-property duration or easing curves; today the host applies a
+// shared `tween(durationMillis)` to all involved transitions.
+// ============================================================================
+
+/**
+ * Animate the presence of [content]. When [visible] flips false→true
+ * the host runs [enterTransition] over [durationMillis]; flipping
+ * true→false runs [exitTransition].
+ *
+ * `SchemaTransition.None` for either side disables that direction's
+ * animation (the content snaps in/out instantly). Use for content
+ * that should appear without fanfare (e.g. error banners) but exit
+ * with a slide.
+ */
+@Widget(180)
+data class AnimatedVisibility(
+    @Property(1) val visible: Boolean,
+    @Property(2) val enterTransition: SchemaTransition = SchemaTransition.Fade,
+    @Property(3) val exitTransition: SchemaTransition = SchemaTransition.Fade,
+    @Property(4) val durationMillis: Int = 300,
+    @Children(1) val content: () -> Unit,
+)
+
+// ============================================================================
 // Caliclan navigation primitives (IDs 1000+)
 // ============================================================================
 
@@ -1079,9 +1408,38 @@ data class Width(val value: Int)  // dp
 @Modifier(4)
 data class Height(val value: Int)  // dp
 
-/** Solid background fill. SchemaColor.Transparent renders as no background. */
+/**
+ * Solid background fill. SchemaColor.Transparent renders as no background.
+ *
+ * [cornerRadiusDp] = 0 (the default for backward compatibility) paints a
+ * rectangular fill; >0 paints a rounded fill of that radius. The fill shape
+ * is independent of any sibling Clip — when you want both rounded fill AND
+ * clipped content, set Clip(cornerRadiusDp) too. Adding the param is wire-
+ * additive: existing manifests serialize the default and round-trip cleanly.
+ */
 @Modifier(5)
-data class Background(val color: SchemaColor)
+data class Background(
+    val color: SchemaColor,
+    val cornerRadiusDp: Int = 0,
+    /**
+     * Alpha multiplier for the [color], in `[0.0, 1.0]`. Default 1.0 =
+     * fully opaque (the previous behavior). Common values: 0.1 for a
+     * faint tinted action bar (`Saffron @ 10%`), 0.2 for a subtle card
+     * border tint, 0.5 for a translucent overlay.
+     *
+     * Wire-additive (Background param 3). Older payloads decode as
+     * 1.0 (fully opaque). Stay within [0.0, 1.0]; values outside that
+     * range pass through to Compose's `Color.copy(alpha)`, which
+     * clamps internally.
+     *
+     * Why on Background rather than as a separate Alpha-on-color
+     * modifier: a "tinted background" is the overwhelmingly common
+     * case (M3's surface variants, action bars, etc.), and mixing
+     * `Modifier.alpha()` with `Modifier.background()` dims the
+     * children too — not what the integrator wants here.
+     */
+    val alpha: Double = 1.0,
+)
 
 /** Flex weight along the parent's main axis. Only meaningful in Row/Column. */
 @Modifier(6)
@@ -1107,16 +1465,18 @@ data class Alpha(val value: Double)
 // Tier 3 modifier additions (tags 12–17) — see KONDUIT_PLAN.md §8.3 follow-ups
 //
 // All Tier 3 modifiers stay UNSCOPED (any widget can apply any of them).
-// Border is always rectangular in v1 — rounded borders need an additive
-// `Border(thicknessDp, color, cornerRadiusDp)` later (additive, won't break
-// wire). For now, use Card / OutlinedCard widgets when you need a rounded
-// stroke + container together.
+// Border and Background both support `cornerRadiusDp` (default 0 = the
+// original rectangular behavior) — the additive-with-default pattern keeps
+// older payloads decoding cleanly. Card / OutlinedCard widgets remain a
+// good choice when you want a Material-styled container instead of
+// hand-composing clip+bg+border.
 //
 // Ordering caveat: Compose modifier chains are order-sensitive. The host
 // applies these in the order the guest appended them; standard Compose
 // rules apply (e.g. clip BEFORE background to clip the fill). The existing
-// Background special-case (always applied last to layer correctly with
-// fillMax / size) is preserved.
+// Background and Border special-cases (always applied last after the loop,
+// so they layer correctly with fillMax / size and resolve color in a
+// composable scope) are preserved.
 // ============================================================================
 
 /**
@@ -1177,6 +1537,142 @@ object WrapContentHeight
  */
 @Modifier(17)
 data class AspectRatio(val ratio: Double)
+
+/**
+ * Translate the widget by [x] / [y] dp from its layout-determined
+ * position WITHOUT participating in the parent's measure pass — equivalent
+ * to `Modifier.offset(x.dp, y.dp)`. The widget still takes up its original
+ * space in the parent; only the paint position shifts.
+ *
+ * Use for decorative overlays: a watermark glyph anchored at a card's
+ * top-right corner, a notification badge nudged off a bell icon, etc.
+ * Pair with [ClipCircle] / [Clip] when the offset would otherwise push
+ * the widget outside a clipped parent.
+ *
+ * Sign convention follows Compose: positive [x] shifts right, positive
+ * [y] shifts down. Use negatives to nudge up / left (e.g. `Offset(12, -12)`
+ * lifts the glyph slightly above the card top edge).
+ *
+ * Ordering caveat: order matters relative to size/clip. Apply Offset
+ * AFTER any size-defining modifiers but BEFORE clip-to-parent for the
+ * common "overhang glyph" pattern.
+ */
+@Modifier(18)
+data class Offset(val x: Int, val y: Int)  // dp; negative allowed
+
+// ============================================================================
+// Window-inset modifiers (tags 19–24) — see the parity-with-Compose plan
+//
+// All six match a Compose Foundation extension 1:1:
+//   StatusBarsPadding       ↔ Modifier.statusBarsPadding()
+//   NavigationBarsPadding   ↔ Modifier.navigationBarsPadding()
+//   ImePadding              ↔ Modifier.imePadding()
+//   SystemBarsPadding       ↔ Modifier.systemBarsPadding()        (status + nav)
+//   DisplayCutoutPadding    ↔ Modifier.displayCutoutPadding()     (notch / curve)
+//   SafeContentPadding      ↔ Modifier.safeContentPadding()       (every inset)
+//
+// Modeling these as modifiers rather than a service is intentional: the
+// integration boilerplate is zero (no zipline.bind on the host), the
+// behavior is correct under config changes (the M3 LocalDensity +
+// WindowInsets pipeline already recomposes when the IME shows / status
+// bar resizes), and the guest API matches native Compose verbatim.
+// ============================================================================
+
+/** Pad by the status-bar inset. Maps to `Modifier.statusBarsPadding()`. */
+@Modifier(19)
+object StatusBarsPadding
+
+/** Pad by the navigation-bar inset. Maps to `Modifier.navigationBarsPadding()`. */
+@Modifier(20)
+object NavigationBarsPadding
+
+/** Pad by the IME (soft-keyboard) inset. Animates with the IME show/hide. */
+@Modifier(21)
+object ImePadding
+
+/** Pad by both status + navigation bars. Maps to `Modifier.systemBarsPadding()`. */
+@Modifier(22)
+object SystemBarsPadding
+
+/** Pad around the display cutout / curved edges. */
+@Modifier(23)
+object DisplayCutoutPadding
+
+/**
+ * Pad by ALL system insets — status bar, navigation bar, IME, display
+ * cutout, and any other unsafe regions. Use on root screen containers
+ * to ensure no content lands under any system overlay.
+ */
+@Modifier(24)
+object SafeContentPadding
+
+/**
+ * Solid background fill using a custom ARGB color — escape hatch for
+ * brand colors that don't exist on [SchemaColor]'s M3 theme slots.
+ *
+ * [argb] is a packed Android color int (`0xAARRGGBB`). Example:
+ *   saffron `Color(0xFFFF6F00)` → `argb = 0xFFFF6F00L`.
+ *
+ * [alpha] is an independent multiplier in `[0.0, 1.0]` applied on top
+ * of the alpha bits in [argb]. Pass `1.0` to keep [argb]'s native
+ * alpha intact; pass `0.1` (etc.) to make a translucent tint without
+ * rewriting [argb].
+ *
+ * [cornerRadiusDp] mirrors [Background.cornerRadiusDp].
+ *
+ * Companion to [Background] (which uses theme slots) — same use cases
+ * (action-bar tints, brand-colored containers) when the exact color
+ * isn't on the M3 theme.
+ */
+@Modifier(25)
+data class CustomBackground(
+    val argb: Long,
+    val cornerRadiusDp: Int = 0,
+    val alpha: Double = 1.0,
+)
+
+/**
+ * Linear gradient background. Maps to
+ * `Brush.linearGradient(colors = [startArgb, endArgb])` painted as the
+ * widget's background. The gradient direction is controlled by
+ * [angleDegrees]: 0° = top → bottom, 90° = start → end (LTR locales),
+ * 45° = top-left → bottom-right, etc. Matches Compose's
+ * `Brush.linearGradient(start = ..., end = ...)` direction semantics
+ * but with a single-number wire payload.
+ *
+ * Each endpoint takes a packed ARGB Long (`0xAARRGGBB`) so any brand
+ * color can be expressed without needing a SchemaColor slot. Use
+ * [startAlpha] / [endAlpha] as independent multipliers on top of the
+ * ARGB's native alpha bits — the same convention as [CustomBackground].
+ *
+ * [cornerRadiusDp] applies the same rounded clip as [Background] /
+ * [CustomBackground] so card-shaped gradients work without an extra
+ * [Clip] modifier.
+ *
+ * Common patterns:
+ *   - Brand vertical fade: `LinearGradient(brandLightArgb, brandDarkArgb,
+ *     angleDegrees = 0)`
+ *   - Diagonal accent: `LinearGradient(saffronArgb, maroonArgb,
+ *     angleDegrees = 45)`
+ *   - Subtle scrim under hero image: `LinearGradient(transparentArgb,
+ *     blackArgb, startAlpha = 0.0, endAlpha = 0.6)`
+ *
+ * For more than two color stops, layer multiple gradients via stacked
+ * Box children — keeps the wire format compact for the 90% case.
+ */
+@Modifier(26)
+data class LinearGradient(
+    val startArgb: Long,
+    val endArgb: Long,
+    /**
+     * Direction, in degrees. 0° = top → bottom. 90° = start → end. Any
+     * value works (45° = TL→BR, 180° = bottom → top, etc.).
+     */
+    val angleDegrees: Int = 0,
+    val startAlpha: Double = 1.0,
+    val endAlpha: Double = 1.0,
+    val cornerRadiusDp: Int = 0,
+)
 
 // Enum types (SchemaColor, SchemaTextStyle, SchemaArrangement, etc.) live in
 // the schema-types module so they're available to every target — the schema/
