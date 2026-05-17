@@ -11,6 +11,7 @@ import com.example.serverdrivenui.presenter.HostExploreSaverBridge
 import com.example.serverdrivenui.presenter.HostQuotesProviderBridge
 import com.example.serverdrivenui.presenter.HostWallpapersProviderBridge
 import com.example.serverdrivenui.shared.HostExploreSaverObserver
+import com.example.serverdrivenui.shared.SavedCardKey
 import com.example.serverdrivenui.presenter.Navigator
 import com.example.serverdrivenui.presenter.Screen
 import com.example.serverdrivenui.shared.Quote
@@ -84,6 +85,18 @@ class ExploreScreen : Screen {
         var quotes by remember { mutableStateOf<List<Quote>?>(null) }
         var wallpapers by remember { mutableStateOf<List<Wallpaper>?>(null) }
         var error by remember { mutableStateOf<String?>(null) }
+        // Seeds the heart's "liked" visual state on each ExploreCard.
+        // Sourced from the host's process-scoped saved-card tracker
+        // (HostExploreSaver.getSavedCardKeys) so the saffron-filled
+        // heart survives Composable re-mounts (e.g. tab navigation
+        // away + back, which otherwise resets each card's local
+        // `var liked by remember` to false).
+        //
+        // Starts as `emptySet()` so the first composition renders all
+        // hearts un-filled; the LaunchedEffect below fetches once and
+        // updates this set, triggering a single re-composition with
+        // the correct liked-states.
+        var savedKeys by remember { mutableStateOf<Set<SavedCardKey>>(emptySet()) }
 
         LaunchedEffect(quotesProvider, wallpapersProvider) {
             error = null
@@ -98,6 +111,19 @@ class ExploreScreen : Screen {
                 // Wallpapers missing is non-fatal; cards just fall back
                 // to gradient backgrounds.
                 wallpapers = emptyList()
+            }
+        }
+
+        // Fetch the saved-card snapshot once per ExploreSaver bridge
+        // identity. Older hosts (no HostExploreSaver bound) → empty
+        // set, hearts default to un-filled, behaves as before.
+        val saver = HostExploreSaverBridge.instance
+        LaunchedEffect(saver) {
+            if (saver == null) return@LaunchedEffect
+            try {
+                savedKeys = saver.getSavedCardKeys().toSet()
+            } catch (t: Throwable) {
+                println("HostExploreSaver.getSavedCardKeys() threw: ${t.message}")
             }
         }
 
@@ -230,6 +256,16 @@ class ExploreScreen : Screen {
                                 ExploreCard(
                                     quote = quote,
                                     wallpaper = wp,
+                                    // Pre-fill the heart for cards the
+                                    // user already saved in this session —
+                                    // sourced from HostExploreSaver's
+                                    // process-scoped tracker so the
+                                    // saffron heart survives Composable
+                                    // re-mounts (e.g. tab away + back).
+                                    initiallyLiked = SavedCardKey(
+                                        quoteId = quote.id,
+                                        wallpaperId = wp?.id,
+                                    ) in savedKeys,
                                     onClick = {
                                         exploreNav?.onExploreItemSelected(
                                             quoteId = quote.id,
@@ -280,6 +316,7 @@ private fun pickWallpaperFor(
 private fun ExploreCard(
     quote: Quote,
     wallpaper: Wallpaper?,
+    initiallyLiked: Boolean,
     onClick: () -> Unit,
 ) {
     // Heart visual state. Optimistic update: flip to true on tap, fire
@@ -290,7 +327,16 @@ private fun ExploreCard(
     // Like native, a SECOND tap is a no-op — saving once is the only
     // user-visible action; un-saving would require a MediaStore round-
     // trip the native version doesn't do either.
-    var liked by remember { mutableStateOf(false) }
+    //
+    // `remember` key list includes (quote.id, wallpaper?.id,
+    // initiallyLiked) so the state is rebuilt with the correct seed
+    // value when the parent ExploreScreen re-mounts after the user
+    // navigates back to Explore. Without `initiallyLiked` in the key
+    // list, the cached `false` would survive across re-mounts and
+    // override the host's saved-state hint.
+    var liked by remember(quote.id, wallpaper?.id, initiallyLiked) {
+        mutableStateOf(initiallyLiked)
+    }
 
     val onHeartTap: () -> Unit = {
         if (!liked) {

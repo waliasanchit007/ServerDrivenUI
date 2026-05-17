@@ -281,7 +281,42 @@ interface HostExploreSaver : ZiplineService {
         wallpaperId: String?,
         observer: HostExploreSaverObserver?,
     )
+
+    /**
+     * Snapshot of every (quoteId, wallpaperId) pair the host has saved
+     * during the current process lifetime. Used by the guest to seed
+     * the "heart liked" visual state of Explore cards on mount, so the
+     * saffron-filled heart survives Composable re-mounts (e.g. tab
+     * navigation away + back).
+     *
+     * Process-scoped, not persistent: the host doesn't query MediaStore
+     * for prior saves on cold start. That's intentional — the guest's
+     * source of truth for "is this saved" is the Saved tab itself, which
+     * already reads MediaStore. This RPC is only a visual hint to avoid
+     * the user re-saving the same card three times in one session.
+     *
+     * Non-suspend (Konduit-Zipline 1.26 suspend-bind hang). Returns
+     * cheaply — the host maintains the set in-memory.
+     */
+    fun getSavedCardKeys(): List<SavedCardKey>
 }
+
+/**
+ * The (quoteId, wallpaperId) pair the host saved via
+ * [HostExploreSaver.saveQuoteCard]. Returned by
+ * [HostExploreSaver.getSavedCardKeys] for the guest to seed its visual
+ * "liked" state on mount.
+ *
+ * Distinct serializable type rather than `Pair<String, String?>`
+ * because kotlinx-serialization doesn't ship a default Pair serializer
+ * — wrapping in a named data class is the standard Kotlin/Zipline
+ * pattern for tuple-shaped wire values.
+ */
+@Serializable
+data class SavedCardKey(
+    val quoteId: String,
+    val wallpaperId: String? = null,
+)
 
 /**
  * One-shot result for [HostExploreSaver.saveQuoteCard]. Single-use:
