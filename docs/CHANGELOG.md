@@ -32,6 +32,14 @@ summary, and the fix commit.
   SerializationException at encode → swallowed by protocol path →
   blank `TreehouseContent` with zero logs — is now closed. The
   `SduiSerializersModule` workaround is redundant but kept (harmless).
+- **KNOWN_BUGS U1** (mitigation) — `Spec.bindWithTimeout { block }`
+  helper turns Zipline's silent-hang failure mode into an actionable
+  `ZiplineBindTimeoutException` after 30s. The root cause (Zipline
+  compiler-plugin behavior on `suspend fun X(...): List<@Serializable T>`)
+  still lives upstream, but integrators now see a clear exception
+  pointing at the suspect signature shape instead of a frozen build
+  with no log. Used in DevoStatus's `KonduitDemoScreen.kt` as the
+  reference pattern.
 
 ### Fixed
 

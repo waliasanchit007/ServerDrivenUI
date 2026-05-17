@@ -33,6 +33,13 @@ shape so a future upstream PR can pick them up.
 
 **Severity:** high (silent failure mode; integrators give up before
 finding the workaround).
+**Mitigation shipped in Konduit `1.0.0-caliclan.3`:**
+`Spec.bindWithTimeout { … }` turns the silent hang into a clear
+`ZiplineBindTimeoutException` after 30s (default — configurable). The
+exception message names the suspect signature shape and points at this
+KNOWN_BUGS entry, so an integrator sees an actionable error instead of
+giving up on a frozen build. The root cause still lives upstream in
+Zipline's compiler plugin.
 
 **Symptom.** Declaring a `ZiplineService` method as
 `suspend fun foo(...): List<MySerializable>` causes the host's
@@ -67,6 +74,14 @@ Zipline's compiler plugin codegen or the host-side proxy construction.
 **Workaround in place.** Keep `getQuotes` non-suspend; have the host
 pre-cache the data before binding. See `HostQuotesProvider`'s kdoc and
 Step 4½ in `USAGE.md`. Used throughout shared/Protocol.kt.
+
+**Diagnostic shipped (Konduit `1.0.0-caliclan.3`):** wrap suspect
+`bind`/`take` calls in `Spec.bindWithTimeout { … }`. When the hang
+triggers, the timeout fires after 30s with `ZiplineBindTimeoutException`
+whose message names the suspect signature shape. Strictly an upgrade
+over "build hangs forever, no log." DevoStatus's `KonduitDemoScreen.kt`
+uses this pattern; `KonduitQuotesScreen.kt` and `KonduitExploreScreen.kt`
+can adopt it incrementally.
 
 **Upstream fix.** Investigate the Zipline 1.26 compiler-plugin codegen
 for `suspend fun … : List<@Serializable T>` signatures. A workaround
