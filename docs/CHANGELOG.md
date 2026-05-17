@@ -21,6 +21,17 @@ summary, and the fix commit.
   Use as `zipline.bind<HostX>("x", retain(object : HostX { … }))`.
   Lives in `konduit-treehouse-host`'s `TreehouseApp.kt`. Validated end-
   to-end in DevoStatus (`KonduitDemoScreen.kt`).
+- **KNOWN_BUGS U10** — Modifier-serializer codegen no longer
+  white-screens on enum properties. The protocol-guest generator
+  (`konduit-tooling-codegen` commit `79a314004`) now emits
+  `ContextualSerializer(MyEnum::class, MyEnum.serializer(), emptyArray())`
+  for every non-parameterized `ClassName` typed property, so the
+  fallback path resolves the auto-generated `.serializer()` companion
+  whether or not the integrator registered a contextual serializer.
+  Worst documented failure mode in the integration — silent
+  SerializationException at encode → swallowed by protocol path →
+  blank `TreehouseContent` with zero logs — is now closed. The
+  `SduiSerializersModule` workaround is redundant but kept (harmless).
 
 ### Fixed
 

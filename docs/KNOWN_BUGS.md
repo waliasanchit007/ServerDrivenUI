@@ -225,7 +225,28 @@ rather than discover it through a broken JS codegen output.
 
 ---
 
-### U10. Konduit codegen emits `ContextualSerializer(MyEnum::class)` for enum fields on `@Modifier` classes — silent white screen
+### U10. ~~Konduit codegen emits `ContextualSerializer(MyEnum::class)` for enum fields on `@Modifier` classes — silent white screen~~ — FIXED in Konduit `1.0.0-caliclan.3`
+
+**Status:** Fixed in Konduit commit `79a314004`
+(`konduit-tooling-codegen` protocol-guest generator). Modifier
+serializer codegen now emits the `.serializer(), emptyArray()` fallback
+for every non-parameterized `ClassName` typed property; the
+`ContextualSerializer` falls through to the auto-generated `.serializer()`
+companion so the white screen can no longer happen for `@Serializable
+enum` modifier fields.
+
+The `SduiSerializersModule` workaround in `:schema-types` is now
+redundant but kept (the contextual registration is harmless when the
+fallback already works; removing it has no observable effect).
+
+Types that aren't `@Serializable` now produce a compile-time error
+pointing at the missing `.serializer()` companion instead of a silent
+runtime white screen — strictly better failure mode.
+
+Historical entry preserved below for context.
+
+<details>
+<summary>Original entry</summary>
 
 **Severity:** critical (worst documented failure mode — completely
 silent, looks like the schema widget didn't render at all).
@@ -284,6 +305,8 @@ fields trigger the contextual codegen.
    but still requires integrators to register their own additions.
 
 Option (1) is the right fix.
+
+</details>
 
 ---
 
@@ -547,6 +570,13 @@ with commit references live in [`CHANGELOG.md`](./CHANGELOG.md):
   previously listed it as an unshipped fix. Corrected, with all
   DevoStatus host services migrated to `treehouseApp.dispatchers.ui`
   from `Dispatchers.Main`.
+- **U10** Modifier serializer codegen white-screen — Konduit
+  `1.0.0-caliclan.3` protocol-guest generator now emits `.serializer()`
+  fallback for every non-parameterized `ClassName` modifier property.
+  `ContextualSerializer` falls through to the auto-generated companion
+  so the white screen can no longer happen. The `SduiSerializersModule`
+  workaround is now redundant but kept (harmless when fallback works).
+  See CHANGELOG.
 
 ---
 
