@@ -1,20 +1,28 @@
 package com.example.serverdrivenui.shared
 
 import dev.konduit.treehouse.AppService
+import dev.konduit.treehouse.KonduitAppService
 import dev.konduit.treehouse.ZiplineTreehouseUi
 import app.cash.zipline.ZiplineService
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 
+@KonduitAppService
 interface SduiAppService : AppService {
     fun launch(): ZiplineTreehouseUi
 
     companion object {
+        // Zipline IR looks up `SduiAppService.Companion.Adapter` by FQN
+        // at code-load time. The body extends the KSP-generated
+        // `GeneratedSduiAppServiceAdapter` (from konduit-treehouse-codegen
+        // applied below in build.gradle.kts), which carries the full
+        // Zipline #765 workaround. Replaces the ~95-line
+        // ManualSduiAppServiceAdapter.kt that we shipped pre-caliclan.5.
         internal class Adapter(
             serializers: List<KSerializer<*>>,
             serialName: String
-        ) : ManualSduiAppServiceAdapter(serializers, serialName)
+        ) : GeneratedSduiAppServiceAdapter(serializers, serialName)
     }
 }
 
