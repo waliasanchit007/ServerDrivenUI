@@ -12,6 +12,12 @@ androidx-testExt = "1.3.0"
 composeMultiplatform = "1.8.0"
 junit = "4.13.2"
 kotlin = "2.1.0"
+# Must use the KSP-2.0-API line (`-2.0.x` suffix) because
+# konduit-treehouse-codegen was published with KSP 2.0 — using a
+# `-1.0.x` KSP version triggers an API mismatch at load time
+# ("too old for kotlin-X.Y.Z"). The `<kotlin>-<api>` versioning is
+# documented at https://github.com/google/ksp/releases.
+ksp = "2.1.20-2.0.1"
 redwood = "1.0.0-caliclan.4-SNAPSHOT"
 zipline = "1.26.0"
 okhttp = "4.12.0"
@@ -32,6 +38,7 @@ redwood-schema = { module = "dev.konduit:konduit-schema", version.ref = "redwood
 redwood-compose = { module = "dev.konduit:konduit-compose", version.ref = "redwood" }
 redwood-widget = { module = "dev.konduit:konduit-widget", version.ref = "redwood" }
 redwood-treehouse = { module = "dev.konduit:konduit-treehouse", version.ref = "redwood" }
+redwood-treehouse-codegen = { module = "dev.konduit:konduit-treehouse-codegen", version.ref = "redwood" }
 redwoodProtocol = { module = "dev.konduit:konduit-protocol", version.ref = "redwood" }
 redwood-protocol-host = { module = "dev.konduit:konduit-protocol-host", version.ref = "redwood" }
 redwood-protocol-guest = { module = "dev.konduit:konduit-protocol-guest", version.ref = "redwood" }
@@ -76,3 +83,4 @@ redwood-generator-protocol-host = { id = "dev.konduit.generator.protocol.host", 
 redwood-generator-protocol-guest = { id = "dev.konduit.generator.protocol.guest", version.ref = "redwood" }
 redwood-generator-modifiers = { id = "dev.konduit.generator.modifiers", version.ref = "redwood" }
 zipline = { id = "app.cash.zipline", version.ref = "zipline" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

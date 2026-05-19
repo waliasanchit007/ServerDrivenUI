@@ -7,6 +7,12 @@ plugins {
     // .serializer() lookup fails at take<> time with
     // "Serializer for class 'X' is not found".
     alias(libs.plugins.kotlinSerialization)
+    // KSP runs `konduit-treehouse-codegen` against
+    // @KonduitAppService-annotated interfaces (currently just
+    // SduiAppService) and emits the matching
+    // `Generated<Name>Adapter`. Replaces the ~95-line
+    // ManualSduiAppServiceAdapter.kt we used to hand-write.
+    alias(libs.plugins.ksp)
 }
 
 // U11 lint — rejects ZiplineService methods with function-typed
@@ -45,4 +51,27 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+// KSP wiring for the @KonduitAppService processor. For multiplatform
+// projects, the metadata-config emits one generated file under
+// commonMain that every target sees.
+dependencies {
+    add("kspCommonMainMetadata", libs.redwood.treehouse.codegen)
+}
+
+// Workaround for https://github.com/google/ksp/issues/1318 — every
+// target's compileKotlin task must explicitly depend on the metadata
+// KSP task so the generated source is materialized before per-target
+// compilation walks it.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().all {
+    if (name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
+    }
+}
+
+// Splice the generated sources into commonMain so jvm/js/iOS targets
+// all resolve `GeneratedSduiAppServiceAdapter` from the same path.
+kotlin.sourceSets.commonMain.configure {
+    kotlin.srcDir("${layout.buildDirectory.get()}/generated/ksp/metadata/commonMain/kotlin")
 }
